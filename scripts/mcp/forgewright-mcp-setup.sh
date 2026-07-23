@@ -3532,7 +3532,6 @@ setup_claude_desktop() {
     log_step "Setting up Claude Desktop MCP..."
     canonical_candidate_ready || return 1
     write_json_mcp_config "$claude_desktop_config" claude-desktop || return 1
-        "$(resolve_gitnexus_executable)" mcp || return 1
     CONFIGURED_CLAUDE_DESKTOP="$claude_desktop_config"
     log_info "  forgewright → canonical tsx (~/.forgewright/mcp-server/)"
     log_info "  gitnexus    → $(resolve_gitnexus_executable)"

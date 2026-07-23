@@ -1,0 +1,19 @@
+{
+  "schema_version": "1",
+  "turn": "019f79ec-a05a-7033-83fe-49a0603c53a1",
+  "command": [
+    "python3",
+    "-m",
+    "pytest",
+    "-q",
+    "tests/lite/test_gate.py",
+    "tests/unit_tests/test_hook_schema.py",
+    "tests/unit_tests/test_rule_compliance_loop.py"
+  ],
+  "exit_code": 0,
+  "output": "........................................................................ [ 88%]\n.........                                                                [100%]\n=============================== warnings summary ===============================\n../../Library/Python/3.14/lib/python/site-packages/_hypothesis_pytestplugin.py:481\n  /Users/buiphucminhtam/Library/Python/3.14/lib/python/site-packages/_hypothesis_pytestplugin.py:481: UserWarning: Skipping collection of '.hypothesis' directory - this usually means you've explicitly set the `norecursedirs` pytest config option, replacing rather than extending the default ignores.\n    warnings.warn(\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n81 passed, 1 warning in 19.68s\n",
+  "output_truncated": false,
+  "timestamp_utc": "2026-07-19T11:45:05Z",
+  "workspace": "/Users/buiphucminhtam/GitHub/forgewright",
+  "tree_sha": "DIRTY:8c9331f09457:1b5cfc9f472c"
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": "1",
+  "turn": "hook-config-fix-20260719",
+  "command": [
+    "python3",
+    "-c",
+    "import tomllib,pathlib; u=pathlib.Path(\"/Users/buiphucminhtam/.codex\"); p=pathlib.Path(\"/Users/buiphucminhtam/GitHub/forgewright/.codex\"); uh=tomllib.loads((u/\"config.toml\").read_text())[\"hooks\"]; ph=tomllib.loads((p/\"config.toml\").read_text())[\"hooks\"]; ue={k:len(v) for k,v in uh.items() if isinstance(v,list)}; pe={k:len(v) for k,v in ph.items() if isinstance(v,list)}; assert not (u/\"hooks.json\").exists() and not (p/\"hooks.json\").exists(); assert ue=={\"PreToolUse\":1,\"PostToolUse\":2,\"UserPromptSubmit\":1,\"SubagentStart\":1}; assert pe=={\"Stop\":1}; print(\"hook layers PASS\",ue,pe)"
+  ],
+  "exit_code": 0,
+  "output": "hook layers PASS {'PreToolUse': 1, 'PostToolUse': 2, 'UserPromptSubmit': 1, 'SubagentStart': 1} {'Stop': 1}\n",
+  "output_truncated": false,
+  "timestamp_utc": "2026-07-19T10:47:28Z",
+  "workspace": "/Users/buiphucminhtam/GitHub/forgewright",
+  "tree_sha": "DIRTY:6c938aeed160:e381d8318918"
+}

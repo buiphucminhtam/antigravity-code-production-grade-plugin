@@ -6,3 +6,6 @@
 {"ts":"2026-07-15T02:50:52Z","event":"policy.deny","data":{"tool":"run_command","pattern":"builtin:git-reset-hard","mode":"strict"}}
 {"ts":"2026-07-15T03:24:38Z","event":"policy.deny","data":{"tool":"run_shell_command","pattern":"builtin:git-reset-hard","mode":"strict"}}
 {"ts":"2026-07-15T04:36:20Z","event":"policy.deny","data":{"tool":"run_command","pattern":"chmod[[:space:]]+777","mode":"strict"}}
+{"ts":"2026-07-17T11:31:57Z","event":"policy.deny","data":{"tool":"run_command","pattern":"rm[[:space:]]+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r)","mode":"strict"}}
+{"ts":"2026-07-17T11:58:42Z","event":"policy.deny","data":{"tool":"run_command","pattern":"rm[[:space:]]+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r)","mode":"strict"}}
+{"ts":"2026-07-18T07:14:22Z","event":"policy.deny","data":{"tool":"run_command","pattern":"rm[[:space:]]+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r)","mode":"strict"}}

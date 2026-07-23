@@ -8,3 +8,11 @@
 {"ts":"2026-07-16T13:44:25Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 has empty OUTPUT"}
 {"ts":"2026-07-16T13:44:25Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 has empty OUTPUT"}
 {"ts":"2026-07-19T04:49:58Z","rule":"hard-step-escalation","outcome":"violation","note":"source: self-report"}
+{"ts":"2026-07-19T10:50:35Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 has empty OUTPUT; VERIFY block 2 has empty OUTPUT"}
+{"ts":"2026-07-19T10:50:35Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 has empty OUTPUT; VERIFY block 2 has empty OUTPUT"}
+{"ts":"2026-07-19T11:03:58Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 2 has empty OUTPUT"}
+{"ts":"2026-07-19T11:03:58Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 2 has empty OUTPUT"}
+{"ts":"2026-07-19T11:06:39Z","rule":"shell-escaping","outcome":"violation","note":"source: self-report"}
+{"ts":"2026-07-19T12:26:20Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 2 missing fields: COMMAND, OUTPUT, EXIT CODE, VERDICT; VERIFY block 3 VERDICT is not PASS"}
+{"ts":"2026-07-19T12:26:34Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 2 VERDICT is not PASS"}
+{"ts":"2026-07-19T14:45:49Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 6 VERDICT is not PASS"}
