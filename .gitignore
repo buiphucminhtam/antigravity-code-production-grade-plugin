@@ -99,3 +99,13 @@ mutants/
 .forgewright/mcp-manifest.json
 .antigravity/mcp-manifest.json
 ruff_errors.json
+
+# Runtime Lifecycle Guard — machine-local state and evidence artifacts.
+# These are generated per-run and per-machine; committing them would also
+# violate scripts/ci/verify-runtime-leases.sh, which asserts no runtime state
+# is tracked.
+.forgewright/runtime/
+.forgewright/verify/
+
+# Qoder workspace metadata (editor/tool scratch, not project source)
+.qoder/

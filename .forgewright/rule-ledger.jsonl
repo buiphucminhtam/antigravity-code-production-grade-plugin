@@ -16,3 +16,30 @@
 {"ts":"2026-07-19T12:26:20Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 2 missing fields: COMMAND, OUTPUT, EXIT CODE, VERDICT; VERIFY block 3 VERDICT is not PASS"}
 {"ts":"2026-07-19T12:26:34Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 2 VERDICT is not PASS"}
 {"ts":"2026-07-19T14:45:49Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 6 VERDICT is not PASS"}
+{"ts":"2026-07-26T03:21:17Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 EXIT CODE is not 0; VERIFY block 2 EXIT CODE is not 0; VERIFY block 2 VERDICT is not PASS"}
+{"ts":"2026-07-26T03:22:36Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 EXIT CODE is not 0; VERIFY block 1 VERDICT is not PASS"}
+{"ts":"2026-07-26T03:23:58Z","rule":"HR1-verify","outcome":"violation","note":"source: user - previous response included a FAIL-formatted VERIFY block that the runtime validator necessarily rejects"}
+{"ts":"2026-07-26T03:25:55Z","rule":"HR1-verify","outcome":"violation","note":"source: user - evidence was written under a custom turn name instead of the native Codex turn_id"}
+{"ts":"2026-07-26T03:27:36Z","rule":"HR1-verify","outcome":"violation","note":"source: user - inherited parent CODEX_THREAD_ID was mistaken for the current escalation turn_id required by the evidence gate"}
+{"ts":"2026-07-26T03:28:11Z","rule":"HR1-verify","outcome":"violation","note":"source: user - review response lacked machine-written evidence under native Codex turn ID"}
+{"ts":"2026-07-26T03:28:40Z","rule":"HR1-verify","outcome":"violation","note":"source: user - session_id and nested-exec turn_id were used instead of the active rollout task_started.turn_id"}
+{"ts":"2026-07-26T03:29:16Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 missing fields: COMMAND, OUTPUT, EXIT CODE, VERDICT"}
+{"ts":"2026-07-26T03:29:16Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 missing fields: COMMAND, OUTPUT, EXIT CODE, VERDICT"}
+{"ts":"2026-07-26T03:38:47Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 fields are not consecutive"}
+{"ts":"2026-07-26T03:38:47Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 fields are not consecutive"}
+{"ts":"2026-07-26T03:39:14Z","rule":"HR1-verify","outcome":"violation","note":"source: user - prior retry used a nested turn evidence key instead of active rollout task_started.turn_id"}
+{"ts":"2026-07-26T03:39:15Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 fields are not consecutive"}
+{"ts":"2026-07-26T03:39:15Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 fields are not consecutive"}
+{"ts":"2026-07-26T03:41:03Z","rule":"HR1-verify","outcome":"violation","note":"source: user - prior retries targeted task_started.turn_id values from other concurrent rollout files"}
+{"ts":"2026-07-26T14:27:47Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 missing fields: EXIT CODE"}
+{"ts":"2026-07-26T16:04:25Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 missing fields: OUTPUT"}
+{"ts":"2026-07-26T16:34:04Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
+{"ts":"2026-07-26T16:34:08Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
+{"ts":"2026-07-26T16:35:36Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
+{"ts":"2026-07-26T16:35:40Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
+{"ts":"2026-07-26T16:36:23Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
+{"ts":"2026-07-26T16:36:27Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
+{"ts":"2026-07-26T16:47:51Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
+{"ts":"2026-07-26T16:47:55Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
+{"ts":"2026-07-26T16:48:56Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
+{"ts":"2026-07-26T16:49:00Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
