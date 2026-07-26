@@ -87,3 +87,11 @@ export class GameScene extends Phaser.Scene {
   }
 }
 ```
+
+## Runtime Lifecycle
+
+Start anything long-running (dev server, editor, emulator, watcher, container) with
+`bash scripts/runtime/dev-run.sh --role <role> -- <command>`. It reuses an instance that is
+already up instead of starting a second one, and registers a lease so the process is
+reclaimed instead of leaking a port and its RAM. Close the turn with VERIFY Template 4
+(RUNTIME LEDGER). See [ADR-010](../../docs/adr/ADR-010-runtime-lifecycle-guard.md).

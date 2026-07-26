@@ -23,6 +23,7 @@ run_required mcp-coverage npm --prefix mcp run test:coverage
 run_required mcp-launcher-security bash tests/test-forgewright-mcp-launcher.sh
 run_required mcp-setup bash tests/setup/test-forgewright-mcp-setup.sh
 run_required hook-installation bash tests/test_hooks.sh
+run_required runtime-lifecycle-guard bash scripts/ci/verify-runtime-leases.sh
 run_required cli-tests npm --prefix src/cli test
 run_required cli-init-onboard-golden npm run test:golden
 run_required release-evidence-policy-tests node --test scripts/ci/release-evidence-policy.test.mjs

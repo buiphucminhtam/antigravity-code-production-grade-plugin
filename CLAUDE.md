@@ -195,9 +195,11 @@ After completing all work for this user turn, persist context so the next turn (
    - [blockers or "none"]
    ```
 
-4. **Self-check**: Confirm the mem0 add command succeeded. If it failed, log: `⚠ Memory save failed — context may not persist`.
+4. **Runtime reclaim** — if this turn started anything long-running, run `bash scripts/runtime/runtime-lease.sh status`, release what you no longer need, and emit VERIFY Template 4. Anything left open must be a deliberate `policy=keep`.
 
-5. **Self-Report Rule Violation**: Nếu bạn tự nhận ra mình đã quên rule (hoặc user nhắc), bắt buộc chạy rule-ledger.sh:
+5. **Self-check**: Confirm the mem0 add command succeeded. If it failed, log: `⚠ Memory save failed — context may not persist`.
+
+6. **Self-Report Rule Violation**: Nếu bạn tự nhận ra mình đã quên rule (hoặc user nhắc), bắt buộc chạy rule-ledger.sh:
    ```bash
    bash scripts/lite/rule-ledger.sh add <rule_id> violation "source: self-report|user"
    ```
@@ -246,6 +248,22 @@ EXIT CODE: <number>
 VERDICT: PASS | FAIL
 ```
 
+## Template 4: Runtime Ledger
+Use this whenever the task started anything long-running — a dev server, game editor, emulator, watcher, container. A leaked process is invisible in every other template: the tests pass, the build is green, and RAM keeps climbing.
+```text
+RUNTIME LEDGER
+OPENED:  <lease_id> role=<..> port=<..> pid=<..>
+CLOSED:  <lease_id> exit=<..>
+LEAKED:  none | <lease_id list>
+COMMAND: bash scripts/runtime/runtime-lease.sh status
+OUTPUT:  <pasted status output>
+VERDICT: CLEAN | LEAKED
+```
+Rules for this block:
+- Start long-running processes with `bash scripts/runtime/dev-run.sh --role <role> -- <command>`. It reuses an already-running instance instead of starting a second one, and registers a lease so the process can be reclaimed.
+- `LEAKED` is only acceptable when the lease is deliberately `policy=keep`; say why.
+- A process you started with no lease at all is a `LEAKED` verdict, not an exemption.
+
 ## Rules
 1. A claim of success without a pasted `OUTPUT` and `EXIT CODE` / `DOM OUTPUT` is automatically FALSE.
 2. For UI/visual changes: cap confidence at "structurally verified" and ask the user to confirm the actual visual appearance.
@@ -254,6 +272,7 @@ VERDICT: PASS | FAIL
 5. VERIFY proves code works. [AUDIT.md](AUDIT.md) proves all requirements are covered. Both are mandatory.
 6. Narrative claims ("I updated the file", "this should work now") without a VERIFY block are automatically FALSE. The check must be a runnable command whose output you paste.
 7. Prefer deterministic checks (test suites, linters, build exit codes) over manual inspection. If no automated check exists, create one before claiming success.
+8. If the task started any long-running process, emit Template 4 as well. "The tests passed" is not evidence that the machine was left clean.
 <!-- END OF VERIFY.md -->
 
 <!-- START OF ESCALATE.md -->
@@ -270,6 +289,7 @@ Model self-tag is only a hint. A step is **HARD** if ANY of these objective runt
 - [ ] Concurrency, locking, or asynchronous ordering paths.
 - [ ] The Stuck rule fired on this step.
 - [ ] Guardrail flagged a DENY or WARN on this step.
+- [ ] The step would signal or kill a process that holds no Runtime Lifecycle Guard lease, or would reap a `policy=keep` lease.
 
 Otherwise, the step is **EASY**.
 
@@ -355,7 +375,7 @@ When the user provides answers, record explicit defaults and constraints before 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (21058 symbols, 28888 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (20693 symbols, 27617 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

@@ -73,3 +73,11 @@ export function useBilling() {
 # Execute sequence diagram generator using GitNexus call-graphs
 python3 scripts/sequence-flow-generator.py --client src/client/ --server src/server/
 ```
+
+## Runtime Lifecycle
+
+Start anything long-running (dev server, editor, emulator, watcher, container) with
+`bash scripts/runtime/dev-run.sh --role <role> -- <command>`. It reuses an instance that is
+already up instead of starting a second one, and registers a lease so the process is
+reclaimed instead of leaking a port and its RAM. Close the turn with VERIFY Template 4
+(RUNTIME LEDGER). See [ADR-010](../../docs/adr/ADR-010-runtime-lifecycle-guard.md).

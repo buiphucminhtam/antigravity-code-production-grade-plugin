@@ -291,6 +291,26 @@ The Tool Sandbox (DeerFlow IV) automatically intercepts all tool output, strips 
 ASIP automatically detects plan and execution failures, triggers deep research using NotebookLM or web fallbacks, and adapts the system's operational procedures.
 **[Read the ASIP Guide ➔](docs/guides/asip.md)**
 
+### 9. Runtime Lifecycle Guard
+
+Agent sessions start dev servers, game editors, emulators and watchers — and forget to stop them. Ports pile up, RAM climbs, build caches grow without bound. The Runtime Lifecycle Guard closes that loop machine-wide, across Claude Code, Codex and Antigravity:
+
+- **Reuse instead of respawn.** `dev-run.sh` gives each project a stable port band and hands back the running instance rather than starting a second copy.
+- **Every long-running process holds a lease.** The reaper may only ever signal a process that has one; anything it did not start is out of bounds by construction, and infrastructure ports are allowlisted at install time.
+- **Reclaim by TTL.** A throttled sweep on the `Stop` hook reclaims expired leases — including those left behind by a session that crashed.
+- **Disk budgets and artifact TTLs** report per-project footprint and age out the pipeline's own evidence files.
+- **Reversible by design.** Observe mode by default, dry-run defaults on anything destructive, and a three-tier kill switch (`FORGEWRIGHT_RLG=off`, a `DISABLED` file, a per-project opt-out).
+
+```bash
+bash scripts/runtime/dev-run.sh --role web-dev --ttl 2h -- npm run dev   # sanctioned launch
+bash scripts/runtime/runtime-inventory.sh --all                          # what is running, machine-wide
+bash scripts/runtime/runtime-reap.sh                                     # dry-run: what would be reclaimed
+bash scripts/runtime/disk-budget.sh                                      # footprint vs budget
+touch ~/.forgewright/runtime/DISABLED                                    # stop the guard, instantly
+```
+
+**[Read ADR-010 ➔](docs/adr/ADR-010-runtime-lifecycle-guard.md)**
+
 ---
 
 ## Architecture and Safety Model
@@ -396,6 +416,7 @@ forge token report --period week
 - **[Protocol Catalog](docs/reference/protocol-catalog.md)**: Standardized interaction models and constraints.
 - **[Security Practices](.forgewright/security/README.md)**: Security scanner and vulnerability detection.
 - **[Advanced Guides](docs/guides/gitnexus.md)**: Detailed instructions for GitNexus, parallel dispatch, and testing.
+- **[ADR-010: Runtime Lifecycle Guard](docs/adr/ADR-010-runtime-lifecycle-guard.md)**: Port/process/disk reclamation across Claude, Codex and Antigravity.
 - **[Changelog](CHANGELOG.md)**: Release history.
 
 ---

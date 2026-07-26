@@ -130,9 +130,11 @@ After completing all work for this user turn, persist context so the next turn (
    - [blockers or "none"]
    ```
 
-4. **Self-check**: Confirm the mem0 add command succeeded. If it failed, log: `⚠ Memory save failed — context may not persist`.
+4. **Runtime reclaim** — if this turn started anything long-running, run `bash scripts/runtime/runtime-lease.sh status`, release what you no longer need, and emit VERIFY Template 4. Anything left open must be a deliberate `policy=keep`.
 
-5. **Self-Report Rule Violation**: Nếu bạn tự nhận ra mình đã quên rule (hoặc user nhắc), bắt buộc chạy rule-ledger.sh:
+5. **Self-check**: Confirm the mem0 add command succeeded. If it failed, log: `⚠ Memory save failed — context may not persist`.
+
+6. **Self-Report Rule Violation**: Nếu bạn tự nhận ra mình đã quên rule (hoặc user nhắc), bắt buộc chạy rule-ledger.sh:
    ```bash
    bash scripts/lite/rule-ledger.sh add <rule_id> violation "source: self-report|user"
    ```

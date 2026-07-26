@@ -11,6 +11,7 @@ Model self-tag is only a hint. A step is **HARD** if ANY of these objective runt
 - [ ] Concurrency, locking, or asynchronous ordering paths.
 - [ ] The Stuck rule fired on this step.
 - [ ] Guardrail flagged a DENY or WARN on this step.
+- [ ] The step would signal or kill a process that holds no Runtime Lifecycle Guard lease, or would reap a `policy=keep` lease.
 
 Otherwise, the step is **EASY**.
 
