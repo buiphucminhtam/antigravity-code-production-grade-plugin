@@ -43,3 +43,9 @@
 {"ts":"2026-07-26T16:47:55Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
 {"ts":"2026-07-26T16:48:56Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
 {"ts":"2026-07-26T16:49:00Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
+{"ts":"2026-07-26T16:54:14Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
+{"ts":"2026-07-26T16:54:17Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
+{"ts":"2026-07-26T16:56:47Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
+{"ts":"2026-07-26T16:56:50Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
+{"ts":"2026-07-28T06:18:47Z","rule":"shell_noisy_separators","outcome":"violation","note":"source: self-report"}
+{"ts":"2026-07-28T06:42:56Z","rule":"shell_command_chaining","outcome":"violation","note":"source: self-report"}

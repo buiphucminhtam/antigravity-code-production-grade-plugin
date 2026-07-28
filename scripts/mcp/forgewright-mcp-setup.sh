@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
-# forgewright-mcp-setup — Universal MCP Setup (Cursor + Claude Code + Antigravity + Codex + Gemini + Zed + OpenCode)
+# forgewright-mcp-setup — Universal MCP Setup (Cursor + Claude Code + Antigravity + Codex + Gemini + Zed + OpenCode + Qwen Code)
 #
 # Single command to set up Forgewright MCP for ALL AI clients simultaneously.
-# Works for Cursor, Claude Code, Antigravity, OpenAI Codex CLI, Google Gemini CLI, Zed AI, and OpenCode.
+# Works for Cursor, Claude Code, Antigravity, OpenAI Codex CLI, Google Gemini CLI, Zed AI, OpenCode, and Qwen Code.
 #
 # USAGE:
 #   bash forgewright/scripts/forgewright-mcp-setup.sh
@@ -144,13 +144,13 @@ log_info()  { echo -e "  $1"; }
 
 show_help() {
     cat << 'EOF'
-forgewright-mcp-setup — Universal MCP Setup (Cursor + Claude Code + Antigravity + Codex + Gemini + Zed + OpenCode)
+forgewright-mcp-setup — Universal MCP Setup (Cursor + Claude Code + Antigravity + Codex + Gemini + Zed + OpenCode + Qwen Code)
 
 USAGE:
   forgewright-mcp-setup.sh [OPTIONS]
 
 OPTIONS:
-  --all         Setup all platforms (Cursor + Claude Code + Antigravity + Codex + Gemini + Zed + OpenCode) [DEFAULT]
+  --all         Setup all platforms (Cursor + Claude Code + Antigravity + Codex + Gemini + Zed + OpenCode + Qwen Code) [DEFAULT]
   --cursor      Setup Cursor MCP only
   --claude-code Setup Claude Code MCP only
   --claude-desktop Setup Claude Desktop MCP only
@@ -159,6 +159,7 @@ OPTIONS:
   --gemini      Setup Google Gemini CLI MCP only
   --zed         Setup Zed AI MCP only
   --opencode    Setup OpenCode MCP only
+  --qwen        Setup Qwen Code MCP only
   --check       Check MCP status across all platforms
   --force       Re-generate even if already set up
   --uninstall   Remove MCP setup from all platforms
@@ -174,6 +175,7 @@ PLATFORMS:
   Zed AI       ~/Library/Application Support/Zed/settings.json (macOS)
                ~/.config/zed/settings.json (Linux)
   OpenCode     ${XDG_CONFIG_HOME:-~/.config}/opencode/opencode.json
+  Qwen Code    ~/.qwen/settings.json
 
 EXAMPLES:
   # Setup all platforms
@@ -202,6 +204,9 @@ EXAMPLES:
 
   # Setup OpenCode only
   forgewright-mcp-setup.sh --opencode
+
+  # Setup Qwen Code only
+  forgewright-mcp-setup.sh --qwen
 EOF
 }
 
@@ -305,6 +310,11 @@ detect_platforms() {
         PLATFORM_CODEX="true"
     elif command -v codex &>/dev/null; then
         PLATFORM_CODEX="true"
+    fi
+
+    # Qwen Code: ~/.qwen/settings.json exists or qwen CLI is available
+    if [[ -f "$HOME/.qwen/settings.json" ]] || command -v qwen &>/dev/null; then
+        PLATFORM_QWEN="true"
     fi
 }
 
@@ -2172,7 +2182,7 @@ for key, record in data["records"].items():
         sys.exit(1)
     if record.get("schema") not in [
         "cursor", "claude", "claude-desktop", "antigravity", "gemini",
-        "toml", "zed", "opencode", "json-config", "codex", "enablement",
+        "toml", "qwen", "zed", "opencode", "json-config", "codex", "enablement",
     ]:
         print(f"CRITICAL: Ledger record {key} has unsupported schema", file=sys.stderr)
         sys.exit(1)
@@ -3400,6 +3410,7 @@ publish_manifest() {
     local cursor_path="${1:-}" claude_path="${2:-}" claude_desktop_path="${3:-}"
     local antigravity_path="${4:-}" codex_path="${5:-}" gemini_path="${6:-}"
     local zed_path="${7:-}" opencode_path="${8:-}"
+    local qwen_path="${9:-}"
     local manifest="${PROJECT_ROOT}/.antigravity/mcp-manifest.json"
     local manifest_dir manifest_tmp existing_manifest generated_at fw_version gitnexus_path source_state
 
@@ -3426,17 +3437,17 @@ publish_manifest() {
     if ! node - "$manifest_tmp" "$existing_manifest" "$PROJECT_ROOT" "$fw_version" \
         "$HOME/.forgewright" "$CANONICAL_SERVER_TS" "$gitnexus_path" "$generated_at" \
         "$cursor_path" "$claude_path" "$claude_desktop_path" "$antigravity_path" \
-        "$codex_path" "$gemini_path" "$zed_path" "$opencode_path" <<'NODE'
+        "$codex_path" "$gemini_path" "$zed_path" "$opencode_path" "$qwen_path" <<'NODE'
 const fs = require('fs');
 const [
   outputPath, existingPath, workspace, version, canonical, serverPath,
   gitnexusCommand, generatedAt, cursor, claudeCode, claudeDesktop,
-  antigravity, codex, gemini, zed, opencode,
+  antigravity, codex, gemini, zed, opencode, qwen,
 ] = process.argv.slice(2);
 const platforms = {};
 for (const [name, path] of Object.entries({
   cursor, claude_code: claudeCode, claude_desktop: claudeDesktop,
-  antigravity, codex, gemini, zed, opencode,
+  antigravity, codex, gemini, qwen, zed, opencode,
 })) {
   if (path) platforms[name] = path;
 }
@@ -3766,6 +3777,35 @@ setup_opencode() {
     log_info "  gitnexus    → $gitnexus_path"
 }
 
+# ─── Platform: Qwen Code ────────────────────────────────────────────────────────────
+
+QWEN_CONFIG=""
+
+setup_qwen() {
+    QWEN_CONFIG="$HOME/.qwen/settings.json"
+    log_step "Setting up Qwen Code MCP..."
+
+    if ! canonical_candidate_ready; then
+        log_error "Staged canonical MCP server is not ready"
+        return 1
+    fi
+
+    # Ensure ~/.qwen/ directory exists
+    if [[ ! -d "$HOME/.qwen" ]]; then
+        mkdir -p "$HOME/.qwen"
+        log_info "  Created directory: $HOME/.qwen/"
+    fi
+
+    write_json_mcp_config "$QWEN_CONFIG" qwen "$PROJECT_ROOT" || return 1
+
+    has_canonical_mcp_config "$QWEN_CONFIG" || return 1
+    mcp_config_has_enabled_entry "$QWEN_CONFIG" gitnexus "$(resolve_gitnexus_executable)" mcp || return 1
+    CONFIGURED_QWEN="$QWEN_CONFIG"
+
+    log_info "  forgewright → canonical tsx ~/.forgewright/mcp-server/"
+    log_info "  gitnexus    → $(resolve_gitnexus_executable)"
+}
+
 # ─── Verify Manifest ────────────────────────────────────────────────────────────
 
 verify_manifest() {
@@ -3947,6 +3987,7 @@ verify_installation() {
     report_platform_configuration "Antigravity" "$CONFIGURED_ANTIGRAVITY"
     report_platform_configuration "Codex CLI" "$CONFIGURED_CODEX"
     report_platform_configuration "Gemini CLI" "$CONFIGURED_GEMINI"
+    report_platform_configuration "Qwen Code" "$CONFIGURED_QWEN"
     report_platform_configuration "Zed AI" "$CONFIGURED_ZED" zed
     report_platform_configuration "OpenCode" "$CONFIGURED_OPENCODE" opencode
 
@@ -4192,6 +4233,25 @@ cmd_check() {
     fi
     echo ""
 
+    # Qwen Code
+    QWEN_CONFIG="$HOME/.qwen/settings.json"
+    if [[ -f "$QWEN_CONFIG" ]]; then
+        log_ok "Qwen Code: $QWEN_CONFIG"
+        if has_canonical_mcp_config "$QWEN_CONFIG"; then
+            log_ok "  forgewright: CONFIGURED"
+        else
+            log_warn "  forgewright: NOT configured with canonical server"
+        fi
+        if mcp_config_has_enabled_entry "$QWEN_CONFIG" gitnexus "$(resolve_gitnexus_executable)" mcp; then
+            log_ok "  gitnexus: CONFIGURED"
+        else
+            log_warn "  gitnexus: NOT configured"
+        fi
+    else
+        log_warn "Qwen Code: NOT FOUND (~/.qwen/settings.json)"
+    fi
+    echo ""
+
     # Built-in research MCPs
     install_builtin_mcps
 
@@ -4241,6 +4301,7 @@ cmd_diagnose() {
         echo "  Zed AI:       ${XDG_CONFIG_HOME:-$HOME/.config}/zed/settings.json"
     fi
     echo "  OpenCode:     $(opencode_config_path)"
+    echo "  Qwen Code:    $HOME/.qwen/settings.json"
     echo ""
 
     log_step "Structural MCP Status"
@@ -4256,6 +4317,7 @@ cmd_diagnose() {
         report_managed_config_status "Zed AI" "${XDG_CONFIG_HOME:-$HOME/.config}/zed/settings.json" zed
     fi
     report_managed_config_status "OpenCode" "$(opencode_config_path)" opencode
+    report_managed_config_status "Qwen Code" "$HOME/.qwen/settings.json"
     echo ""
 
     echo "━━━━━━━━━━━━━━━━━━━━━━"
@@ -4685,7 +4747,7 @@ cmd_uninstall() {
     log_step "Preparing transactional MCP removal from all platforms..."
     local canonical_parent manifest runtime_present="false" ledger_present="false"
     local claude_desktop_config codex_config gemini_config gemini_enablement ag_config
-    local zed_dir zed_config opencode_root opencode_config lock_dir lock_token
+    local zed_dir zed_config opencode_root opencode_config qwen_config lock_dir lock_token
 
     canonical_parent="$(dirname "$CANONICAL_SERVER_DIR")"
     lock_dir="$canonical_parent/.mcp-server.setup.lock"
@@ -4731,6 +4793,7 @@ cmd_uninstall() {
     gemini_config="$HOME/.gemini/settings.json"
     gemini_enablement="$HOME/.gemini/mcp-server-enablement.json"
     ag_config="$HOME/.gemini/config/mcp_config.json"
+    qwen_config="$HOME/.qwen/settings.json"
     zed_dir="${XDG_CONFIG_HOME:-$HOME/.config}/zed"
     [[ "$(uname -s)" != "Darwin" ]] || zed_dir="$HOME/Library/Application Support/Zed"
     zed_config="$zed_dir/settings.json"
@@ -4762,6 +4825,7 @@ cmd_uninstall() {
     prepare_uninstall_candidate "$ag_config" jsonc antigravity || return 1
     prepare_uninstall_candidate "$zed_config" jsonc zed || return 1
     prepare_uninstall_candidate "$opencode_config" jsonc opencode || return 1
+    prepare_uninstall_candidate "$qwen_config" jsonc qwen || return 1
     prepare_uninstall_candidate "$opencode_root/config.toml" toml || return 1
     prepare_uninstall_candidate "$opencode_root/config.json" jsonc json-config || return 1
     [[ ! -f "$manifest" ]] || transaction_snapshot_file "$manifest" || return 1
@@ -4830,11 +4894,13 @@ declare PLATFORM_CLAUDE_CODE="false"
 declare PLATFORM_ANTIGRAVITY="false"
 declare PLATFORM_CODEX="false"
 declare PLATFORM_GEMINI="false"
+declare PLATFORM_QWEN="false"
 declare PLATFORM_ZED="false"
 declare PLATFORM_OPENCODE="false"
 declare CODEX_CONFIG=""
 declare GEMINI_CONFIG=""
 declare GEMINI_ENABLEMENT_CONFIG=""
+declare QWEN_CONFIG=""
 declare ZED_CONFIG=""
 declare OPENCODE_CONFIG=""
 declare CONFIGURED_CURSOR=""
@@ -4843,6 +4909,7 @@ declare CONFIGURED_CLAUDE_DESKTOP=""
 declare CONFIGURED_ANTIGRAVITY=""
 declare CONFIGURED_CODEX=""
 declare CONFIGURED_GEMINI=""
+declare CONFIGURED_QWEN=""
 declare CONFIGURED_ZED=""
 declare CONFIGURED_OPENCODE=""
 
@@ -4864,6 +4931,7 @@ main() {
             --gemini)        mode="selected"; requested_platforms+="|gemini"; shift ;;
             --zed)           mode="selected"; requested_platforms+="|zed"; shift ;;
             --opencode)      mode="selected"; requested_platforms+="|opencode"; shift ;;
+            --qwen)          mode="selected"; requested_platforms+="|qwen"; shift ;;
             --check)         mode="check"; shift ;;
             --force)         force=true; shift ;;
             --uninstall)     mode="uninstall"; shift ;;
@@ -4922,11 +4990,11 @@ main() {
             check_prerequisites
 
             # Determine which platforms to setup
-            local do_cursor=false do_claude=false do_claude_desktop=false do_antigravity=false do_codex=false do_gemini=false do_zed=false do_opencode=false
+            local do_cursor=false do_claude=false do_claude_desktop=false do_antigravity=false do_codex=false do_gemini=false do_qwen=false do_zed=false do_opencode=false
 
             case "$mode" in
                 install)
-                    do_cursor=true; do_claude=true; do_claude_desktop=true; do_antigravity=true; do_codex=true; do_gemini=true; do_zed=true; do_opencode=true
+                    do_cursor=true; do_claude=true; do_claude_desktop=true; do_antigravity=true; do_codex=true; do_gemini=true; do_qwen=true; do_zed=true; do_opencode=true
                     ;;
                 selected)
                     [[ "$requested_platforms|" != *"|cursor|"* ]] || do_cursor=true
@@ -4935,6 +5003,7 @@ main() {
                     [[ "$requested_platforms|" != *"|antigravity|"* ]] || do_antigravity=true
                     [[ "$requested_platforms|" != *"|codex|"* ]] || do_codex=true
                     [[ "$requested_platforms|" != *"|gemini|"* ]] || do_gemini=true
+                    [[ "$requested_platforms|" != *"|qwen|"* ]] || do_qwen=true
                     [[ "$requested_platforms|" != *"|zed|"* ]] || do_zed=true
                     [[ "$requested_platforms|" != *"|opencode|"* ]] || do_opencode=true
                     ;;
@@ -4946,6 +5015,7 @@ main() {
             CONFIGURED_ANTIGRAVITY=""
             CONFIGURED_CODEX=""
             CONFIGURED_GEMINI=""
+            CONFIGURED_QWEN=""
             CONFIGURED_ZED=""
             CONFIGURED_OPENCODE=""
 
@@ -4998,6 +5068,11 @@ main() {
                 echo ""
             fi
 
+            if [[ "$do_qwen" == "true" ]]; then
+                setup_qwen || return 1
+                echo ""
+            fi
+
             if [[ "$do_zed" == "true" ]]; then
                 setup_zed || return 1
                 echo ""
@@ -5014,7 +5089,7 @@ main() {
             publish_manifest \
                 "$CONFIGURED_CURSOR" "$CONFIGURED_CLAUDE_CODE" "$CONFIGURED_CLAUDE_DESKTOP" \
                 "$CONFIGURED_ANTIGRAVITY" "$CONFIGURED_CODEX" "$CONFIGURED_GEMINI" \
-                "$CONFIGURED_ZED" "$CONFIGURED_OPENCODE" || return 1
+                "$CONFIGURED_ZED" "$CONFIGURED_OPENCODE" "$CONFIGURED_QWEN" || return 1
             verify_manifest || return 1
             commit_runtime_transaction || return 1
             echo ""
@@ -5037,6 +5112,7 @@ main() {
             [[ -n "$CONFIGURED_ANTIGRAVITY" ]] && has_canonical_mcp_config "$CONFIGURED_ANTIGRAVITY" && echo "    ✓ Antigravity ($CONFIGURED_ANTIGRAVITY)"
             [[ -n "$CONFIGURED_CODEX" ]] && has_canonical_mcp_config "$CONFIGURED_CODEX" && echo "    ✓ OpenAI Codex CLI ($CONFIGURED_CODEX)"
             [[ -n "$CONFIGURED_GEMINI" ]] && has_canonical_mcp_config "$CONFIGURED_GEMINI" && echo "    ✓ Google Gemini CLI ($CONFIGURED_GEMINI)"
+            [[ -n "$CONFIGURED_QWEN" ]] && has_canonical_mcp_config "$CONFIGURED_QWEN" && echo "    ✓ Qwen Code ($CONFIGURED_QWEN)"
             [[ -n "$CONFIGURED_ZED" ]] && has_canonical_mcp_config "$CONFIGURED_ZED" zed && echo "    ✓ Zed AI ($CONFIGURED_ZED)"
             [[ -n "$CONFIGURED_OPENCODE" ]] && has_canonical_mcp_config "$CONFIGURED_OPENCODE" opencode && echo "    ✓ OpenCode ($CONFIGURED_OPENCODE)"
             echo ""

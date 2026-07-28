@@ -1086,7 +1086,8 @@ test_all_isolated() {
 const fs = require('fs');
 const [home, zed, desktop, manifestPath] = process.argv.slice(2);
 for (const path of [`${home}/.cursor/mcp.json`, `${home}/.claude.json`,
-                    `${home}/.gemini/settings.json`, `${home}/.gemini/config/mcp_config.json`, desktop]) {
+                    `${home}/.gemini/settings.json`, `${home}/.gemini/config/mcp_config.json`,
+                    `${home}/.qwen/settings.json`, desktop]) {
   const config = JSON.parse(fs.readFileSync(path, 'utf8'));
   if (!config.mcpServers?.forgewright || !config.mcpServers?.gitnexus) process.exit(1);
 }
@@ -1098,8 +1099,16 @@ if (opencode.opencodeSetting !== true || opencode.mcp.other.type !== 'remote' ||
     opencode.mcp.forgewright.type !== 'local' || !Array.isArray(opencode.mcp.forgewright.command) ||
     opencode.mcp.gitnexus.type !== 'local' || !Array.isArray(opencode.mcp.gitnexus.command)) process.exit(1);
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-const expected = ['antigravity', 'claude_code', 'claude_desktop', 'codex', 'cursor', 'gemini', 'opencode', 'zed'];
-process.exit(JSON.stringify(Object.keys(manifest.platforms).sort()) === JSON.stringify(expected) ? 0 : 1);
+const expected = ['antigravity', 'claude_code', 'claude_desktop', 'codex', 'cursor', 'gemini', 'opencode', 'qwen', 'zed'];
+const expectedPaths = {
+  qwen: `${home}/.qwen/settings.json`,
+  zed,
+  opencode: `${home}/.config/opencode/opencode.json`,
+};
+process.exit(
+  JSON.stringify(Object.keys(manifest.platforms).sort()) === JSON.stringify(expected) &&
+  Object.entries(expectedPaths).every(([name, path]) => manifest.platforms[name] === path) ? 0 : 1
+);
 NODE
 import sys, tomllib
 with open(sys.argv[1], "rb") as handle:
