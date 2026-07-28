@@ -430,52 +430,56 @@ Database migration, framework upgrade, or large-scale code migration.
 
 ### Game Build Mode
 
-Build a game from concept to playable build. Full game development pipeline.
+Build a game from concept to a verified release using the control plane in
+`skills/_shared/protocols/game-studio-pipeline.md` and the entrypoint in
+`workflows/game-studio-build.md`.
 
-1. **Concept analysis** — extract game concept, genre, platform, engine from user's message
-2. **Engine detection** — read `.production-grade.yaml` for `game.engine` override, or ask:
-   ```
-   Which engine for this game?
-   1. **Unity** (Recommended for indie-AA, mobile, 2D/3D)
-   2. **Unreal Engine** (AAA quality, heavy 3D, C++/Blueprint)
-   3. **Godot** (Open-source, lightweight, rapid iteration)
-   4. **Phaser 3** (Web-native 2D, HTML5, Canvas/WebGL — no install, instant play)
-   5. **Three.js** (Web-native 3D, WebGPU/WebGL — browser-native 3D experiences)
-   ```
-3. **Game Designer** — `skills/game-designer/SKILL.md` — design pillars, core loop, economy, mechanic specs, player flows
-4. **Art Director — Style DNA Gate** — `skills/art-director/SKILL.md`:
-   - Initialize `.forgewright/art-direction/game-art-contract.json` with `scripts/art-direction/art-pipeline.sh init <game-2d|game-3d|mixed> <project-name>`
-   - Analyze STYLE references into the versioned `game-art-contract/v2`; keep STYLE, TARGET, and CHARACTER reference roles separate
-   - Resolve every confidence value below `0.75`, pin observed palette/color-map hex values, and record engine import metadata
-   - Require explicit Gate 1 sign-off and `approval.status: approved`
-   - Run `python3 scripts/art-direction/style-contract.py validate <contract> --stage generation`; do not start asset production or engine implementation on failure
-   - After vision approval, register each asset with `art-pipeline.sh register <type> <name> <path>`; unchanged registrations are idempotent and changed content creates a new version
-   - Before engine handoff, require `art-pipeline.sh drift` to pass, then run `art-pipeline.sh manifest` and `art-pipeline.sh handoff <game-project-dir>`
-5. **Engine Engineer** — based on chosen engine:
-   - Unity: `skills/unity-engineer/SKILL.md` — C# architecture, ScriptableObjects, Editor tools
-   - Unreal: `skills/unreal-engineer/SKILL.md` — C++/Blueprint, GAS, AI, Blueprint layer
-   - Godot: `skills/godot-engineer/SKILL.md` — GDScript, scene tree, signals
-   - Phaser 3: `skills/phaser3-engineer/SKILL.md` — TypeScript, modular scenes, ECS-optional, WebGL/Canvas
-   - Three.js: `skills/threejs-engineer/SKILL.md` — ECS architecture, WebGPU/WebGL, Rapier physics
-6. **Level Designer** — `skills/level-designer/SKILL.md` — level structure, encounters, pacing, blockouts
-7. **Narrative Designer** (if story-driven) — `skills/narrative-designer/SKILL.md` — dialogue, characters, lore
-8. **Technical Artist** — `skills/technical-artist/SKILL.md` — shaders, VFX, LOD, performance budgets
-9. **Game Audio Engineer** — `skills/game-audio-engineer/SKILL.md` — SFX, adaptive music, spatial audio
-10. **Engine-specific depth** (optional, based on game needs):
-   - Multiplayer: `skills/unity-multiplayer/SKILL.md`, `skills/unreal-multiplayer/SKILL.md`, `skills/godot-multiplayer/SKILL.md`
-   - Shader/VFX: `skills/unity-shader-artist/SKILL.md`, `skills/unreal-technical-artist/SKILL.md`
-11. **QA** — per `skills/_shared/protocols/game-test-protocol.md` (extended for Phaser 3 and Three.js):
-    - Mechanics Validation (engine-specific tests: Unity UTF, Unreal Automation, Godot GUT, Phaser 3 Vitest/Jest, Three.js ECS system tests)
-    - Balance Validation (economy, XP curves, difficulty scaling against GDD)
-    - State Machine Validation (all mechanic transitions match GDD state diagrams)
-    - Performance Validation (FPS, memory, load time per platform targets; Three.js: draw calls < 100/frame)
-    - Build Verification (compile, references, platform builds, boot test; Phaser 3: Vite build; Three.js: Vite bundle)
-    - Integration Validation (cross-system regressions)
-    - Platform Validation (web browsers, mobile WebGL, desktop WebGL/WebGPU)
-12. **Quality Gate** — run `skills/_shared/protocols/quality-gate.md` with game-specific thresholds (see `tests/coverage/thresholds.json`)
-13. **Task Validator** — run `skills/_shared/protocols/task-validator.md` to validate delivery against Task Contract
+1. **Detect entry and review mode** — classify greenfield, existing-project
+   adoption, isolated feature, or hotfix; select `solo`, `lean`, or `full`.
+2. **Open studio state** — resolve `.production-grade.yaml` path overrides and
+   existing project conventions first; use
+   `production/session-state/game-studio.md` only as the default. Keep phase,
+   milestone, decisions, owners, blockers, and evidence in that single resolved
+   state file.
+3. **Run the seven phases** — Concept → Systems Design → Technical Setup →
+   Pre-Production → Production → Polish → Release & Sustain. Existing projects
+   enter at the earliest incomplete phase instead of recreating valid artifacts.
+4. **Use role lanes, not a fictional roster**:
+   - Control plane: `production-grade`, `project-manager`
+   - Creative: `game-designer`, `art-director`, `level-designer`,
+     `narrative-designer`, `game-audio-engineer`
+   - Technical: `solution-architect`, `game-engineer`, engine-specific skills,
+     `technical-artist`
+   - Quality/release: `qa-engineer`, `game-accessibility-engineer`,
+     `performance-engineer`, `build-release-engineer`, `liveops-engineer`
+5. **Select the engine from evidence** — read `.production-grade.yaml`, the
+   project profile, and engine files. If genuinely unset, recommend Unity,
+   Unreal, Godot, Phaser 3, or Three.js from platform and production constraints
+   and ask only when the choice materially changes architecture.
+6. **Preserve the Style DNA gate** — initialize and validate
+   `.forgewright/art-direction/game-art-contract.json` using the Art Director
+   protocol. Asset generation and engine handoff require approved style,
+   confidence resolution, drift validation, manifest, and handoff evidence.
+7. **Require a vertical slice before scale-up** — prototype risky assumptions,
+   exercise the complete core loop in-engine, and attach playtest evidence before
+   committing the production backlog.
+8. **Run the production story loop** — design-ready handoff →
+   implementation-ready handoff → implementation → review → QA → playtest when
+   needed → done handoff. Propagate design changes to affected GDDs, ADRs,
+   stories, assets, tests, and release notes.
+9. **Use bounded orchestration** — topology follows dependencies
+   (`serial-local`, `pipeline`, `fan-out/fan-in`, or `hierarchical`). Before any
+   dispatch, run `scripts/runtime/orchestration_policy.py`; enforce its path
+   scopes, worker cap, reviewer reservation, risk routing, and stop conditions.
+10. **Verify on the existing stack**:
+    - `skills/_shared/protocols/game-test-protocol.md`
+    - `skills/_shared/protocols/quality-gate.md`
+    - `skills/_shared/protocols/task-validator.md`
+    - the active phase gate in `game-studio-pipeline.md`
 
-**4 gates:** After Style DNA approval (step 4), after engine architecture (step 5), after first playable (step 10), and after QA test suite (step 11).
+**7 phase gates:** Concept, Systems Design, Technical Setup, Pre-Production,
+Production, Polish, and Release & Sustain. Verdicts are `PASS`, `CONCERNS`, or
+`FAIL`; concerns require explicit risk acceptance and failures never advance.
 
 ### XR Build Mode
 

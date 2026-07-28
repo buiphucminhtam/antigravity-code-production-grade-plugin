@@ -442,7 +442,36 @@ sequenceDiagram
     User->>Orch: Session End
 ```
 
-### Game Build Pipeline (18 kỹ năng game)
+### Game Studio Control Plane (7 pha + 18 kỹ năng game)
+
+Game Build mode hiện vận hành theo control plane dựa trên artifact, từ ý tưởng
+đến bản phát hành có thể kiểm chứng:
+
+```text
+Concept → Systems Design → Technical Setup → Pre-Production
+        → Production → Polish → Release & Sustain
+```
+
+- **Handoff theo pha:** design-ready, implementation-ready, done, playtest,
+  build và release evidence chỉ bắt buộc khi pha hiện tại áp dụng.
+- **Điều phối theo dependency:** việc phụ thuộc chạy tuần tự; các scope độc lập
+  mới được dùng `pipeline`, `fan-out/fan-in` hoặc `hierarchical` với số worker
+  bị giới hạn.
+- **Chọn subagent theo năng lực:** control plane chọn tier `scout`, `builder`
+  hoặc `expert` trước, sau đó chỉ resolve model cụ thể từ capability đã được
+  runtime xác minh. Không hard-code model ID.
+- **Fan-in giữ chất lượng:** mỗi worker có path ownership, checks, token budget,
+  deadline và stop conditions; việc rủi ro cao và reviewer độc lập luôn dùng
+  tier `expert`.
+- **Release có bằng chứng:** artifact identity, checksum, publish/deployment,
+  telemetry/crash smoke, rollback readiness và post-release checkpoint.
+
+Đọc [workflow Game Studio](workflows/game-studio-build.md) để bắt đầu và dùng
+[control-plane protocol](skills/_shared/protocols/game-studio-pipeline.md) làm
+nguồn chuẩn cho gate, role lanes, model-aware dispatch và evidence.
+
+Sơ đồ dưới đây mô tả các discipline/engine lanes được dùng bên trong những pha
+phù hợp; nó không thay thế 7 phase gates của control plane.
 
 ```mermaid
 flowchart TD

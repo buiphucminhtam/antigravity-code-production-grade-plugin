@@ -311,6 +311,37 @@ touch ~/.forgewright/runtime/DISABLED                                    # stop 
 
 **[Read ADR-010 ➔](docs/adr/ADR-010-runtime-lifecycle-guard.md)**
 
+### 10. Game Studio Control Plane
+
+Game Build mode now uses a seven-phase, artifact-gated operating model from
+concept through release:
+
+```text
+Concept → Systems Design → Technical Setup → Pre-Production
+        → Production → Polish → Release & Sustain
+```
+
+- **Phase-aware handoffs:** design-ready, implementation-ready, done, playtest,
+  build, and release evidence are required only when their phase makes them
+  applicable.
+- **Dependency-driven orchestration:** work stays serial when dependent and may
+  use bounded `pipeline`, `fan-out/fan-in`, or `hierarchical` topologies only for
+  genuinely independent scopes.
+- **Capability-aware subagents:** the control plane assigns `scout`, `builder`,
+  or `expert` tiers first, then resolves an optional concrete model from the
+  active runtime's verified capabilities. Model IDs are never hard-coded.
+- **Quality-preserving fan-in:** workers have explicit path ownership, checks,
+  budgets, deadlines, and stop conditions; high-risk work and independent
+  review stay on the expert tier.
+- **Release evidence:** a shipped milestone records artifact identity,
+  checksum, publish/deployment proof, telemetry and crash-reporting smoke
+  evidence, rollback readiness, and a post-release checkpoint.
+
+Start with the
+[Game Studio workflow](workflows/game-studio-build.md) and use the
+[control-plane protocol](skills/_shared/protocols/game-studio-pipeline.md) as
+the source of truth for gates, role lanes, model-aware dispatch, and evidence.
+
 ---
 
 ## Architecture and Safety Model

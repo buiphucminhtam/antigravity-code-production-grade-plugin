@@ -104,6 +104,19 @@
         "docs/adr/ADR-010-runtime-lifecycle-guard.md"
       ],
       "verification_command": "bash scripts/ci/verify-runtime-leases.sh"
+    },
+    {
+      "id": "game-studio-control-plane",
+      "readme_heading": "Game Studio Control Plane",
+      "maturity": "beta",
+      "placement": "optional-pack",
+      "verification_command": "pytest -q tests/unit_tests/test_game_studio_pipeline.py tests/unit_tests/test_parallel_dispatch_runner.py",
+      "evidence": [
+        "skills/_shared/protocols/game-studio-pipeline.md",
+        "workflows/game-studio-build.md",
+        "tests/unit_tests/test_game_studio_pipeline.py",
+        "tests/unit_tests/test_parallel_dispatch_runner.py"
+      ]
     }
   ],
   "optional_packs": [

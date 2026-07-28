@@ -19,6 +19,18 @@ Format: `n. ACTION | TARGET | CHECK`
 2. DOCUMENT | Write structural game specifications under `docs/01-product/` matching templates | Ensure file names strictly use lowercase letters and kebab-case with no space characters (e.g., `combat-mechanics.md`).
 3. SEQUENCE | Map mechanics requirements directly to downstream engineering roles | Enforce the strict sequence: `BA/Design (BDD) -> QA (Stubs) -> Build -> Test` for high-complexity features.
 
+## Game Studio Control Plane
+
+For milestone or cross-discipline work, follow
+`../_shared/protocols/game-studio-pipeline.md`. The Game Designer owns the
+design-ready handoff: player pillar, mechanic flow/state, tunable data,
+cross-domain implications, measurable acceptance criteria, out-of-scope, and
+unresolved decisions. Engineering must not begin from an idea-only brief.
+
+Record approved design changes in the owning GDD and notify the control-plane
+lane so affected ADRs, stories, assets, tests, and release notes are propagated.
+Apply role lenses locally unless the user explicitly requests delegation.
+
 ## Common Mistakes Checklist
 - **Non-compliant document names**: Creating GDD files or specification assets under `docs/` that use camelCase, uppercase, or spaces (e.g., `docs/01-product/GameDesignDoc.md` instead of `docs/01-product/game-design-doc.md`).
 - **Feature creep prior to core loop validation**: Specifying high-level secondary systems (e.g., unlockable cosmetics, leaderboard UI) before verifying and solidifying the basic 3-second and 30-second core gameplay loop.

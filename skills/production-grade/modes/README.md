@@ -21,7 +21,7 @@
 | Optimize | `SKILL.md` → Optimize Mode | Performance + SRE | 1 |
 | Design | `SKILL.md` → Design Mode | UX Researcher → UI Designer | 1 |
 | Mobile | `SKILL.md` → Mobile Mode | BA → Mobile Engineer | 1 |
-| Game Build | `SKILL.md` → Game Build Mode | Game Designer → Art Director Style DNA Gate → Engine → Level → Narrative + Audio | 4 |
+| Game Build | `SKILL.md` → Game Build Mode | Studio control plane → role lanes → engine → QA/release | 7 |
 | XR Build | `SKILL.md` → XR Build Mode | XR Engineer + Game pipeline | 2 |
 | Marketing | `SKILL.md` → Marketing Mode | Growth Marketer | 1 |
 | Grow | `SKILL.md` → Grow Mode | Growth Marketer → Conversion Optimizer | 1 |
@@ -54,4 +54,5 @@ These modes skip plan presentation — classify and invoke immediately:
 
 These modes present a plan for user confirmation:
 
-`Feature`, `Harden`, `Ship`, `Optimize`, `Architect`, `Design`, `Debug`, `AI Build`, `Migrate`, `Custom`
+`Feature`, `Harden`, `Ship`, `Optimize`, `Architect`, `Design`, `Debug`,
+`Game Build`, `XR Build`, `AI Build`, `Migrate`, `Custom`

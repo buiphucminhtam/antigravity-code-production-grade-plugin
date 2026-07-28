@@ -19,6 +19,19 @@ Format: `n. ACTION | TARGET | CHECK`
 2. POOL | Set up reusable object pools for high-frequency game entities (e.g., projectiles) | Verify that entities are recycled dynamically to minimize garbage collection stutter and CPU spikes.
 3. HARNESS | Implement custom collision systems and bounding-box overlap validation rules | Verify that collision sweeps are optimized to avoid nested O(n²) calculation bottlenecks.
 
+## Game Studio Control Plane
+
+For milestone or cross-discipline work, follow
+`../_shared/protocols/game-studio-pipeline.md`. The Game Engineer requires an
+implementation-ready handoff before editing: approved design, governing ADRs,
+dependency status, target/path ownership, performance and build budgets,
+automated checks, playtest evidence requirements, and rollback strategy.
+
+Close implementation with a done handoff that maps every acceptance criterion
+to code and evidence. Implementation alone never marks a story done. Apply
+engine-specialist role lenses locally unless the user explicitly requests
+delegation.
+
 ## Common Mistakes Checklist
 - **FPS-Dependent Physics Scaling**: Calculating physical movements (e.g., gravity, acceleration) without multiplying values by delta-time components, resulting in game speed shifts on different refresh rate monitors.
 - **Dynamic Entity Allocations (GC Spikes)**: Continually instantiating short-lived game objects (bullets, damage numbers, explosion visualizers) at runtime rather than utilizing a pre-allocated Object Pool, causing severe Garbage Collection pauses.
