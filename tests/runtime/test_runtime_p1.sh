@@ -203,8 +203,18 @@ assert_eq "$(wc -l < "$GATELOG" | tr -d ' ')" "$before" "non-Bash tool calls are
 # Latency budget (plan §G4: p95 < 100ms), measured on the reject path.
 p="$(mk_payload 'git status')"
 : > "$SANDBOX/times.txt"
+now_ns() {
+  local timestamp
+  timestamp="$(date +%s%N 2>/dev/null)"
+  case "$timestamp" in
+    ''|*[!0-9]*) python3 -c 'import time; print(time.monotonic_ns())' ;;
+    *) printf '%s\n' "$timestamp" ;;
+  esac
+}
 for _ in $(seq 1 30); do
-  t0=$(date +%s%N); printf '%s' "$p" | bash "$GATE" >/dev/null 2>&1; t1=$(date +%s%N)
+  t0="$(now_ns)"
+  printf '%s' "$p" | bash "$GATE" >/dev/null 2>&1
+  t1="$(now_ns)"
   echo $(( (t1 - t0) / 1000000 )) >> "$SANDBOX/times.txt"
 done
 p95="$(sort -n "$SANDBOX/times.txt" | awk '{a[c++]=$1} END{print a[int(c*0.95)]}')"

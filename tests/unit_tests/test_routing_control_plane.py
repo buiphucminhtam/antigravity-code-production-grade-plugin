@@ -19,7 +19,12 @@ ATTESTATION_KEY = b"test-only-routing-attestation-key-32-bytes"
 
 
 def evaluate_control_plane(evidence: dict) -> dict:
-    evidence["attestation_hmac_sha256"] = sign_evidence(evidence, ATTESTATION_KEY)
+    try:
+        evidence["attestation_hmac_sha256"] = sign_evidence(evidence, ATTESTATION_KEY)
+    except (TypeError, ValueError):
+        # Exercise field validation for payloads that canonical JSON correctly
+        # refuses to attest (for example, non-finite numeric evidence).
+        pass
     return _evaluate_control_plane(evidence, ATTESTATION_KEY)
 
 

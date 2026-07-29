@@ -116,7 +116,7 @@ Forgewright is designed to run locally alongside your preferred IDE and developm
 
 Please ensure the following dependencies are installed and available in your system path:
 
-- **Node.js**: v18.x or higher (required for GitNexus and MCP servers).
+- **Node.js**: v20.x or higher for MCP setup; the standalone CLI remains compatible with v18+.
 - **Git**: v2.30+ (required for repository management and history tracking).
 - **Python**: v3.8+ (required for the FluxMem SQLite GraphRAG memory layer).
 - **Supported IDE**: Cursor, Claude Desktop, or Codex CLI.
@@ -416,7 +416,7 @@ forge token report --period week
 
 - Restart your IDE completely. Ensure no background zombie node processes are locking the socket.
 - Run `bash scripts/forgewright-mcp-setup.sh --force` to regenerate configuration files.
-- Verify Node v18+ is installed via `node -v` and accessible in your default path.
+- Verify Node v20+ is installed via `node -v` and accessible in your default path.
 
 ### The GitNexus index is stale / Impact analysis fails
 

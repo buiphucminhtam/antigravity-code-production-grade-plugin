@@ -52,14 +52,14 @@ Expected output:
 
 | Tool | Required | Version | Install |
 |------|----------|---------|---------|
-| Node.js | Yes | 18+ | [nodejs.org](https://nodejs.org) |
+| Node.js | Yes | 20+ | [nodejs.org](https://nodejs.org) |
 | npm | Yes | 8+ | Comes with Node.js |
 | git | Recommended | Any | `brew install git` |
 
 ### Verify Prerequisites
 
 ```bash
-node --version    # Should show v18+
+node --version    # Should show v20+
 npm --version     # Should show 8+
 git --version     # Should show 2.x+
 ```

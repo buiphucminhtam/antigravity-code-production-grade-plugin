@@ -35,6 +35,36 @@ else printf '[hooks]\nenabled = true\n' > "$X_TOML"; fi
 if [ -f "$HOME/.gemini/config/hooks.json" ]; then cp "$HOME/.gemini/config/hooks.json" "$A_JSON"
 else printf '{"forgewright-policy":{"PreToolUse":[]}}\n' > "$A_JSON"; fi
 
+# Seed the preservation invariant explicitly instead of assuming the developer's
+# real Claude configuration already contains a GitNexus hook.
+python3 - "$C_JSON" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+with open(path, encoding="utf-8") as handle:
+    data = json.load(handle)
+hooks = data.setdefault("hooks", {})
+pre_tool = hooks.get("PreToolUse")
+if not isinstance(pre_tool, list):
+    pre_tool = []
+    hooks["PreToolUse"] = pre_tool
+pre_tool.append(
+    {
+        "matcher": "Bash",
+        "hooks": [
+            {
+                "type": "command",
+                "command": "gitnexus mcp",
+            }
+        ],
+    }
+)
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(data, handle, indent=2)
+    handle.write("\n")
+PY
+
 INST=(bash "$INSTALLER" --claude-settings "$C_JSON" --codex-config "$X_TOML" --agy-hooks "$A_JSON")
 
 # Normalise the copies to "not wired" before measuring anything. The seeds come
