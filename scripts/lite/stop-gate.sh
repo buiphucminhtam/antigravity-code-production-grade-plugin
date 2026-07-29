@@ -7,6 +7,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLATFORM=""
 MAX_PAYLOAD_BYTES=1048576
+MAX_VERIFY_STDERR_BYTES=65536
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -26,9 +27,14 @@ done
 
 PLATFORM="$(printf '%s' "$PLATFORM" | tr '[:lower:]' '[:upper:]')"
 PAYLOAD_FILE="$(mktemp "${TMPDIR:-/tmp}/forgewright-stop.XXXXXX")" || exit 1
-chmod 600 "$PAYLOAD_FILE" 2>/dev/null || true
-cleanup() {
+VERIFY_STDERR_FILE="$(mktemp "${TMPDIR:-/tmp}/forgewright-verify-stderr.XXXXXX")" || {
   rm -f "$PAYLOAD_FILE"
+  exit 1
+}
+chmod 600 "$PAYLOAD_FILE" 2>/dev/null || true
+chmod 600 "$VERIFY_STDERR_FILE" 2>/dev/null || true
+cleanup() {
+  rm -f "$PAYLOAD_FILE" "$VERIFY_STDERR_FILE"
 }
 trap cleanup EXIT
 trap 'exit 130' HUP INT TERM
@@ -47,12 +53,85 @@ if [[ "$PAYLOAD_SIZE" -gt "$MAX_PAYLOAD_BYTES" ]]; then
 fi
 
 emit_codex_block() {
-  python3 - <<'PYEOF'
+  python3 - "${1:-Forgewright stop validator rejected the response payload.}" <<'PYEOF'
 import json
+import sys
 print(json.dumps({
     "decision": "block",
-    "reason": "Forgewright stop validator rejected the response payload.",
+    "reason": sys.argv[1][:512],
 }))
+PYEOF
+}
+
+codex_block_reason() {
+  python3 - "$VERIFY_STDERR_FILE" "$VALIDATOR_RC" "$VERIFY_RC" \
+    "$MAX_VERIFY_STDERR_BYTES" <<'PYEOF'
+import re
+import sys
+from pathlib import Path
+
+stderr_path = Path(sys.argv[1])
+rule_rc = int(sys.argv[2])
+verify_rc = int(sys.argv[3])
+stderr_limit = int(sys.argv[4])
+with stderr_path.open("rb") as stderr_stream:
+    text = stderr_stream.read(stderr_limit).decode("utf-8", errors="replace")
+text = re.sub(r"\x1b\[[0-9;]*m", "", text)
+
+safe_reason = ""
+if rule_rc:
+    safe_reason = "Forgewright rule validator rejected the response payload."
+patterns = (
+    (r"MISSING:", "MISSING: no current machine-written evidence was found."),
+    (
+        r"STALE: evidence is ([0-9]+)s old \(limit: ([0-9]+)s\)",
+        lambda match: (
+            f"STALE: evidence is {match.group(1)}s old "
+            f"(limit: {match.group(2)}s)."
+        ),
+    ),
+    (
+        r"MISMATCH: workspace",
+        "MISMATCH: evidence workspace does not match the current workspace.",
+    ),
+    (
+        r"MISMATCH: tree_sha",
+        "MISMATCH: the workspace tree changed after evidence was written.",
+    ),
+    (
+        r"FAILED: evidence exit_code=(-?[0-9]+)",
+        lambda match: f"FAILED: evidence command exited {match.group(1)}.",
+    ),
+    (
+        r"FAILED: exit_code is not an integer",
+        "FAILED: evidence exit code is invalid.",
+    ),
+    (
+        r"SECRETS:",
+        "SECRETS: evidence output contains unredacted secret material.",
+    ),
+    (
+        r"FORGED:",
+        "FORGED: evidence schema or contents failed validation.",
+    ),
+    (
+        r"Code contains stubs:",
+        "STUBS: changed code contains forbidden stubs.",
+    ),
+)
+if not safe_reason:
+    for pattern, replacement in patterns:
+        match = re.search(pattern, text)
+        if match:
+            safe_reason = replacement(match) if callable(replacement) else replacement
+            break
+
+if not safe_reason and verify_rc:
+    safe_reason = "Forgewright evidence validator rejected the response payload."
+elif not safe_reason:
+    safe_reason = "Forgewright stop validator rejected the response payload."
+
+print(safe_reason[:512])
 PYEOF
 }
 
@@ -135,11 +214,26 @@ fi
 
 if [[ "$PLATFORM" == "CODEX" ]]; then
   VERIFY_JSON="$(bash "${SCRIPT_DIR}/verify-gate.sh" --platform CODEX \
-    --payload-file "$PAYLOAD_FILE" 2>/dev/null)"
+    --payload-file "$PAYLOAD_FILE" 2>"$VERIFY_STDERR_FILE")"
   VERIFY_RC=$?
+  VERIFY_BLOCKED=0
+  if python3 - "$VERIFY_JSON" >/dev/null 2>&1 <<'PYEOF'
+import json
+import sys
 
-  if [[ "$VALIDATOR_RC" -ne 0 || "$VERIFY_RC" -ne 0 ]]; then
-    emit_codex_block
+try:
+    payload = json.loads(sys.argv[1])
+except (IndexError, json.JSONDecodeError):
+    raise SystemExit(1)
+raise SystemExit(0 if payload.get("decision") == "block" else 1)
+PYEOF
+  then
+    VERIFY_BLOCKED=1
+  fi
+
+  if [[ "$VALIDATOR_RC" -ne 0 || "$VERIFY_RC" -ne 0 || "$VERIFY_BLOCKED" -eq 1 ]]; then
+    [[ "$VERIFY_BLOCKED" -eq 1 ]] && VERIFY_RC=1
+    emit_codex_block "$(codex_block_reason)"
     exit 0
   fi
 

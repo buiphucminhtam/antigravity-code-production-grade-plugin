@@ -113,7 +113,7 @@ flowchart LR
         L2A["🔍 Thêm gì"]
         L2B["• Hỏi 'thay đổi này ảnh hưởng gì?' → trả lời ngay"]
         L2C["• Phân tích blast radius tự động"]
-        L2D["• Cần: Node.js 18+"]
+        L2D["• Cần: Node.js 20+ cho MCP"]
     end
 
     subgraph L3["⚡⚡⚡ Level 3 — Memory"]
@@ -996,7 +996,7 @@ git submodule update --init --recursive
 
 ### Cách 2: Nâng cấp lên Level 2 (Smart)
 
-Cần: **Node.js 18+**
+Cần: **Node.js 20+ cho MCP** (CLI độc lập vẫn hỗ trợ Node.js 18+)
 
 ```bash
 # Kiểm tra
@@ -1299,7 +1299,7 @@ npx tsx forgewright/scripts/generate-sequence.ts \
 | Vấn đề | Cách xử lý |
 |---------|------------|
 | `gitnexus: command not found` | Chạy `npm install -g gitnexus && gitnexus setup` |
-| `npm install` bị lỗi trong submodule | Kiểm tra `node --version` (cần 18+) |
+| `npm install` bị lỗi trong submodule | Kiểm tra `node --version` (MCP cần 20+) |
 | Không thấy MCP tools | Khởi động lại Cursor/VS Code sau khi đổi config |
 | Index cũ | Chạy `gitnexus analyze "$(pwd)"` để cập nhật |
 | Submodule chưa khởi tạo | `git submodule update --init --recursive` |

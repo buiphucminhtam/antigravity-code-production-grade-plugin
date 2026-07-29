@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import subprocess
 import tomllib
 from pathlib import Path
@@ -211,6 +212,70 @@ def test_codex_stop_gate_emits_one_parseable_block_json(tmp_path: Path) -> None:
     payload = json.loads(result.stdout)
     assert payload["decision"] == "block"
     assert "validator" in payload["reason"].lower()
+
+
+def test_codex_stop_gate_surfaces_bounded_redacted_evidence_reason(
+    tmp_path: Path,
+) -> None:
+    fake_secret = "sk-" + ("a" * 32)
+    result = run_stop_gate(
+        tmp_path,
+        "CODEX",
+        f"{VALID_VERIFY}\nDiagnostic fixture: {fake_secret}",
+        files=["src/app.ts"],
+    )
+
+    assert result.returncode == 0
+    payload = json.loads(result.stdout)
+    assert payload["decision"] == "block"
+    assert payload["reason"].startswith("MISSING:")
+    assert len(payload["reason"]) <= 512
+    assert fake_secret not in payload["reason"]
+
+
+def test_codex_stop_gate_bounds_evidence_stderr_input(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    clean_git_workspace(workspace)
+
+    scripts_dir = tmp_path / "scripts" / "lite"
+    shutil.copytree(ROOT / "scripts/lite", scripts_dir)
+    fake_secret = "sk-" + ("z" * 32)
+    (scripts_dir / "verify-gate.sh").write_text(
+        """#!/usr/bin/env bash
+python3 - "$1" <<'PYEOF'
+import json
+import sys
+
+sys.stderr.write("x" * 65536)
+sys.stderr.write("\\nMISSING: hidden diagnostic " + "sk-" + ("z" * 32))
+print(json.dumps({"decision": "block", "reason": "fixture"}))
+PYEOF
+""",
+        encoding="utf-8",
+    )
+
+    payload = json.dumps({"response_content": VALID_VERIFY, "files": ["src/app.ts"]})
+    env = clean_git_environment()
+    env["FORGEWRIGHT_RULE_LEDGER"] = str(workspace / "rule-ledger.jsonl")
+    result = subprocess.run(
+        ["bash", str(scripts_dir / "stop-gate.sh"), "--platform", "CODEX"],
+        cwd=workspace,
+        env=env,
+        input=payload,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    parsed = json.loads(result.stdout)
+    assert parsed["decision"] == "block"
+    assert parsed["reason"] == (
+        "Forgewright evidence validator rejected the response payload."
+    )
+    assert len(parsed["reason"]) <= 512
+    assert fake_secret not in parsed["reason"]
 
 
 def test_codex_stop_gate_rejects_oversized_payload_with_parseable_json(

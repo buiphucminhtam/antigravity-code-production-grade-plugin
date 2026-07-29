@@ -218,14 +218,14 @@ node_version_is_supported() {
     patch="${patch%%[^0-9]*}"
     [[ "$major" =~ ^[0-9]+$ ]] && [[ "$minor" =~ ^[0-9]+$ ]] && \
         [[ "$patch" =~ ^[0-9]+$ ]] || return 1
-    ((major > 18 || (major == 18 && (minor > 19 || (minor == 19 && patch >= 0)))))
+    ((major >= 20))
 }
 
 check_prerequisites() {
     log_step "Checking prerequisites..."
 
     if ! command -v node &> /dev/null; then
-        log_error "Node.js not found. Install Node.js >= 18.19.0:"
+        log_error "Node.js not found. Install Node.js >= 20.0.0:"
         log_info "  macOS: brew install node"
         exit 1
     fi
@@ -233,7 +233,7 @@ check_prerequisites() {
     local node_version
     node_version="$(node -v)"
     if ! node_version_is_supported "$node_version"; then
-        log_error "Node.js version too old (found $node_version, need >=18.19.0)"
+        log_error "Node.js version too old (found $node_version, need >=20.0.0)"
         exit 1
     fi
     log_ok "Node.js $(node -v)"

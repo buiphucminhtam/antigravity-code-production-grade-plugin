@@ -30,6 +30,10 @@
     "yaml": "^2.8.3",
     "zod": "^4.3.6"
   },
+  "overrides": {
+    "@hono/node-server": "2.0.12",
+    "fast-uri": "3.1.4"
+  },
   "lint-staged": {
     "mcp/src/**/*.ts": [
       "npx --prefix mcp eslint --fix --cache --cache-location mcp/node_modules/.cache/eslint",

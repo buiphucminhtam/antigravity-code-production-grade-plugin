@@ -19,7 +19,7 @@ set -euo pipefail
 VERSION="1.0.0"
 GITHUB_REPO="https://github.com/buiphucminhtam/forgewright.git"
 FORGEWRIGHT_DEFAULT="${HOME}/Documents/GitHub/forgewright"
-MIN_NODE_VERSION="18.19.0"
+MIN_NODE_VERSION="20.0.0"
 
 # Colors
 RED='\033[0;31m'
@@ -259,7 +259,7 @@ node_version_is_supported() {
     patch="${patch%%[^0-9]*}"
     [[ "$major" =~ ^[0-9]+$ ]] && [[ "$minor" =~ ^[0-9]+$ ]] && \
         [[ "$patch" =~ ^[0-9]+$ ]] || return 1
-    ((major > 18 || (major == 18 && (minor > 19 || (minor == 19 && patch >= 0)))))
+    ((major >= 20))
 }
 
 check_prerequisites() {
