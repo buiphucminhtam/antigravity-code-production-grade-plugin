@@ -25,6 +25,20 @@ while [[ $# -gt 0 ]]; do
 done
 
 PLATFORM="$(printf '%s' "$PLATFORM" | tr '[:lower:]' '[:upper:]')"
+
+# A project-local Codex gate is canonical for that repository. Any external
+# installed copy defers so Codex does not run the same validator twice.
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+PROJECT_LITE_DIR="${PROJECT_ROOT:+${PROJECT_ROOT}/scripts/lite}"
+if [[ "$PLATFORM" == "CODEX" && -n "$PROJECT_ROOT" && "$SCRIPT_DIR" != "$PROJECT_LITE_DIR" ]]; then
+  PROJECT_CODEX_CONFIG="${PROJECT_ROOT}/.codex/config.toml"
+  if [[ -n "$PROJECT_CODEX_CONFIG" && -f "$PROJECT_CODEX_CONFIG" ]] &&
+    grep -Eq 'command[[:space:]]*=[[:space:]]*"bash scripts/lite/stop-gate\.sh --platform CODEX([[:space:]]|"|$)' "$PROJECT_CODEX_CONFIG"; then
+    printf '{"continue": true}\n'
+    exit 0
+  fi
+fi
+
 PAYLOAD_FILE="$(mktemp "${TMPDIR:-/tmp}/forgewright-stop.XXXXXX")" || exit 1
 chmod 600 "$PAYLOAD_FILE" 2>/dev/null || true
 cleanup() {

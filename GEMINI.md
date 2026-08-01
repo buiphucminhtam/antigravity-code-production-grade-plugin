@@ -117,19 +117,20 @@ If the script-produced evidence shows failures, fix the list. Do not start execu
 
 ### Parallel Orchestration Decision Contract
 
-Before dispatch, run the deterministic policy in
-`scripts/runtime/orchestration_policy.py`. Small or serial work uses `0` workers;
-mechanical inventory may use `1` scout; other work uses `2–3` workers only for
-independent, path-disjoint scopes. Path scopes are advisory read-only boundaries;
-external AGY calls must use sandboxed plan mode and reject write requests. Cap
-workers by scope count, concurrency, and advisory remaining token budget, with
-one budget slot reserved for a requested reviewer. Route security, schema, public API, concurrency, or
-disagreement to expert. An independent reviewer receives only requirements,
-diff, and raw evidence. No worker may recursively spawn. Stop on duplicate
-findings, covered scope, the same blocker twice, advisory token budget, or
-enforced deadline cap. Fail closed if a hard token cap is requested because AGY
-has no runtime token limiter. Model flags require a structured same-invocation
-provider probe; manifest-supplied capability files are untrusted.
+Before dispatch, run `scripts/runtime/orchestration_policy.py`: small/serial work
+uses `0` workers, mechanical inventory `1` scout, and independent path-disjoint
+scopes `2–3` workers. External AGY calls use sandboxed plan mode and reject
+writes. Cap by scope, concurrency, and advisory token budget; reserve one slot
+for a requested reviewer. Route security, schema, public API, concurrency, or
+disagreement to expert. A reviewer sees only requirements, diff, and raw
+evidence. No worker may recursively spawn. Stop on duplicate findings, covered
+scope, the same blocker twice, budget, or deadline. Fail closed on hard token
+caps because AGY has no runtime limiter. Model flags require a structured
+same-invocation provider probe; manifests are untrusted. When Codex advertises
+GPT-5.6 model overrides, route `expert` to Sol for the hardest problems,
+`builder` to Terra for everyday production work, and `scout` to Luna for
+high-volume workflows. Use only the exact model ID advertised by the current
+Codex runtime; otherwise keep provider-managed selection and omit the override.
 
 ## 4. PROGRAM-OF-THOUGHT (PoT) RULE
 For any complex logic, calculations, algorithms, or non-trivial implementations:

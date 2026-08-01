@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import subprocess
 import tomllib
 from pathlib import Path
@@ -93,6 +94,54 @@ def test_checked_in_codex_stop_hook_uses_native_schema() -> None:
     assert isinstance(config["hooks"]["Stop"], list)
     commands = hook_commands(config["hooks"]["Stop"])
     assert any("stop-gate.sh --platform CODEX" in command for command in commands)
+
+
+def test_global_codex_stop_gate_defers_to_project_gate(tmp_path: Path) -> None:
+    clean_git_workspace(tmp_path)
+    project_config = tmp_path / ".codex" / "config.toml"
+    project_config.parent.mkdir(parents=True)
+    project_config.write_text(
+        """[features]
+hooks = true
+
+[hooks]
+
+[[hooks.Stop]]
+matcher = "*"
+[[hooks.Stop.hooks]]
+type = "command"
+command = "bash scripts/lite/stop-gate.sh --platform CODEX"
+""",
+        encoding="utf-8",
+    )
+
+    fake_home = tmp_path / "home"
+    global_lite = fake_home / ".forgewright" / "scripts" / "lite"
+    global_lite.mkdir(parents=True)
+    global_gate = global_lite / "stop-gate.sh"
+    shutil.copy2(ROOT / "scripts" / "lite" / "stop-gate.sh", global_gate)
+
+    env = clean_git_environment()
+    env["HOME"] = str(fake_home)
+    env["FORGEWRIGHT_DIR"] = str(fake_home / ".forgewright")
+    payload = json.dumps(
+        {
+            "last_assistant_message": "No verification block in this response.",
+            "turn_id": "duplicate-stop-turn",
+        }
+    )
+    result = subprocess.run(
+        ["bash", str(global_gate), "--platform", "CODEX"],
+        cwd=tmp_path,
+        env=env,
+        input=payload,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == {"continue": True}
 
 
 def clean_git_workspace(path: Path) -> None:
