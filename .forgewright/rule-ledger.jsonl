@@ -53,3 +53,5 @@
 {"ts":"2026-07-31T03:13:03Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 fields are not consecutive"}
 {"ts":"2026-08-01T16:34:01Z","rule":"RLG-01","outcome":"violation","note":"source: self-report"}
 {"ts":"2026-08-01T16:42:02Z","rule":"HR1-verify","outcome":"violation","note":"source: user - previous turn omitted native turn evidence"}
+{"ts":"2026-08-03T09:05:08Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 VERDICT is not PASS"}
+{"ts":"2026-08-03T09:05:27Z","rule":"verify_contract","outcome":"violation","note":"source: user"}
