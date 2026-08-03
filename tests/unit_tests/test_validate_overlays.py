@@ -10,10 +10,22 @@ spec = importlib.util.spec_from_file_location("validate_overlays", script_path)
 validate_overlays = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(validate_overlays)
 
+repair_script_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../../scripts/lite/repair-overlays.py")
+)
+repair_spec = importlib.util.spec_from_file_location(
+    "repair_overlays", repair_script_path
+)
+repair_overlays = importlib.util.module_from_spec(repair_spec)
+repair_spec.loader.exec_module(repair_overlays)
+
 validate_file = validate_overlays.validate_file
 validate_table = validate_overlays.validate_table
 check_tables = validate_overlays.check_tables
 parse_frontmatter = validate_overlays.parse_frontmatter
+fix_ground_table = repair_overlays.fix_ground_table
+remove_worked_example_section = repair_overlays.remove_worked_example_section
+remove_banned_paths = repair_overlays.remove_banned_paths
 
 
 def test_parse_frontmatter():
@@ -93,6 +105,105 @@ def test_ground_table_assertions():
     assert "self-attested evidence" in errors[1]
 
 
+def test_ground_table_heading_detection_covers_worked_examples():
+    worked_example_ground = [
+        (
+            1,
+            "| Assumption | Check command / file read | Result | Script-produced evidence |",
+        ),
+        (2, "|---|---|---|---|"),
+        (
+            3,
+            "| Target exists | ls target | ... | run the check command and paste output |",
+        ),
+    ]
+    assert (
+        validate_overlays.check_tables(
+            "### 2. GROUND\n" + "\n".join(line for _, line in worked_example_ground)
+        )
+        == []
+    )
+
+
+def test_ground_table_repair_is_idempotent():
+    content = """## SOLVE Step 2: GROUND
+| Assumption | Check command / file read | Result | Script-produced evidence |
+|---|---|---|---|
+| File exists | ls file.txt | ... | run the check command and paste output |
+"""
+    repaired = fix_ground_table(content)
+    assert repaired == content
+    assert fix_ground_table(repaired) == repaired
+
+
+def test_ground_table_repair_normalizes_compact_and_self_attested_rows():
+    compact = """## SOLVE Step 2: GROUND
+| Assumption | Mechanical check |
+|---|---|
+| Manifest is valid | python3 -m json.tool manifest.json |
+"""
+    repaired_compact = fix_ground_table(compact)
+    assert "|---|---|---|---|" in repaired_compact
+    assert (
+        "| Manifest is valid | python3 -m json.tool manifest.json | ... | run the check command and paste output |"
+        in repaired_compact
+    )
+
+    worked_example = """### 2. GROUND
+| Assumption | Check command | Result | VERIFIED? |
+|---|---|---|---|
+| File exists | ls file.txt | File exists | Y |
+"""
+    repaired_example = fix_ground_table(worked_example)
+    assert "VERIFIED?" not in repaired_example
+    assert (
+        "| File exists | ls file.txt | ... | run the check command and paste output |"
+        in repaired_example
+    )
+
+
+def test_repair_removes_illustrative_execution_tail():
+    content = """## SOLVE Step 3: DECOMPOSE
+1. ACTION | TARGET | CHECK
+
+---
+
+### 1. UNDERSTAND
+Illustrative task.
+
+### 5. VERIFY
+EXIT CODE: 0
+VERDICT: PASS
+"""
+    assert remove_worked_example_section(content, "example") == (
+        "## SOLVE Step 3: DECOMPOSE\n1. ACTION | TARGET | CHECK\n"
+    )
+
+
+def test_repair_and_validator_reject_legacy_workflow_paths():
+    content = """```text
+.agents/workflows/design_dna.json
+```
+"""
+    assert ".agents/workflows" not in remove_banned_paths(content)
+
+    with tempfile.NamedTemporaryFile(suffix=".md", mode="w", delete=False) as f:
+        f.write("""---
+name: temp-skill
+description: "A temporary skill"
+version: 1.0.0
+---
+.agents/workflows/design_dna.json
+""")
+        temp_name = f.name
+
+    try:
+        errors = validate_file(temp_name)
+        assert "legacy workflow paths" in "".join(errors)
+    finally:
+        os.remove(temp_name)
+
+
 def test_validate_file_constraints():
     with tempfile.NamedTemporaryFile(suffix=".md", mode="w", delete=False) as f:
         f.write("""---
@@ -153,5 +264,24 @@ Output:
         errors = validate_file(temp_name)
         assert len(errors) > 0
         assert "fake success transcript" in "".join(errors)
+    finally:
+        os.remove(temp_name)
+
+
+def test_validate_file_rejects_static_pass_verdicts():
+    with tempfile.NamedTemporaryFile(suffix=".md", mode="w", delete=False) as f:
+        f.write("""---
+name: temp-skill
+description: "A temporary skill"
+version: 1.0.0
+---
+EXIT CODE: 0
+VERDICT: PASS
+""")
+        temp_name = f.name
+
+    try:
+        errors = validate_file(temp_name)
+        assert "static verification verdicts" in "".join(errors)
     finally:
         os.remove(temp_name)

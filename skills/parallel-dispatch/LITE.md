@@ -13,12 +13,12 @@ worktrees, branches, commits, or recursive agents by itself.
 
 ## SOLVE Step 2: Ground
 
-| Assumption | Mechanical check |
-|---|---|
-| Manifest is valid JSON v1 | `python3 -m json.tool <manifest>` |
-| Scope paths are disjoint | runner validation during dry-run |
-| Token/concurrency/deadline limits are positive | policy validation during dry-run |
-| AGY model IDs are machine-readable | same-invocation `agy models` runtime probe |
+| Assumption | Check command / file read | Result | Script-produced evidence |
+|---|---|---|---|
+| Manifest is valid JSON v1 | `python3 -m json.tool <manifest>` | ... | run the check command and paste output |
+| Scope paths are disjoint | runner validation during dry-run | ... | run the check command and paste output |
+| Token/concurrency/deadline limits are positive | policy validation during dry-run | ... | run the check command and paste output |
+| AGY model IDs are machine-readable | same-invocation `agy models` runtime probe | ... | run the check command and paste output |
 
 ## Decision Contract
 

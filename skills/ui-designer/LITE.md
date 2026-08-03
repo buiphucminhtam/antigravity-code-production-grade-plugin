@@ -40,7 +40,6 @@ cat package.json | grep -E "(tailwindcss|playwright)"
 find .agents/ -name "*design_dna*"
 ```
 ```
-.agents/workflows/design_dna.json
 ```
 
 #### Step 2 (DESIGN): Draft wireframe and component states
@@ -93,4 +92,3 @@ export const CardWidget = ({ title, description }: { title: string; description:
 ```bash
 npx playwright test tests/visual-regression.spec.ts
 ```
-

@@ -80,23 +80,11 @@ PROJECT_PROFILE_GROUND = re.compile(
     r"\|\s*[Pp]roject stack[^|]*profile[^|]*\|\s*`cat \.forgewright/project-profile\.json`[^|]*\|[^\n]+\n?"
 )
 
-# Worked Example section (entire section through EOF or next ##)
+# Illustrative tail after the canonical domain slots. These examples embed fake
+# paths, command results, and PASS verdicts, so LITE overlays must omit them.
 WORKED_EXAMPLE_SECTION = re.compile(
-    r"## Worked Example.*?(?=^##|\Z)", re.DOTALL | re.MULTILINE
-)
-
-# Files that are allowed to keep Worked Example (code-reviewer has a valid one
-# but it contains self-attested VERIFIED? / Y columns → needs partial fix)
-# We'll handle code-reviewer separately.
-KEEP_WORKED_EXAMPLE_SKILLS = {"code-reviewer"}
-
-# Fake VERIFY block inside code-reviewer worked example:
-# The "VERIFY" section with pasted output and EXIT CODE: 0 / VERDICT: PASS
-FAKE_VERIFY_BLOCK = re.compile(r"### 5\. VERIFY\n.*?VERDICT: PASS\n?", re.DOTALL)
-
-# Self-attested Y column in ground tables within worked examples
-SELF_ATTESTED_Y = re.compile(
-    r"(\|[^|]+\|[^|]+\|[^|]+\|)\s*Y\s*(\|?)\s*\n",
+    r"^---\s*\n+(?=(?:#{2,4}\s+(?:Example|Worked Example|\d+\.\s+UNDERSTAND))).*\Z",
+    re.DOTALL | re.MULTILINE | re.IGNORECASE,
 )
 
 # "Result | VERIFIED?" header → "Script-produced evidence"
@@ -127,15 +115,16 @@ def skill_name_from_path(filepath):
 
 def fix_ground_table(content):
     """
-    Replace:  | Result | VERIFIED? |  →  | Result | Script-produced evidence |
-    Separator:  |---|---|---|---|  stays as 4-col
-    Data rows:  | ... | Y/N |  →  | ... | run the check command and paste output |
-    And rows with self-attested Y.
+    Normalize Ground tables to four columns with placeholder results and
+    script-produced evidence instructions.
     """
     lines = content.split("\n")
     out = []
     in_ground = False
     current_section = ""
+    ground_schema = None
+    evidence_instruction = "run the check command and paste output"
+    self_attested = {"y", "n", "y/n", "true", "false", "verified"}
 
     for line in lines:
         stripped = line.strip()
@@ -143,71 +132,61 @@ def fix_ground_table(content):
         # Track section
         if stripped.startswith("#"):
             current_section = stripped.lower()
-            in_ground = (
-                "solve step 2" in current_section and "ground" in current_section
-            )
+            # Repair canonical slots and worked-example Ground headings alike.
+            in_ground = bool(re.search(r"\bground\b", current_section))
+            ground_schema = None
             out.append(line)
             continue
 
         if in_ground and "|" in line:
-            # Repair headers already collapsed by earlier versions:
-            # | Assumption | Check command / file read | Script-produced evidence |
-            if re.search(
-                r"\|\s*Assumption\s*\|\s*Check command / file read\s*\|\s*Script-produced evidence\s*\|",
-                line,
-                re.IGNORECASE,
+            cells = re.split(r"(?<!\\)(?<!\|)\|(?!\|)", line)
+            visible = [cell.strip() for cell in cells[1:-1]]
+            lowered = [cell.lower() for cell in visible]
+
+            # Preserve/restore separator rows before treating them as data.
+            if visible and all(set(cell) <= {"-", ":"} for cell in visible):
+                line = "|---|---|---|---|"
+            elif (
+                len(visible) >= 4
+                and all(set(cell) <= {"-", ":"} for cell in visible[:2])
+                and visible[2] == "..."
+                and lowered[3] == evidence_instruction
             ):
-                line = re.sub(
-                    r"\|\s*Assumption\s*\|\s*Check command / file read\s*\|\s*Script-produced evidence\s*\|",
-                    "| Assumption | Check command / file read | Result | Script-produced evidence |",
-                    line,
-                    flags=re.IGNORECASE,
-                )
-            # Header: replace Result | VERIFIED? with Script-produced evidence
-            elif re.search(r"\|\s*Result\s*\|\s*VERIFIED\?\s*\|", line, re.IGNORECASE):
-                line = re.sub(
-                    r"\|\s*Result\s*\|\s*VERIFIED\?\s*\|",
-                    "| Result | Script-produced evidence |",
-                    line,
-                    flags=re.IGNORECASE,
-                )
-            # Repair rows already collapsed by earlier versions of this script:
-            # | assumption | check | run the check command above |
-            elif re.search(r"\|\s*run the check command above\s*\|", line):
-                cells = re.split(r"(?<!\\)(?<!\|)\|(?!\|)", line)
+                line = "|---|---|---|---|"
+            # Convert the compact two-column form used by parallel dispatch.
+            elif (
+                len(visible) == 2
+                and lowered[0] == "assumption"
+                and "mechanical check" in lowered[1]
+            ):
+                line = "| Assumption | Check command / file read | Result | Script-produced evidence |"
+                ground_schema = "two"
+            elif len(visible) == 4 and lowered[0] == "assumption":
+                line = "| Assumption | Check command / file read | Result | Script-produced evidence |"
+                ground_schema = "four"
+            elif (
+                ground_schema == "two"
+                and len(visible) == 2
+                and all(set(cell) <= {"-", ":"} for cell in visible)
+            ):
+                line = "|---|---|---|---|"
+            elif (
+                len(visible) == 2
+                and ground_schema is None
+                and all(set(cell) <= {"-", ":"} for cell in visible)
+            ):
+                ground_schema = "two"
+            elif ground_schema == "two" and len(visible) == 2:
+                line = f"| {visible[0]} | {visible[1]} | ... | {evidence_instruction} |"
+            elif ground_schema == "four" and len(visible) >= 4:
+                result = visible[2]
+                evidence = visible[3].lower()
                 if (
-                    len(cells) == 5
-                    and cells[3].strip() == "run the check command above"
+                    result not in ("", "...")
+                    or evidence in self_attested
+                    or len(visible) > 4
                 ):
-                    line = (
-                        f"| {cells[1].strip()} | {cells[2].strip()} | ... | "
-                        "run the check command and paste output |"
-                    )
-                else:
-                    line = re.sub(
-                        r"\|\s*run the check command above\s*\|",
-                        "| ... | run the check command and paste output |",
-                        line,
-                    )
-            # Data rows: ... | Y/N | → run the check command above |
-            elif re.search(r"\|\s*\.\.\.\s*\|\s*Y/N\s*\|", line):
-                line = re.sub(
-                    r"\|\s*\.\.\.\s*\|\s*Y/N\s*\|",
-                    "| ... | run the check command and paste output |",
-                    line,
-                )
-            # Also handle: | ... | Y | (self-attested)
-            elif re.search(r"\|\s*\.\.\.\s*\|\s*Y\s*\|", line):
-                line = re.sub(
-                    r"\|\s*\.\.\.\s*\|\s*Y\s*\|",
-                    "| ... | run the check command and paste output |",
-                    line,
-                )
-            # Handle rows that have a result cell and Y/N
-            elif re.search(r"\|\s*Y/N\s*\|", line):
-                line = re.sub(
-                    r"\|\s*Y/N\s*\|", "| run the check command and paste output |", line
-                )
+                    line = f"| {visible[0]} | {visible[1]} | ... | {evidence_instruction} |"
 
         out.append(line)
 
@@ -270,46 +249,17 @@ def remove_illustrative_note(content):
 
 
 def remove_worked_example_section(content, skill_name):
-    """
-    Remove ## Worked Example sections.
-    For code-reviewer: keep the Worked Example but fix self-attested Y and fake VERIFY.
-    """
-    if skill_name in KEEP_WORKED_EXAMPLE_SKILLS:
-        # Fix self-attested Y rows in ground tables inside the worked example
-        content = SELF_ATTESTED_Y.sub(
-            lambda m: m.group(1) + " run the check command above " + m.group(2) + "\n",
-            content,
-        )
-        # Remove fake VERIFY block with pasted output
-        content = FAKE_VERIFY_BLOCK.sub(
-            "### 5. VERIFY\n"
-            "Emit one `VERIFY` block per changed behavior per [kernel/VERIFY.md](file:///Users/buiphucminhtam/GitHub/forgewright/kernel/VERIFY.md).\n",
-            content,
-        )
-        # Fix header inside worked example ground table
-        content = fix_ground_table(content)
-        return content
-
-    # For all others: remove the entire Worked Example section
+    """Remove illustrative execution tails that contain fabricated evidence."""
     content = WORKED_EXAMPLE_SECTION.sub("", content)
     return content.rstrip() + "\n"
 
 
 def remove_banned_paths(content):
-    """
-    Remove ground table rows that mention guaranteed-absent paths.
-    """
-    # .agents/workflows row
+    """Remove guaranteed-absent paths from tables, prose, and code blocks."""
     lines = content.split("\n")
     out = []
     for line in lines:
-        # Drop ground table rows mentioning .agents/workflows
-        if (
-            ".agents/workflows" in line
-            and "|" in line
-            and "Check command" not in line
-            and "---|" not in line
-        ):
+        if ".agents/workflows" in line:
             continue
         out.append(line)
     return "\n".join(out)
