@@ -46,9 +46,10 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${BOLD}🔍 WIKI DRIFT & CONFLICT VERIFIER — Kiểm tra tài liệu${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-# Tạo file tạm để lưu các port tìm thấy (hỗ trợ tương thích ngược Bash 3)
+# Tạo file tạm để lưu danh sách Markdown và các port tìm thấy.
+markdown_filelist=$(mktemp)
 tmp_file=$(mktemp)
-trap 'rm -f "$tmp_file"' EXIT
+trap 'rm -f "$markdown_filelist" "$tmp_file"' EXIT
 
 # ─── PHẦN 0: Kiểm tra trạng thái RAG Server (NextJS Board UI) ──────────────
 echo -e "\n${BOLD}[0/3] Kiểm tra trạng thái RAG Server (cổng 3000)...${NC}"
@@ -85,9 +86,40 @@ fi
 # ─── PHẦN 1: Kiểm tra mâu thuẫn giữa các tài liệu (Doc-to-Doc) ──────────────
 echo -e "\n${BOLD}[1/3] Đang quét mâu thuẫn chéo giữa các tài liệu (Doc-to-Doc)...${NC}"
 
-# Quét tìm các định nghĩa Port trong các file Markdown để check mâu thuẫn
-find . -maxdepth 2 -name "*.md" -not -path "*/node_modules/*" -not -path "*/.git/*" -print0 | while IFS= read -r -d '' file; do
-    while read -r grep_line; do
+# Quét tìm các định nghĩa Port trong các file Markdown để check mâu thuẫn.
+# Trong repo chỉ xét file được track để artifact local không làm sai lệch release gate.
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    markdown_inventory=(git ls-files -z -- ":(glob)*.md" ":(glob)*/*.md")
+else
+    markdown_inventory=(find . -maxdepth 2 -name "*.md" -not -path "*/node_modules/*" -not -path "*/.git/*" -print0)
+fi
+
+# Ghi danh sách ra file trước để lỗi inventory/grep không bị nuốt bởi pipeline subshell.
+if ! "${markdown_inventory[@]}" > "$markdown_filelist"; then
+    echo -e "  ${RED}❌ Unreadable Markdown: không thể liệt kê đầy đủ các tệp Markdown.${NC}"
+    CLAIMS_COUNT=$((CLAIMS_COUNT + 1))
+    UNCONFIRMED_CLAIMS=$((UNCONFIRMED_CLAIMS + 1))
+fi
+
+while IFS= read -r -d '' file; do
+    grep_output=""
+    if grep_output=$(grep -E -i "port\s*[:=]\s*[0-9]+" "$file" 2>&1); then
+        grep_status=0
+    else
+        grep_status=$?
+    fi
+
+    if [ "$grep_status" -gt 1 ]; then
+        echo -e "  ${RED}❌ Unreadable Markdown: $file${NC}"
+        if $VERBOSE && [ -n "$grep_output" ]; then
+            echo "     $grep_output"
+        fi
+        CLAIMS_COUNT=$((CLAIMS_COUNT + 1))
+        UNCONFIRMED_CLAIMS=$((UNCONFIRMED_CLAIMS + 1))
+        continue
+    fi
+
+    while IFS= read -r grep_line; do
         [ -n "$grep_line" ] || continue
         # Trích xuất số port từ dòng bằng regex
         if [[ "$grep_line" =~ [0-9]+ ]]; then
@@ -95,13 +127,14 @@ find . -maxdepth 2 -name "*.md" -not -path "*/node_modules/*" -not -path "*/.git
             rel_path="${file/$(pwd)\//}"
             echo "$port_val:$rel_path" >> "$tmp_file"
         fi
-    done < <(grep -E -i "port\s*[:=]\s*[0-9]+" "$file" || true)
-done
+    done <<< "$grep_output"
+done < "$markdown_filelist"
 
 # Kiểm tra mâu thuẫn từ file tạm
 if [ -s "$tmp_file" ]; then
     # Đếm số lượng tuyên bố đã quét
-    CLAIMS_COUNT=$(wc -l < "$tmp_file" | tr -d ' ')
+    port_claims=$(wc -l < "$tmp_file" | tr -d ' ')
+    CLAIMS_COUNT=$((CLAIMS_COUNT + port_claims))
     
     # Lấy danh sách các giá trị port duy nhất
     unique_ports=$(cut -d: -f1 "$tmp_file" | sort -u)
@@ -168,7 +201,6 @@ if [ -d ".gitnexus" ]; then
                 echo -e "  ${YELLOW}🔧 Đang tự động vá (HEAL): Chạy 'npx gitnexus analyze' để cập nhật chỉ mục...${NC}"
                 npx gitnexus analyze
                 echo -e "  ${GREEN}✓ Đồ thị GitNexus đã được phân tích và cập nhật thành công!${NC}"
-                UNCONFIRMED_CLAIMS=0
             else
                 echo -e "  ${YELLOW}⚠ Chỉ mục GitNexus bị lệch hoặc chưa hoàn thiện.${NC}"
                 UNCONFIRMED_CLAIMS=$((UNCONFIRMED_CLAIMS + 1))
@@ -184,7 +216,6 @@ else
         echo -e "  ${YELLOW}🔧 Đang tự động vá (HEAL): Tạo mới chỉ mục GitNexus bằng 'npx gitnexus analyze'...${NC}"
         npx gitnexus analyze
         echo -e "  ${GREEN}✓ Tạo mới đồ thị GitNexus thành công!${NC}"
-        UNCONFIRMED_CLAIMS=0
     else
         echo -e "  ${RED}❌ Lỗi: Thư mục chỉ mục .gitnexus không tồn tại!${NC}"
         echo "     Vui lòng chạy 'npx gitnexus analyze' trước để tạo đồ thị tri thức."

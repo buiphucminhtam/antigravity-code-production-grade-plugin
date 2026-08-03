@@ -8,14 +8,15 @@ ADR = ROOT / "docs" / "adr" / "ADR-009-live-routing-evidence.md"
 
 def test_roadmap_uses_zero_cost_provider_native_policy() -> None:
     roadmap = ROADMAP.read_text(encoding="utf-8")
-    assert "## Provider-Native Routing Policy" in roadmap
-    assert "one provider adapter" in roadmap
-    assert "paid hosted execution is not required" in roadmap
-    assert "GitHub Actions" not in roadmap
-    assert "hosted execution remain" not in roadmap
-    assert "GPT-5.6 Luna" not in roadmap
-    assert "GPT-5.6 Terra" not in roadmap
-    assert "GPT-5.6 Sol" not in roadmap
+    routing_policy = roadmap.split("## Provider-Native Routing Policy", 1)[1].split(
+        "## Delivery Phases", 1
+    )[0]
+    assert "one provider adapter" in routing_policy
+    assert "GitHub Actions" not in routing_policy
+    assert "hosted execution remain" not in routing_policy
+    assert "GPT-5.6 Luna" not in routing_policy
+    assert "GPT-5.6 Terra" not in routing_policy
+    assert "GPT-5.6 Sol" not in routing_policy
 
 
 def test_provider_adapter_owns_ecosystem_specific_behavior() -> None:
@@ -29,7 +30,11 @@ def test_provider_adapter_owns_ecosystem_specific_behavior() -> None:
     )
 
 
-def test_repository_has_no_hosted_workflow_definitions() -> None:
+def test_repository_limits_hosted_execution_to_deterministic_ci() -> None:
     workflow_root = ROOT / ".github" / "workflows"
-    assert not list(workflow_root.rglob("*.yml"))
-    assert not list(workflow_root.rglob("*.yaml"))
+    workflows = sorted([*workflow_root.rglob("*.yml"), *workflow_root.rglob("*.yaml")])
+    assert workflows == [workflow_root / "ci.yml"]
+
+    workflow = workflows[0].read_text(encoding="utf-8")
+    assert "scripts/parallel-dispatch-runner.py" not in workflow
+    assert "scripts/lite/escalate.sh" not in workflow

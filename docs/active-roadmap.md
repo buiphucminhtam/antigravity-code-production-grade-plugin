@@ -36,7 +36,7 @@ The product promise is:
 | Evaluation | Schema-v2 local validator rejects mock/incomplete/mismatched reports; a frozen 100-task routing corpus covers all required roadmap categories and reports per-category Wilson 95% confidence intervals | No reproducible paired live baseline or live provider evidence |
 | Cost control | Token budgets and reports exist | Budget is not enforced at a single model-call gateway |
 | State | File state persistence can log a failed write while the caller reports success | No fail-closed error propagation or concurrency control |
-| CI/release | A required local aggregate gate invokes product truth, Python units, MCP lint/format/build/test/coverage, CLI tests, production dependency audit, package-content smoke checks, and a temporary worktree-snapshot `npm ci`/build check | Runtime smoke remains opt-in; paid hosted execution is intentionally outside scope |
+| CI/release | A required local aggregate gate invokes product truth, Python units, MCP lint/format/build/test/coverage, CLI tests, production dependency audit, package-content smoke checks, and a temporary worktree-snapshot `npm ci`/build check; a pinned GitHub Actions workflow mirrors the deterministic gates | Runtime smoke remains opt-in; a completed hosted run is still required before claiming hosted CI status |
 | Memory | Boot injection is capped at 500 tokens | Retrieval quality, staleness, and non-ASCII query behavior lack release KPIs |
 
 ## Provider-Native Routing Policy
@@ -62,7 +62,7 @@ Every route decision must log: task class, risk signals, selected model and snap
 | ID | Deliverable | Owner / model tier | Dependencies | Exit evidence |
 |---|---|---|---|---|
 | P0.1 | **Implemented locally:** ADR 0001 declares the canonical MCP runtime and scopes claims through a code/test conformance matrix | Architect / Expert | None | Local conformance evidence exists; live-provider and legacy-path equivalence remain gated |
-| P0.2 | **Implemented locally:** canonical product manifest, drift validator, public truth sync, regression tests, and aggregate CI wiring | Tech writer + Builder | P0.1 | Local truth gate passes; hosted CI execution and remaining internal-link cleanup remain pending |
+| P0.2 | **Implemented locally:** canonical product manifest, drift validator, public truth sync, regression tests, aggregate CI wiring, and a pinned hosted workflow | Tech writer + Builder | P0.1 | Local truth gate passes; a completed hosted run and remaining internal-link cleanup remain pending |
 | P0.3 | **Implemented locally:** corrected paths/model endpoint handling, workspace isolation, required-server failure, namespaced tools, and hard runtime limits; live smoke remains | Runtime engineer / Expert | P0.1 | Deterministic unit tests pass; live runtime smoke proves provider/MCP boundaries |
 | P0.4 | **Implemented locally:** schema-v2 eval reports require live mode, exact task set, attempts, verifier metadata, provider, model, and resolved snapshot before comparison | QA / Builder | P0.1 | Historical reports are intentionally rejected; reproducible paired live baseline remains pending |
 | P0.5 | **Expanded locally:** README/product overview claims are qualified, and an explicit regression-tested inventory now covers five high-risk public documents; universal editing, zero-bug, index-corruption, zero-overhead, and historical percentage claims are removed or classified as unverified | Product + tech writer / Scout | P0.2 | Remaining legacy/status and domain-specific documentation inventory is pending |
@@ -103,8 +103,8 @@ Every route decision must log: task class, risk signals, selected model and snap
 
 | ID | Deliverable | Owner / model tier | Dependencies | Exit evidence |
 |---|---|---|---|---|
-| P3.1 | **Implemented locally:** required zero-cost aggregate gate covers product truth, Python units, MCP lint/format/build/test/coverage, CLI tests, dependency audit, package smoke, and clean temporary `npm ci` builds; the MCP tarball excludes tests, coverage, source, and telemetry | DevOps / Builder | P0.2, P1.1, P1.2 | Local aggregate and runtime smoke commands are the canonical evidence; paid hosted execution is not required |
-| P3.2 | **Implemented locally:** release dependencies/tools are pinned, package/tag contracts are checked, SBOM and provenance artifacts are generated, package smoke and rollback rehearsal are automated | Security + DevOps / Expert | P3.1 | Local release-policy and artifact verifiers provide linked evidence without publishing or paid runners; repository-hosted workflow definitions are intentionally absent |
+| P3.1 | **Implemented locally:** required zero-cost aggregate gate covers product truth, Python units, MCP lint/format/build/test/coverage, CLI tests, dependency audit, package smoke, and clean temporary `npm ci` builds; the MCP tarball excludes tests, coverage, source, and telemetry | DevOps / Builder | P0.2, P1.1, P1.2 | Local aggregate and runtime smoke commands remain reproducible without paid hosting; the pinned hosted workflow mirrors these gates |
+| P3.2 | **Implemented locally:** release dependencies/tools and active workflow actions are pinned, package/tag contracts are checked, SBOM and provenance artifacts are generated, package smoke and rollback rehearsal are automated | Security + DevOps / Expert | P3.1 | Local release-policy and artifact verifiers provide linked evidence without publishing or paid runners; supply-chain policy rejects mutable active workflow dependencies |
 | P3.3 | **Implemented locally:** canonical `forge init`/`forge onboard` commands create deterministic project metadata, fail closed without a manifest, preserve existing files by default, support explicit refresh, and are documented as a ten-minute sample workflow | CLI + docs / Builder | P0.2, P3.1 | Golden tests execute locally and inside the aggregate gate |
 | P3.4 | **Implemented locally:** machine-verified inventory labels every README core capability and classifies game, XR, research, and growth as optional docs-only packs | Product + architect / Expert | Local evidence inventory | Maturity tests execute each beta capability's verification command and forbid unsupported stable claims |
 
@@ -134,7 +134,8 @@ A phase is complete only when all of the following are true:
 
 | Blocker | Impact | Required action |
 |---|---|---|
-| The working tree contains pre-existing changes to generated rule files and GitNexus skill material | Broad regeneration may overwrite user-owned work | Preserve these files and isolate roadmap/runtime changes |
+| Live provider credentials are unavailable in the current reviewer runtime | Independent model review cannot be claimed from a failed dispatch | Restore provider credentials and rerun the requirements/diff/evidence review packet |
+| An existing canonical MCP runtime without a valid ownership marker cannot be adopted when its dependency-lock digest differs from the repository | Automated migration must preserve the foreign runtime rather than manufacture ownership proof | Perform a user-authorized clean reinstall or supply independently verified ownership evidence |
 
 ## Next Execution Slice
 
