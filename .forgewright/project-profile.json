@@ -1,72 +1,9 @@
 {
-  "schema_version": "1.0",
-  "fingerprint": {
-    "language": "typescript",
-    "framework": "node",
-    "package_manager": "npm",
-    "architecture": "cli",
-    "test_framework": "mocha",
-    "lint_tool": "eslint",
-    "ci_system": "github-actions",
-    "deployment": "unknown",
-    "monorepo": false,
-    "services": ["mcp", "cli"],
-    "detected_at": "2026-07-06T23:15:33+07:00"
-  },
-  "health": {
-    "build_passes": true,
-    "tests_pass": true,
-    "test_count": 0,
-    "test_coverage_percent": 0,
-    "lint_clean": true,
-    "lint_error_count": 0,
-    "deprecated_dep_count": 0,
-    "known_cve_count": 18,
-    "cve_severity": { "critical": 3, "high": 3, "medium": 12, "low": 0 },
-    "checked_at": "2026-07-06T23:15:33+07:00"
-  },
-  "code_intelligence": {
-    "indexed": true,
-    "engine": "gitnexus",
-    "symbols_count": 19416,
-    "relationships_count": 25395,
-    "communities_count": 294,
-    "processes_count": 300,
-    "index_path": ".gitnexus/",
-    "indexed_at": "2026-07-06T23:15:33+07:00",
-    "mcp_available": true,
-    "skills_generated": []
-  },
-  "mcp_server": {
-    "generated": true,
-    "path": ".forgewright/mcp-server/",
-    "tools_count": 52,
-    "resources_count": 0,
-    "prompts_count": 3,
-    "transport": "stdio",
-    "generated_at": "2026-07-06T23:15:33+07:00"
-  },
-  "patterns": {
-    "naming_convention": "camelCase",
-    "naming_confidence": "high",
-    "component_pattern": "none",
-    "error_handling": "try-catch",
-    "import_style": "relative-paths",
-    "state_management": "none",
-    "api_pattern": "none",
-    "file_organization": "feature-based"
-  },
-  "risk": {
-    "tech_debt_score": 1.0,
-    "overall_risk_score": 2.0,
-    "critical_risks": [],
-    "protected_paths": [".env*", "secrets/*", ".github/**"],
-    "protected_branches": ["main"]
-  },
-  "forgewright": {
-    "version": "8.7.0",
-    "onboarded_at": "2026-07-06T23:15:33+07:00",
-    "last_session": null,
-    "total_sessions": 0
+  "schema_version": 1,
+  "facts": {
+    "git_present": true,
+    "package_json_present": true,
+    "lockfiles": ["package-lock.json"],
+    "declared_test_script": "cd mcp && npm run test"
   }
 }
