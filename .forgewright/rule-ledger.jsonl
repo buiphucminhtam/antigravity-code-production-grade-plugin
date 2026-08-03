@@ -49,3 +49,7 @@
 {"ts":"2026-07-26T16:56:50Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
 {"ts":"2026-07-28T06:18:47Z","rule":"shell_noisy_separators","outcome":"violation","note":"source: self-report"}
 {"ts":"2026-07-28T06:42:56Z","rule":"shell_command_chaining","outcome":"violation","note":"source: self-report"}
+{"ts":"2026-07-30T02:48:31Z","rule":"RLG-01","outcome":"violation","note":"leaked lease reclaimed by TTL sweep"}
+{"ts":"2026-07-31T03:13:03Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 fields are not consecutive"}
+{"ts":"2026-08-01T16:34:01Z","rule":"RLG-01","outcome":"violation","note":"source: self-report"}
+{"ts":"2026-08-01T16:42:02Z","rule":"HR1-verify","outcome":"violation","note":"source: user - previous turn omitted native turn evidence"}

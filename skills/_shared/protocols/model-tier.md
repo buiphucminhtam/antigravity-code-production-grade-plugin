@@ -33,6 +33,24 @@ Small or serial tasks stay in the parent agent. Parallel work uses two or three
 workers only when scopes are genuinely independent; mechanical inventory may use
 one scout.
 
+## Codex GPT-5.6 Family
+
+When the current Codex runtime advertises matching model overrides, use this
+workload mapping:
+
+| Tier | Preferred model | Workload |
+|---|---|---|
+| `expert` | Sol | Hardest problems and high-stakes reasoning |
+| `builder` | Terra | Everyday production work |
+| `scout` | Luna | High-volume workflows and bounded mechanical tasks |
+
+Together, the GPT-5.6 family provides a clear default for each job: Sol for the
+hardest problems, Terra for everyday production work, and Luna for high-volume
+workflows. These family names express routing intent, not verified model IDs.
+Pass a model override only for an exact model ID advertised by the current Codex runtime.
+If the preferred model is not advertised, keep `provider-managed` selection and
+omit the override instead of inventing or substituting an ID.
+
 ## Capability Resolution
 
 1. Probe the active provider in the same authorized invocation.

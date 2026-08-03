@@ -21,6 +21,8 @@ import os
 import subprocess
 import json
 import re
+import shlex
+import signal
 import tempfile
 import time
 import shutil
@@ -57,6 +59,7 @@ def load_config():
         "fallbackCli": None,
         "maxExpertCallsPerRun": 5,
         "requireConfirmationAbove": 3,
+        "providerTimeoutSeconds": 120,
     }
     if not os.path.exists(config_path):
         return defaults
@@ -76,12 +79,18 @@ def load_config():
 
         max_calls = _yaml_int(budget_block, "maxExpertCallsPerRun", defaults["maxExpertCallsPerRun"])
         req_confirm = _yaml_int(budget_block, "requireConfirmationAbove", defaults["requireConfirmationAbove"])
+        provider_timeout = _yaml_int(
+            block,
+            "providerTimeoutSeconds",
+            defaults["providerTimeoutSeconds"],
+        )
 
         return {
             "activeCli":              active,
             "fallbackCli":            fallback if fallback else None,
             "maxExpertCallsPerRun":   max_calls,
             "requireConfirmationAbove": req_confirm,
+            "providerTimeoutSeconds": provider_timeout,
         }
     except Exception:
         return defaults
@@ -211,6 +220,158 @@ def build_argv(cli, prompt):
     raise ValueError(f"Unknown CLI '{cli}'. Supported: {sorted(KNOWN_CLIS)}")
 
 
+def provider_timeout_seconds(cfg):
+    raw = os.environ.get("FORGEWRIGHT_ESCALATION_TIMEOUT_SECS")
+    try:
+        value = int(raw) if raw is not None else int(cfg["providerTimeoutSeconds"])
+    except (KeyError, TypeError, ValueError):
+        value = 120
+    return max(1, min(value, 3600))
+
+
+def runtime_lease_cli():
+    override = os.environ.get("FORGEWRIGHT_RUNTIME_LEASE_CLI")
+    if override:
+        return override
+    root = os.environ.get("PROJECT_ROOT", ".")
+    return os.path.join(root, "scripts", "runtime", "runtime-lease.sh")
+
+
+def acquire_runtime_lease(pid, argv, timeout_seconds):
+    lease_cli = runtime_lease_cli()
+    if not os.path.isfile(lease_cli):
+        return None, f"Runtime Lifecycle Guard CLI not found: {lease_cli}"
+    command = [
+        "bash",
+        lease_cli,
+        "acquire",
+        "--role",
+        "aux2",
+        "--project",
+        os.path.realpath(os.environ.get("PROJECT_ROOT", ".")),
+        "--pid",
+        str(pid),
+        "--port",
+        "0",
+        "--ttl",
+        str(timeout_seconds + 30),
+        "--policy",
+        "reap",
+        "--cmd",
+        shlex.join(argv),
+    ]
+    try:
+        result = subprocess.run(
+            command, capture_output=True, text=True, timeout=5
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, str(exc)
+    if result.returncode != 0 or not result.stdout.strip():
+        detail = result.stderr.strip() or f"exit code {result.returncode}"
+        return None, detail
+    return result.stdout.strip().splitlines()[-1], None
+
+
+def release_runtime_lease(lease_id, reason):
+    if not lease_id:
+        return
+    try:
+        result = subprocess.run(
+            [
+                "bash",
+                runtime_lease_cli(),
+                "release",
+                "--lease",
+                lease_id,
+                "--reason",
+                reason,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode != 0:
+            print(
+                f"[ESCALATE] WARNING: failed to release lease {lease_id}: "
+                f"{result.stderr.strip() or result.returncode}",
+                file=sys.stderr,
+            )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(
+            f"[ESCALATE] WARNING: failed to release lease {lease_id}: {exc}",
+            file=sys.stderr,
+        )
+
+
+def terminate_leased_process(proc):
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    try:
+        proc.wait(timeout=5)
+        return
+    except subprocess.TimeoutExpired:
+        pass
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        return
+    proc.wait(timeout=5)
+
+
+def run_provider(argv, env, timeout_seconds):
+    # The child waits behind a pipe barrier until its RLG lease is recorded.
+    # If leasing fails, closing the pipe exits the wrapper without starting the provider.
+    wrapper = [
+        "bash",
+        "-c",
+        'IFS= read -r _ || exit 125; exec "$@"',
+        "forgewright-provider",
+        *argv,
+    ]
+    proc = subprocess.Popen(
+        wrapper,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+        start_new_session=True,
+    )
+    lease_id, lease_error = acquire_runtime_lease(proc.pid, argv, timeout_seconds)
+    if not lease_id:
+        if proc.stdin is not None:
+            proc.stdin.close()
+            proc.stdin = None
+        stdout, stderr = proc.communicate(timeout=5)
+        message = (
+            "[ESCALATE] ERROR: Runtime Lifecycle Guard lease acquisition failed; "
+            f"provider was not started: {lease_error}\n"
+        )
+        return subprocess.CompletedProcess(argv, 125, stdout, (stderr or "") + message)
+
+    if proc.stdin is not None:
+        proc.stdin.write("start\n")
+        proc.stdin.close()
+        proc.stdin = None
+
+    timed_out = False
+    try:
+        stdout, stderr = proc.communicate(timeout=timeout_seconds)
+        return subprocess.CompletedProcess(argv, proc.returncode, stdout, stderr)
+    except subprocess.TimeoutExpired:
+        timed_out = True
+        terminate_leased_process(proc)
+        stdout, stderr = proc.communicate()
+        message = f"[ESCALATE] ERROR: provider timed out after {timeout_seconds}s.\n"
+        return subprocess.CompletedProcess(argv, 124, stdout, (stderr or "") + message)
+    finally:
+        release_runtime_lease(
+            lease_id, "provider-timeout" if timed_out else "provider-exited"
+        )
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -232,6 +393,7 @@ def main():
     fallback_cli = cfg["fallbackCli"]
     max_calls   = cfg["maxExpertCallsPerRun"]
     req_confirm = cfg["requireConfirmationAbove"]
+    provider_timeout = provider_timeout_seconds(cfg)
 
     # Validate CLI name early
     if active_cli not in KNOWN_CLIS:
@@ -283,6 +445,7 @@ def main():
         print(packet_json)
         print(f"[DRY RUN] Would execute argv: {argv}")
         print(f"[DRY RUN] Budget: {prior}/{max_calls} calls used. reqConfirm threshold: {req_confirm}.")
+        print(f"[DRY RUN] Provider timeout: {provider_timeout}s.")
         print(f"[DRY RUN] Escalation log dir: {escalation_log_dir()}")
         sys.exit(0)
 
@@ -308,9 +471,7 @@ def main():
         delegation_env["FORGEWRIGHT_WORKSPACE"] = os.path.realpath(
             os.environ.get("PROJECT_ROOT", ".")
         )
-        result = subprocess.run(
-            argv, capture_output=True, text=True, env=delegation_env
-        )
+        result = run_provider(argv, delegation_env, provider_timeout)
         latency_ms = int((time.time() - start_time) * 1000)
 
         print(result.stdout)
@@ -330,6 +491,8 @@ def main():
             "argv":       argv,
             "exit_code":  result.returncode,
             "latency_ms": latency_ms,
+            "timeout_seconds": provider_timeout,
+            "timed_out": result.returncode == 124,
         }
         with open(record_path, "w") as fh:
             json.dump(record, fh, indent=2)
@@ -337,14 +500,15 @@ def main():
         print(f"[ESCALATE] Done in {latency_ms}ms. Record: {record_path}")
 
         # Try fallback CLI on non-zero exit
-        if result.returncode != 0 and fallback_cli and fallback_cli in KNOWN_CLIS:
+        if (
+            result.returncode not in (0, 125)
+            and fallback_cli
+            and fallback_cli in KNOWN_CLIS
+        ):
             print(f"[ESCALATE] Primary CLI exited {result.returncode}. Trying fallback: {fallback_cli}.")
             fallback_argv = build_argv(fallback_cli, prompt_text)
-            fb_result = subprocess.run(
-                fallback_argv,
-                capture_output=True,
-                text=True,
-                env=delegation_env,
+            fb_result = run_provider(
+                fallback_argv, delegation_env, provider_timeout
             )
             print(fb_result.stdout)
             if fb_result.stderr:

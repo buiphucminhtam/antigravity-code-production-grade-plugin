@@ -34,7 +34,6 @@ cat .forgewright/project-profile.json
 find .agents/ -name "*design_dna*"
 ```
 ```
-.agents/workflows/design_dna.json
 ```
 
 ### Step 2: Implement a responsive, theme-aligned visual card using Design DNA variables

@@ -129,7 +129,8 @@ def check_tables(content):
             if not in_table:
                 in_table = True
                 table_lines = []
-                is_ground_table = "solve step 2: ground" in current_section
+                # Match both canonical slots and worked-example Ground headings.
+                is_ground_table = bool(re.search(r"\bground\b", current_section))
             table_lines.append((line_num, line))
         else:
             if in_table:
@@ -188,6 +189,12 @@ def validate_file(filepath):
             f"Found nonexistent workspace repo paths: {', '.join(path_matches)}"
         )
 
+    legacy_path_matches = re.findall(r"\.agents/workflows(?:/\S*)?", content)
+    if legacy_path_matches:
+        errors.append(
+            f"Found guaranteed-absent legacy workflow paths: {', '.join(legacy_path_matches)}"
+        )
+
     # 6. Fake success transcripts check
     fake_pattern = re.compile(
         r"\[(?:SUCCESS|INFO|PERF|VRT|ERROR|WARNING|OFFLOAD SUCCESS|OFFLOAD|MOTION|PLAYWRIGHT)\]"
@@ -196,6 +203,15 @@ def validate_file(filepath):
     if fake_matches:
         errors.append(
             f"Found fake success transcript identifiers: {', '.join(set(fake_matches))}"
+        )
+
+    static_verdict_pattern = re.compile(
+        r"^(?:EXIT CODE:\s*0|VERDICT:\s*PASS)\s*$", re.MULTILINE
+    )
+    static_verdicts = static_verdict_pattern.findall(stripped_text)
+    if static_verdicts:
+        errors.append(
+            "Found static verification verdicts; LITE overlays must instruct the agent to run checks instead of embedding PASS evidence."
         )
 
     # 7. Malformed tables & ground tables check
