@@ -5,10 +5,11 @@ import requests
 import json
 import yaml
 
-TOKEN = "8367193476:AAGHAetVy_ypiqi56lVqAGrZKzuHbzpENLw"
-API_URL = f"https://api.telegram.org/bot{TOKEN}"
+TOKEN = os.environ.get("FORGEWRIGHT_TELEGRAM_BOT_TOKEN", "").strip()
+API_URL = f"https://api.telegram.org/bot{TOKEN}" if TOKEN else ""
 LAST_UPDATE_ID_FILE = "/root/state/telegram_last_update_id.txt"
-MINIMAX_KEY = "sk-cp-2vP0SZLSFnl_sbVSpxX2S213n39WcIWf4Lo0rkJyxRsrq4JcnoRplWIM4nPQQJ_tPmyn1dhY2ZB9ApwYY3QnxBJlTNPV6WwT3rscQsUxYlEI8oFNoKH0b00"
+MINIMAX_KEY = os.environ.get("FORGEWRIGHT_MINIMAX_API_KEY", "").strip()
+ADMIN_SECRET = os.environ.get("FORGEWRIGHT_ADMIN_SECRET", "").strip()
 
 
 def get_last_update_id():
@@ -108,6 +109,11 @@ Chỉ trả về MỘT FILE JSON duy nhất.
     "reply": "Câu trả lời gửi cho Sếp."
 }}
 """
+    if not MINIMAX_KEY:
+        return {
+            "intent": "chat",
+            "reply": "LLM coordinator is not configured (FORGEWRIGHT_MINIMAX_API_KEY).",
+        }
     headers = {
         "Authorization": f"Bearer {MINIMAX_KEY}",
         "Content-Type": "application/json",
@@ -135,6 +141,8 @@ Chỉ trả về MỘT FILE JSON duy nhất.
 
 
 def main():
+    if not TOKEN:
+        raise SystemExit("FORGEWRIGHT_TELEGRAM_BOT_TOKEN is required")
     print("Telegram Conversational Listener Started...", flush=True)
     while True:
         try:
@@ -178,7 +186,7 @@ def main():
                                 or "tiểu mơ" in pid.replace("-", " ")
                                 or "forgewright" in pid
                             ):
-                                if "157932486Mt" not in text:
+                                if not ADMIN_SECRET or ADMIN_SECRET not in text:
                                     send_message(
                                         chat_id,
                                         "⚠️ LỖI BẢO MẬT: Nhận dạng yêu cầu can thiệp Lõi Hệ Thống. Yêu cầu nhập đúng Mật khẩu Quản trị (Admin) trong chỉ thị!",
