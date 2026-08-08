@@ -42,10 +42,12 @@ __pycache__/
 antigravity/planning/
 
 # Local sensitive configuration and credentials
-.tieu-mo-config.md
 scripts/cf-dns-add.sh
 scripts/cf-dns-remove.sh
 .next/
+
+# Local scratch exports must never become product source.
+_local_tmp_edits/
 
 # Excel/spreadsheet files (may contain sensitive data)
 *.xlsx

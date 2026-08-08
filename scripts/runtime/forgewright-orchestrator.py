@@ -20,7 +20,7 @@ _REPO_ROOT = str(Path(__file__).resolve().parents[2])
 
 # Provider / model are read exclusively from env vars so that the harness
 # controls them without needing to hard-code any model name in this file.
-_PROVIDER = os.environ.get("FORGEWRIGHT_PROVIDER", "OpenClaw")
+_PROVIDER = os.environ.get("FORGEWRIGHT_PROVIDER", "runtime")
 
 
 def _first_nonempty(*values: str | None) -> str:
@@ -375,7 +375,7 @@ class ForgewrightAgent:
                 }
             )
 
-        # Extract Project Context to give Tieu Mo better background
+        # Extract project context for the agent runtime.
         project_context = ""
         readme_path = os.path.join(self.code_dir, "README.md")
         profile_path = os.path.join(
@@ -557,11 +557,11 @@ class ForgewrightAgent:
 - Workspace: '{self.code_dir}'
 
 Nhiệm vụ từ Sếp: {task}
-Bắt đầu bằng việc viết scratchpad UNDERSTAND theo SOLVE.md.
+Áp dụng SOLVE.md theo effort class phù hợp; không xuất scratchpad hoặc chain-of-thought.
 """
         else:
             system_prompt = f"""
-Bạn là Tiểu Mơ - Siêu Trí Tuệ Forgewright (Level 4 Agent Executor).
+Bạn là Forgewright Agent Executor.
 Dự án bạn đang làm việc: '{self.project_id}'
 Thư mục mã nguồn cục bộ: '{self.code_dir}'
 Thư mục Database GitNexus của dự án (Isolate Data): '{gitnexus_db_path}'
