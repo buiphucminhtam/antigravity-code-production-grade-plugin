@@ -1,48 +1,52 @@
 ---
-description: Show Forgewright pipeline reference, available modes, and skill list
+description: Show the canonical Forgewright pipeline, effort classes, modes, and routing rules
 ---
 
 # Forgewright Pipeline Reference
 
-## Pipeline Phases
+Canonical pipeline:
 
-```
-DEFINE → BUILD → HARDEN → SHIP → SUSTAIN
-```
+`INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN`
 
-| Phase | Tasks | Skills |
-|-------|-------|--------|
-| **DEFINE** | T1: Requirements, T1.5: UI Design, T2: Architecture | PM, UI Designer, Architect |
-| **BUILD** | T3a: Backend, T3b: Frontend, T3c: Mobile, T4: Containers | SW Engineer, FE Engineer, Mobile Engineer, DevOps |
-| **HARDEN** | T5: Tests, T6a: Security, T6b: Review, T8: Fixes | QA, Security, Code Reviewer |
-| **SHIP** | T7: IaC + CI/CD, T9: SRE | DevOps, SRE |
-| **SUSTAIN** | T10: Data/AI, T11: Docs, T12: Custom Skills, T13: Learning | Data Scientist, Tech Writer, Skill Maker |
+Source of truth: `product-manifest.json` (phase inventory), `skills/_shared/protocols/pipeline.md` (phase semantics), and `kernel/ENTRY.md` / `kernel/SOLVE.md` / `kernel/VERIFY.md` (turn-level enforcement).
 
-## Execution Modes
+## Execution principle
 
-| Mode | Trigger | Skills Used |
-|------|---------|------------|
-| Full Build | "build a SaaS", "production grade", greenfield | All 17 skills |
-| Feature | "add [feature]", "new endpoint" | PM → Architect → BE/FE → QA |
-| Harden | "audit", "secure", "before launch" | Security + QA + Code Review |
-| Ship | "deploy", "CI/CD", "terraform" | DevOps → SRE |
-| Test | "write tests", "test coverage" | QA only |
-| Review | "review my code", "code quality" | Code Reviewer only |
-| Architect | "design architecture", "API design" | Solution Architect only |
-| Document | "write docs", "API docs" | Technical Writer only |
-| Explore | "help me think", "explain" | Polymath only |
-| Optimize | "performance", "optimize" | SRE + Code Reviewer |
-| Design | "design UI", "wireframes" | UI Designer only |
-| Mobile | "mobile app", "React Native" | Mobile Engineer |
+Do not run every phase as a mandatory work package. Choose the smallest flow that satisfies acceptance and risk:
+- `QUICK`: local/reversible/low-risk → mini-plan + focused verifier; compress phases.
+- `STANDARD`: bounded normal work → targeted implementation/tests/review.
+- `DEEP`: security/public contract/schema/concurrency/irreversible/release-critical/high-blast work → stronger evidence + independent review/rollback when relevant.
 
-## How to Invoke
+All domain roles are senior by judgment/ownership/evidence. `scout`, `builder`, `expert` are routing capability tiers, not seniority tiers.
 
-Just describe what you want in natural language. The orchestrator classifies automatically.
+## Common mode routing
 
-Examples:
-- "Build a production-grade SaaS for multi-vendor e-commerce"
-- "Add user authentication with Google OAuth"
-- "Review my code for security issues"
-- "Write Playwright tests for my login flow"
-- "Design a UI system for a fintech dashboard"
-- "Help me think about building a restaurant management platform"
+| Mode | Typical skill path |
+|---|---|
+| Full Build | PM/BA → UI/Architect as needed → implementation specialists → QA/Security/Review → DevOps/SRE when shipping |
+| Feature | PM only if scope is ambiguous/material → Architect only for durable contract choices → relevant engineer → QA/review proportional to risk |
+| Debug | Debugger → relevant engineer → focused regression verification |
+| Harden | Security + QA + Code Reviewer as applicable |
+| Ship | DevOps/Build Release → SRE when operational reliability is in scope |
+| Test | QA Engineer |
+| Review | Code Reviewer (+ Security for security-sensitive scope) |
+| Architect | Solution Architect |
+| Document | Technical Writer |
+| Explore / Research | Polymath / Research specialist as appropriate |
+| Optimize | Performance specialist only after target/measurement/constraint is established |
+| Design | UI/Interaction/Art specialists as applicable |
+| Mobile / Game / XR / AI | Relevant domain specialists; add other roles only when acceptance/risk requires them |
+
+The full 24-mode inventory is in `docs/mode-reference.md`.
+
+## Planning gate
+
+`QUICK` uses `ACTION | TARGET | CHECK` without numeric scoring. `STANDARD`/`DEEP` use the complexity-scaled threshold in `skills/_shared/protocols/plan-quality-loop.md`. Never force a universal 9/10 score or research gate.
+
+## Grounding
+
+Current workspace/runtime evidence outranks prose, memory, examples, and templates for project facts. Never pin provider/model names in skill frontmatter; runtime routing follows `skills/_shared/protocols/model-tier.md`.
+
+## How to invoke
+
+Describe the desired outcome naturally. The orchestrator should infer the smallest adequate route, surface only material ambiguity/risk, execute, verify, and stop when acceptance is met.

@@ -99,18 +99,23 @@ class TestLesson3VerificationStrength:
         assert len(rules) >= 7, f"VERIFY must have at least 7 rules, found {len(rules)}"
 
 
-# --- Lesson 4: Tests FIRST ---
-class TestLesson4TestsFirst:
-    def test_tests_first_keyword(self, selfcheck_content):
+# --- Lesson 4: Risk-fit testing instead of universal TDD ceremony ---
+class TestLesson4TestingFit:
+    def test_test_first_is_preferred_when_regression_risk_is_material(
+        self, selfcheck_content
+    ):
         assert (
-            "FIRST"
-            in selfcheck_content.split("Write Tests")[0].split("\n")[-1]
-            + selfcheck_content.split("Write Tests")[1].split("\n")[0]
-        ), "Self-check must emphasize tests FIRST"
+            "Prefer test-first for bugs, public contracts, and non-trivial behavior"
+            in selfcheck_content
+        )
 
-    def test_tests_before_implementation_rationale(self, selfcheck_content):
-        assert "BEFORE implementation" in selfcheck_content, (
-            "Self-check must explain tests come BEFORE implementation"
+    def test_quick_work_can_use_existing_deterministic_verifier(
+        self, selfcheck_content
+    ):
+        assert "For clear reversible `QUICK` work" in selfcheck_content
+        assert (
+            "existing deterministic lint/typecheck/build/behavior check"
+            in selfcheck_content
         )
 
 

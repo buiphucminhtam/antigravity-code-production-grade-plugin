@@ -268,39 +268,15 @@ Track skill performance over time:
 - Avg quality < 70%: Update skill guidance
 - Avg duration > 60 min: Optimize skill
 
-### Test Pyramid Implementation
+### Test Portfolio Guidance
 
-```
-                    ▲
-                   /█\      E2E: 5-10 tests
-                  / █ \     - Critical user flows
-                 /  █  \   - Login, purchase, core loop
-                /────█────\
-               /     █     \  Integration: 15-20 tests
-              /      █      \ - Service interactions
-             /───────█────────\ - Database operations
-            /        █         \ Unit: 50-100 tests
-           /         █          \ - Pure functions
-          /──────────█───────────\ - Formula calculations
-```
+Use more low-cost deterministic tests where branching logic exists, integration tests at material boundaries, and a small set of E2E tests for release-critical journeys. **Counts and coverage percentages come from risk and acceptance criteria, not fixed quotas.**
 
-**Unit test coverage targets:**
-- Business logic: 90%
-- Utility functions: 95%
-- State machines: 85%
-- Formatters/validators: 100%
+- Unit/property tests: pure logic, formulas, parsers, state machines, edge cases.
+- Integration tests: persistence, messaging, SDK/API boundaries, scene/service interactions.
+- E2E: only the user journeys whose failure would materially block release or revenue/core use.
 
-**Integration test coverage:**
-- API endpoints: 80%
-- Database operations: 70%
-- Message queues: 60%
-- External services (mocked): 90%
-
-**E2E test coverage:**
-- Critical paths: 100%
-- Happy path: 100%
-- Error recovery: 50%
-- Edge cases: 30%
+Coverage is diagnostic telemetry. Prefer meaningful branch/behavior coverage over chasing a universal percentage. Raise rigor for security, billing, destructive data, public contracts, concurrency, and historically fragile code.
 
 ### Continuous Integration Template
 
@@ -448,101 +424,7 @@ When transitioning between sessions:
 
 ### Skill Catalog
 
-Complete list of 80 skills organized by category:
-
-**Orchestration & Meta:**
-1. Orchestrator (production-grade)
-2. Polymath
-3. Parallel Dispatch
-4. Memory Manager
-5. Skill Maker
-6. MCP Generator
-7. Token Tracker
-8. Instinct System
-9. Strategic Compaction
-10. Hook Expert (generated/hook-expert)
-
-**Engineering:**
-11. Business Analyst
-12. Product Manager
-13. Solution Architect
-14. Software Engineer
-15. Software Engineer (Go)
-16. Software Engineer (Python)
-17. Software Engineer (Rust)
-18. Frontend Engineer
-19. Fullstack Engineer
-20. QA Engineer
-21. Security Engineer
-22. Code Reviewer
-23. Code Reviewer (Go)
-24. Code Reviewer (Python)
-25. Code Reviewer (Rust)
-26. Code Quality Engineer
-27. DevOps
-28. SRE
-29. Build & Release Engineer
-30. Data Scientist
-31. Technical Writer
-32. UI Designer
-33. Interaction Designer
-34. Art Director
-35. Vision Review
-36. Mobile Engineer
-37. Mobile Tester
-38. API Designer
-39. Database Engineer
-40. Debugger
-41. Prompt Engineer
-42. Prompt Optimizer
-43. AI Engineer
-44. Accessibility Engineer
-45. Performance Engineer
-46. UX Researcher
-47. Data Engineer
-48. XLSX Engineer
-49. Project Manager
-50. Eval Engineer
-
-**Game Development:**
-51. Game Designer
-52. Game Engineer
-53. AI Behavior Engineer
-54. Animation Engineer
-55. Game Accessibility Engineer
-56. LiveOps Engineer
-57. Unity Engineer
-58. Unity MCP
-59. Unreal Engineer
-60. Godot Engineer
-61. Godot Multiplayer
-62. Roblox Engineer
-63. Phaser 3 Engineer
-64. Three.js Engineer
-65. Level Designer
-66. Narrative Designer
-67. Technical Artist
-68. Game Audio Engineer
-69. Game Asset & VFX
-70. Unity Shader Artist
-71. Unity Multiplayer
-72. Unreal Technical Artist
-73. Unreal Multiplayer
-74. XR Engineer
-
-**Growth & Marketing:**
-75. Growth Marketer
-76. Conversion Optimizer
-
-**Testing:**
-77. Autonomous Testing
-
-**Data Acquisition:**
-78. Web Scraper
-79. NotebookLM Researcher
-
-**Workflow:**
-80. Goal-Driven
+Resolve the live skill inventory from `product-manifest.json`, `skills-registry.yaml`, and `kernel/INDEX.md`. Do not duplicate a numbered skill list here: a stale catalog can cause weak models to route to removed/renamed roles or invent missing capabilities.
 
 ### Session Lifecycle Hooks
 

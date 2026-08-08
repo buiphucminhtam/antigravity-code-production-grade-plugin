@@ -16,14 +16,17 @@ superseded_by: null
 <!-- source: skills/_shared/protocols/plan-quality-loop.md -->
 <!-- This is the single source of truth for the Plan Quality Loop -->
 
-**⚠️ MANDATORY: Plan Quality Loop with Research Gate**
+**MANDATORY: Right-size planning before execution.** Use the effort class from the Senior Execution Contract / kernel.
 
-Before ANY skill does ANY work:
-1. **PLAN** — Create a plan with 9 criteria
-2. **SCORE** — Score against rubric (0-10 each, mode-specific weights)
-3. **META-EVALUATE** — Check threshold (complexity-scaled, see below)
-4. **IMPROVE** (if below threshold) — Research → Improve skill → Re-plan
-5. **EXECUTE** — Only after passing threshold
+### `QUICK` fast path
+For clear, reversible, low-risk work, use a three-field mini-plan: `ACTION | TARGET | CHECK`. Do not numeric-score the plan or trigger research merely to improve a score. Escalate to the full loop if grounding reveals a HARD signal or materially wider blast radius.
+
+### `STANDARD` / `DEEP` loop
+1. **PLAN** — Create a plan against the rubric below
+2. **SCORE** — Score against the applicable mode-specific threshold
+3. **META-EVALUATE** — Check the complexity-scaled threshold
+4. **IMPROVE** (if materially below threshold) — close evidence/constraint gaps, research only when needed, then re-plan
+5. **EXECUTE** — Only after the applicable threshold passes
 
 ## 10-Criteria Rubric
 
@@ -38,11 +41,11 @@ Before ANY skill does ANY work:
 | **Testability** | 1.0 | Plan can be verified with concrete criteria |
 | **Impact Assessment** | 1.0 | Plan considers downstream effects |
 | **Evidence Verification** | 1.0 | Plan lists assumptions and details how they will be verified (Evidence-First) |
-| **Confidence Check** | 1.0 | Plan specifies exactly how 99% empirical confidence will be proven (or how UI visual gate will be triggered) |
+| **Verification Fit** | 1.0 | Plan chooses deterministic evidence proportional to risk and states any residual uncertainty honestly |
 
 ## Complexity-Scaled Thresholds (P1-1)
 
-**Pass threshold adapts to task complexity — simple tasks don't need Full Build rigor.**
+**Pass threshold adapts to task complexity — simple tasks don't need Full Build rigor. `QUICK` work uses the fast path above and skips numeric scoring.**
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -79,7 +82,7 @@ Before ANY skill does ANY work:
 | Testability | **1.5** | 1.0 | 1.0 | 0.3 |
 | Impact Assessment | **1.5** | 1.0 | 0.8 | 0.3 |
 | Evidence Verification | 1.0 | 1.0 | 1.0 | 0.5 |
-| Confidence Check | 1.0 | 1.2 | 1.2 | 0.5 |
+| Verification Fit | 1.0 | 1.2 | 1.2 | 0.5 |
 
 **Calculation example (Review mode):**
 ```
@@ -137,52 +140,19 @@ Final score:  76.5 / 8.6 = 8.89 → check against Review threshold (≥ 7.0) →
 | 7/10 | "Assumption: API uses REST" — stated but not verified |
 | 9/10 | "Assumption: API uses REST → VERIFY by reading `routes.ts`. Assumption: DB supports JSON columns → VERIFY by checking PostgreSQL version ≥ 9.4" |
 
-## Enhanced Research Flow
+## Research Flow
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│ RESEARCH GATE (when score < threshold) │
-├─────────────────────────────────────────────────────────────────────┤
-│ │
-│ 0. CHECK NotebookLM availability: │
-│ nlm --version 2>/dev/null || echo "NOT_AVAILABLE" │
-│ └─ If NOT_AVAILABLE → SKIP to Step 2 (Web Search fallback) │
-│ │
-│ 1. TRY NotebookLM CLI (if available): │
-│ nlm notebook create "[Project] - [Skill] - [Topic]" │
-│ nlm research start "[topic]" --mode deep │
-│ │
-│ 2. FALLBACK to Web Search (always available): │
-│ WebSearch: "best practices [topic]" │
-│ WebSearch: "[framework] [pattern] implementation" │
-│ │
-│ 3. SYNTHESIZE: Extract 1-3 actionable insights │
-│ ✓ "Auth pattern: JWT + refresh token rotation" │
-│ ✗ "Found 15 articles about auth" │
-│ │
-│ 4. UPDATE session tracker: │
-│ bash scripts/forgewright-session-tracker.sh plan <score> │
-│ bash scripts/forgewright-session-tracker.sh check │
-│ └─ If ≥2 consecutive failures → Research Gate MANDATORY │
-│ │
-│ 5. RE-PLAN with new insights │
-│ │
-└─────────────────────────────────────────────────────────────────────┘
-```
+Research is for a **material knowledge/evidence gap**, not for cosmetic score inflation. A `STANDARD` / `DEEP` plan below threshold should first identify *why* it is weak. If current workspace/project evidence already answers the issue, improve the plan directly without browsing.
 
-## Session Tracking
+Open `research-gate.md` only when an unknown fact can change the next decision. Use the cheapest authoritative source first; NotebookLM or web search are optional tools, not mandatory stages.
 
-- Use `scripts/forgewright-session-tracker.sh` to track consecutive failures
-- Check: `bash scripts/forgewright-session-tracker.sh check`
-- Record: `bash scripts/forgewright-session-tracker.sh plan <score>`
+Session tracking may record actual `STANDARD` / `DEEP` plan scores for telemetry, but an attempt counter does not itself mandate research or framework mutation. `QUICK` work should not be numerically scored solely for tracking.
 
-## ⚠️ BA Scope Exception
+## BA / Clarification Boundary
 
-- If plan requires Business Analyst scope elicitation (new project, unclear requirements), ASK clarifying questions via BA skill
-- This is NOT blocking — this IS the Forgewright workflow for new projects
-- Continue Plan → Score loop after BA scope is defined
+Route to BA or ask a user question only when unresolved requirements can materially change the product contract, scope/cost, safety, irreversible data, public behavior, or expensive architecture direction. Do not force elicitation merely because a numeric completeness score is low.
 
-Max iterations per mode (see threshold table above). No skill may skip this.
+Max iterations per mode apply to `STANDARD` / `DEEP` work (see threshold table above). `QUICK` work must still ground and verify, but uses the fast path instead of the numeric loop.
 
 ---
 

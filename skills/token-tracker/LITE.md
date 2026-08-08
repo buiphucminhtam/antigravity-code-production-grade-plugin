@@ -26,7 +26,7 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Disabled tracking**: Running high-overhead autonomous agent tasks without running `forge token on` first, rendering API spend completely invisible.
 - **Missing or invalid budget schema**: Forgetting to define or validate `.forgewright/budget.yaml`, causing budget alerts to fail silently.
 - **Loading raw log dumps directly**: Appending raw, heavy JSONL logs into the active chat session instead of offloading summaries, resulting in immediate context window bloat.
-- **Ignoring caching opportunities**: Overusing premium reasoning routes for routine, low-risk steps instead of leveraging context caching thresholds and Gemini 3.5 Flash routing.
+- **Ignoring routing/caching evidence**: Using expensive/high-capability routes for routine low-risk steps without checking current runtime tiers, caching support, or measured benefit.
 - **Non-compliant log reports**: Writing local token tracking reports under `docs/` with camelCase or spaces instead of strictly lowercase kebab-case.
 
 ### Step 1: Ensure local token tracking is active

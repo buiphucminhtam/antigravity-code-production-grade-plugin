@@ -121,7 +121,7 @@ ELSE:
 notify_user:
   "Forgewright has 5 power levels. Choose based on how much capability you need:
 
-  ⚡ Basic       — 80 skills, full pipeline (Node.js only)
+  ⚡ Basic       — manifest-driven skill registry + proportional pipeline (Node.js only)
   ⚡⚡ Smart     — + GitNexus blast-radius analysis (Node.js only)
   ⚡⚡⚡ Persistent — + Local memory with ChromaDB (Node.js + Python 3)
   ⚡⚡⚡⚡ Research  — + NotebookLM grounded research (optional)
@@ -315,11 +315,12 @@ Run AFTER session context is loaded, AFTER chat-interpreter (Step -1), BEFORE an
    mkdir -p .forgewright/subagent-context/
    ```
 
-2. **Read chat-interpreter output:**
+2. **Read chat-interpreter output when present:**
    ```
    Read .forgewright/subagent-context/INTERPRETED_REQUEST.md
-   → This is the authoritative source of user intent
-   → All skills use this instead of the raw chat message
+   → Treat it as a bounded derived handoff/cache.
+   → The latest user instruction remains authoritative for intent; current workspace/runtime evidence remains authoritative for project state.
+   → If the cache conflicts with either, re-interpret and refresh it before delegating.
    ```
 
 3. **Write PIPELINE_SUMMARY.md** (refresh for each new phase):

@@ -1,82 +1,66 @@
 ---
 id: research-gate
 title: Research Gate Protocol
-summary: Core protocol for research gate.
+summary: Evidence-driven research only when a material knowledge gap blocks a correct decision or recovery.
 status: active
-version: 1.0.0
+version: 2.0.0
 owners: [core]
 triggers: []
 used_by: [all]
-related: []
+related: [plan-quality-loop, senior-execution-contract]
 supersedes: []
 superseded_by: null
 ---
 # Research Gate Protocol
 
 <!-- source: skills/_shared/protocols/research-gate.md -->
-<!-- This is the single source of truth for the Research Gate flow -->
 
-When a plan scores below 9.0, the Research Gate activates to improve the plan quality.
+Research is a tool for closing a **material knowledge or evidence gap**. It is not a ritual for increasing a numeric score.
 
-## Research Gate Flow
+## Trigger
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│ RESEARCH GATE │
-├─────────────────────────────────────────────────────────────────────┤
-│ │
-│ 0. CHECK NotebookLM availability: │
-│ nlm --version 2>/dev/null || echo "NOT_AVAILABLE" │
-│ └─ If NOT_AVAILABLE → SKIP to Step 2 (Web Search fallback) │
-│ │
-│ 1. TRY NotebookLM CLI (if available): │
-│ nlm notebook create "[Project] - [Skill] - [Topic]" │
-│ nlm research start "[topic]" --mode deep │
-│ │
-│ 2. FALLBACK to Web Search (always available): │
-│ WebSearch: "best practices [topic]" │
-│ WebSearch: "[framework] [pattern] implementation" │
-│ │
-│ 3. SYNTHESIZE: Extract 1-3 actionable insights │
-│ ✓ "Auth pattern: JWT + refresh token rotation" │
-│ ✗ "Found 15 articles about auth" │
-│ │
-│ 4. UPDATE session tracker: │
-│ bash scripts/forgewright-session-tracker.sh plan <score> │
-│ bash scripts/forgewright-session-tracker.sh check │
-│ └─ If ≥2 consecutive failures → Research Gate MANDATORY │
-│ │
-│ 5. RE-PLAN with new insights, then re-score │
-│ │
-└─────────────────────────────────────────────────────────────────────┘
-```
+Open the Research Gate when at least one is true:
+- a `STANDARD` / `DEEP` plan is below its applicable threshold **because a material fact/pattern is unknown**;
+- the same execution step failed twice and the evidence points to an unknown API/tool/platform behavior;
+- the task depends on current, niche, security-sensitive, compatibility, or external facts that cannot be established from the workspace;
+- an expert disagreement cannot be resolved from current project evidence.
 
-## Research Gate Triggers
+Do **not** trigger research merely because:
+- a `QUICK` task has not been numerically scored;
+- a template says “best practices” might exist;
+- the current verified project facts are already sufficient to act;
+- extra research would only optimize an already acceptable solution.
 
-| Trigger | Condition | Action |
-|---------|-----------|--------|
-| **Plan Score** | Score < 9.0 | Activate Research Gate |
-| **Consecutive Failures** | ≥ 2 failures | Force Research Gate |
-| **Unknown Topics** | No prior knowledge | Activate Research Gate |
+## Source Order
 
-## Research Synthesis Guidelines
+Use the cheapest authoritative evidence first:
+1. current workspace/runtime/config/tests/logs;
+2. official project/framework/API documentation or primary technical sources;
+3. verified external research/search when the answer is genuinely external or current;
+4. secondary sources only when primary sources do not answer the question.
 
-**GOOD Synthesis:**
-- "JWT + refresh token rotation is the recommended auth pattern for SPAs"
-- "React Server Components reduce client-side JS by 30-50%"
+NotebookLM or another research tool is optional, never a prerequisite. Never invent availability.
 
-**BAD Synthesis:**
-- "Found 15 articles about auth"
-- "Many options exist for state management"
+## Flow
 
-## After Research
+1. State the exact unknown in one sentence.
+2. State what decision would change based on the answer.
+3. Gather the minimum evidence needed from the source order above.
+4. Synthesize 1–3 actionable findings and cite/store the evidence location.
+5. Re-plan or retry only the affected work.
+6. Re-run the relevant deterministic check.
+7. If the same step is still unresolved after two failed attempts, follow the kernel Stuck/Escalation rule instead of looping.
 
-1. **Re-plan** with synthesized insights
-2. **Re-score** against 9-criteria rubric
-3. **If still < 9.0**, iterate (max 3 times)
-4. **If still failing**, escalate to user with findings
+## Learning Boundary
 
----
+Store project-specific lessons in project-local state such as `.forgewright/plan-lessons.md`, decision logs, or handoff state. **Do not mutate shared Forgewright `SKILL.md` or protocol files during an unrelated delivery task.** Framework self-improvement is a separate Forgewright-development task and must pass its own tests/review.
 
-*Source: skills/_shared/protocols/research-gate.md*
-*Synced to: AGENTS.md, CLAUDE.md*
+## Output
+
+A useful research gate produces:
+- `UNKNOWN`: the material question;
+- `EVIDENCE`: what was verified and where;
+- `DECISION`: what changed (or “no change”);
+- `CHECK`: the next deterministic verifier.
+
+If research does not change a decision, stop researching and execute the already-supported plan.

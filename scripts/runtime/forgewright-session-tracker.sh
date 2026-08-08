@@ -1,6 +1,6 @@
 #!/bin/bash
 # forgewright-session-tracker.sh
-# Tracks session quality and ASIP evolution metrics
+# Tracks session quality and recovery telemetry. Legacy ASIP fields remain for compatibility.
 # Part of Phase 1 - Task 1.4
 
 set -euo pipefail
@@ -195,11 +195,9 @@ with open('$TRACK_FILE', 'w') as f:
             python3 "$PROJECT_DIR/scripts/mem0-v2.py" graph-decay "current-session" "plan-quality" --factor 0.5 2>/dev/null || true
         fi
         
-        # Trigger ASIP on failure
-        if [ -f "$PROJECT_DIR/scripts/forgewright-lesson-migrator.sh" ]; then
-            warn "Triggering ASIP lesson migration..."
-            bash "$PROJECT_DIR/scripts/forgewright-lesson-migrator.sh" migrate
-        fi
+        # A failed plan score is telemetry, not permission to mutate shared skills.
+        warn "Plan needs improvement. Research only if a material knowledge/evidence gap blocks the next decision."
+        warn "Project-local lessons may be recorded; framework skill mutation is disabled by default."
     fi
 }
 
@@ -320,7 +318,7 @@ with open('$TRACK_FILE', 'w') as f:
 }
 
 # ---------------------------------------------------------------------------
-# Check consecutive failures (triggers ASIP)
+# Check consecutive failures (recovery stop signal; no automatic framework evolution)
 # ---------------------------------------------------------------------------
 
 check_asip_trigger() {
@@ -347,28 +345,23 @@ except:
 " 2>/dev/null)
     
     if [ "$consecutive" -ge "$threshold" ]; then
-        warn "ASIP trigger threshold reached: $consecutive consecutive failures"
-        warn "Triggering forced ASIP evolution..."
-        
-        # Trigger lesson migrator
-        if [ -f "$PROJECT_DIR/scripts/forgewright-lesson-migrator.sh" ]; then
-            bash "$PROJECT_DIR/scripts/forgewright-lesson-migrator.sh" migrate
-        fi
-        
-        # Reset consecutive failures after ASIP
+        warn "Recovery threshold reached: $consecutive consecutive failures"
+        warn "STOP repeated attempts. Open Research Gate only if a material unknown blocks the next decision; otherwise escalate with evidence."
+        warn "Automatic lesson migration/framework mutation is disabled."
+
         python3 -c "
 import json
 try:
     with open('$TRACK_FILE') as f:
         data = json.load(f)
-    data['consecutiveFailures'] = 0
-    data['evolutionTriggered'] = True
+    data['recoveryRequired'] = True
+    data['evolutionTriggered'] = False  # legacy field retained; auto-evolution is deprecated
     with open('$TRACK_FILE', 'w') as f:
         json.dump(data, f, indent=2)
 except:
     pass
 " 2>/dev/null || true
-        
+
         return 0
     fi
     
@@ -396,7 +389,8 @@ try:
     print('Sessions tracked:', len(data.get('sessions', [])))
     print('Plan failures:', data.get('planFailures', 0))
     print('Consecutive failures:', data.get('consecutiveFailures', 0))
-    print('Evolution triggered:', data.get('evolutionTriggered', False))
+    print('Recovery required:', data.get('recoveryRequired', False))
+    print('Legacy auto-evolution:', data.get('evolutionTriggered', False))
     
     if data.get('current_session'):
         cs = data['current_session']
@@ -452,7 +446,7 @@ case "${1:-status}" in
         echo "  start <mode> <request>   - Start a new session"
         echo "  plan <score> [threshold|mode] - Record plan score with mode-aware threshold"
         echo "  end [status] [summary]   - End current session"
-        echo "  check                    - Check and trigger ASIP if needed"
+        echo "  check                    - Check consecutive failures and require stop/recovery when threshold is reached"
         echo "  status                   - Show current status"
         echo "  init                     - Initialize tracker"
         exit 1

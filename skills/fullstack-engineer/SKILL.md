@@ -24,11 +24,11 @@ deprecated_aliases:
 
 || Rule | Why It Matters |
 |------|---------------|
-| **TDD Iron Law** | No production code without a failing test first. Delete it. Start over. |
-| **Business logic in services** | Handlers validate + delegate. Services own the logic. Keep it testable. |
-| **Tenant isolation mandatory** | Every query must include tenant_id. Missing it = data breach. |
-| **No auth from scratch** | Use JWKS/OAuth2 middleware. Never parse JWTs with custom code. |
-| **Circuit breakers everywhere** | One slow dependency cascades to all services. Protect yourself. |
+| **Tests match risk** | Prefer test-first for bugs/non-trivial behavior; use the smallest deterministic verifier for low-risk reversible work. |
+| **Match project architecture** | Keep logic testable without inventing layers the product does not need. |
+| **Enforce real tenant boundaries** | Tenant-scoped paths require isolation only when the verified product is multi-tenant. |
+| **Use proven auth primitives** | Follow the project's approved auth middleware/library; never implement token crypto ad hoc. |
+| **Resilience where failure warrants it** | Add timeout/retry/circuit-breaker behavior only where remote failure impact and semantics justify it. |
 
 ## Consolidated Capabilities
 

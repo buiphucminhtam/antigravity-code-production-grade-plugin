@@ -15,19 +15,19 @@ version: 1.0.0
 ## SOLVE Step 3: DECOMPOSE (Eval Engineer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
-1. AUDIT | Validate system prompts, model temperatures, and completion schema constraints | Verify parameters (e.g., Temperature 1.0 on Gemini) conform to API requirements.
+1. AUDIT | Validate prompts, active model/runtime parameters, and completion schema constraints | Verify parameters from current provider/runtime configuration and executable schema checks.
 2. BENCHMARK | Execute automated prompt assertion loops across multiple target model providers | Confirm that output completions pass semantic constraints and structured schema validators.
 3. MEASURE | Analyze model completion latency, token counts, and API spend footprints | Verify model output metrics are logged under ~/.forgewright/usage/ and stay within budget rules.
 
 ## Common Mistakes Checklist
-- **Stripping Thought Signatures**: Removing or ignoring model-specific thought signatures during automated testing, causing unexpected API 400 errors.
+- **Breaking provider-native payloads**: Removing provider-required fields during automated testing without verifying the current runtime contract.
 - **No Validation Schema Assertions**: Trusting model outputs without running programmatic assertions or validation schema constraints, allowing structural hallucinations to slip through.
 - **Parallel Thread API Throttling**: Running intensive, multi-worker prompt validation sweeps without implementing back-off delays, triggering API rate limit blocks.
 - **Non-Compliant File Names**: Storing prompt evaluations, metric boards, or benchmark results under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `docs/04-testing/EvalResults.md` instead of `docs/04-testing/eval-results-report.md`).
 
 ### Step 1: Ground target project evaluation settings
 ```bash
-cat .production-grade.yaml | grep -E "(gemini|thinking)" -A 2
+cat .production-grade.yaml
 cat .forgewright/budget.yaml
 ```
 

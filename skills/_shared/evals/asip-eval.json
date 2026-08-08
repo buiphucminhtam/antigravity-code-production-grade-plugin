@@ -95,7 +95,7 @@
       "name": "Lesson migrator: migrate with no new entries is a no-op",
       "category": "migration",
       "prompt": "Run: bash scripts/forgewright-lesson-migrator.sh migrate",
-      "expected_behavior": "Reports no new lessons to migrate, exits cleanly",
+      "expected_behavior": "Exits cleanly without mutating shared skills; reports that framework mutation is disabled by default",
       "success_criteria": [
         "Output says 'No new plan lessons' or 'No new execution lessons'",
         "Exit code 0",
@@ -139,7 +139,7 @@
       "name": "Session tracker: records plan failure and triggers gate at threshold",
       "category": "tracker",
       "prompt": "Run: bash scripts/forgewright-session-tracker.sh plan 7.5 && bash scripts/forgewright-session-tracker.sh plan 7.0 && bash scripts/forgewright-session-tracker.sh check",
-      "expected_behavior": "After 2 failures (both < 9.0), research gate triggers",
+      "expected_behavior": "After the configured consecutive-failure threshold, repeated attempts stop and recovery is required; research is only conditional on a material unknown",
       "success_criteria": [
         "First plan: failures reset",
         "After second plan: plan_failures increments",

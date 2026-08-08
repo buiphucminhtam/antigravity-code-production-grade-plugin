@@ -33,7 +33,7 @@ else:
     )
 
 
-def test_shadow_runner_produces_attested_gate_accepted_receipt(tmp_path: Path) -> None:
+def test_canary_runner_produces_attested_gate_accepted_receipt(tmp_path: Path) -> None:
     adapter = tmp_path / "adapter.py"
     output = tmp_path / "receipt.json"
     _adapter(adapter)
@@ -46,7 +46,7 @@ def test_shadow_runner_produces_attested_gate_accepted_receipt(tmp_path: Path) -
         [
             sys.executable,
             str(RUNNER),
-            "shadow",
+            "canary",
             "--router-command-json",
             command,
             "--provider-command-json",
@@ -67,7 +67,7 @@ def test_shadow_runner_produces_attested_gate_accepted_receipt(tmp_path: Path) -
     )
     assert result.returncode == 0, result.stderr
     receipt = json.loads(output.read_text(encoding="utf-8"))
-    assert len(receipt["records"]) == 100
+    assert len(receipt["records"]) == 10
     assert "prompt" not in json.dumps(receipt)
     assert "verified-output" not in json.dumps(receipt)
     gate = subprocess.run(
@@ -83,7 +83,7 @@ def test_shadow_runner_produces_attested_gate_accepted_receipt(tmp_path: Path) -
         check=False,
     )
     assert gate.returncode == 0, gate.stderr
-    assert json.loads(gate.stdout)["canary_eligible"] is True
+    assert json.loads(gate.stdout)["canary_passed"] is True
 
 
 def test_runner_is_opt_in_and_fails_closed_on_metadata_drift(tmp_path: Path) -> None:

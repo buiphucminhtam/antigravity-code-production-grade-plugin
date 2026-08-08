@@ -1,299 +1,119 @@
 ---
 id: quality-gate
 title: Universal Quality Gate Protocol
-summary: Core protocol for quality gate.
+summary: Proportional deterministic verification for changed behavior, phase boundaries, merges, and releases.
 status: active
-version: 1.0.0
+version: 2.0.0
 owners: [core]
 triggers: []
 used_by: [all]
-related: []
+related: [plan-quality-loop, verification, senior-execution-contract, research-gate]
 supersedes: []
 superseded_by: null
 ---
 # Universal Quality Gate Protocol
 
-**Applies to ALL modes (sequential AND parallel). Every skill output goes through this validation before the pipeline advances. This replaces ad-hoc validation with a consistent, measurable quality standard.**
+The Quality Gate exists to prove the requested outcome, not to manufacture a scorecard. Every success claim needs evidence, but **gate depth is proportional to effort and risk**.
 
-## When to Run
+## Gate Selection
 
-- **After EACH skill completes** in any mode (Feature, Full Build, Harden, etc.)
-- **After EACH parallel worker merge** (in addition to task-validator checks)
-- **At each strategic gate** (aggregated scorecard)
-- **At pipeline completion** (final quality dashboard)
+| Effort / event | Required verification |
+|---|---|
+| `QUICK` | Focused acceptance check + any safety check directly relevant to the touched surface. No numeric quality score required. |
+| `STANDARD` | Changed-behavior tests/checks, build/lint/typecheck as applicable, regression checks for affected boundaries, normal review. |
+| `DEEP` | Full applicable levels below, independent review, compatibility/security/rollback evidence where relevant. |
+| Parallel merge | Contract/merge validation + affected integration/regression checks. |
+| Release | Release-critical build/test/security/compatibility gates required by the project. |
 
-## Validation Levels
+Read-only discovery, status reporting, handoff formatting, or documentation-only work does not need a pretend build/test score. Verify the facts/artifact that actually changed.
 
-Execute levels in order. Each level has a severity that determines whether to STOP or WARN.
+## Level 0 — Plan Fit (Before Implementation)
 
-### Level 0 — Plan Quality (Critical — blocks implementation)
+Use `plan-quality-loop.md`:
+- `QUICK` → `ACTION | TARGET | CHECK`; no numeric plan score.
+- `STANDARD` / `DEEP` → use the applicable complexity-scaled threshold for the actual mode.
+- A low score is not by itself a reason to browse. Open `research-gate.md` only when the weakness is caused by a material knowledge/evidence gap.
 
-**Runs BEFORE implementation, not after.** See `plan-quality-loop.md` for full protocol.
+If the same planning/execution step fails twice, follow the kernel Stuck/Escalation rule. Do not loop until an arbitrary score rises.
 
-```
-1. Every planning step scores the plan against 9 criteria (completeness, specificity,
-   feasibility, risk awareness, scope control, dependency ordering, testability, impact, evidence verification)
+## Level 1 — Syntax / Build / Static Correctness
 
-2. Score < threshold (default 9.0/10.0) → LEARN + RESEARCH + IMPROVE loop
-   - Identify weak criteria
-   - Research best practices and codebase patterns for weak areas
-   - Log lessons to .forgewright/plan-lessons.md
-   - Re-plan with lessons + research context (max 3 iterations)
+Run only checks supported by the project and relevant to the changed surface, for example:
+- compile/typecheck for compiled/typed code;
+- parser/static validation for configuration/data formats;
+- lint on changed files or the project when that is the established gate;
+- build when the acceptance/release contract depends on a build artifact.
 
-3. Score ≥ threshold → proceed to implementation
-```
+A `QUICK` documentation/text/config edit does not need an unrelated application build merely for ceremony. A release or public-contract change usually does.
 
-**On failure (3 iterations, still below threshold):** Escalate to user with best plan + quality report.
+**Failure:** fix the evidenced cause and re-run the same check. If the same step fails twice, stop repeated attempts and escalate/research according to the kernel.
 
-**Applies to:** ALL skill invocations. Every skill must plan before acting, score the plan, and improve until ≥ threshold. Plan depth scales by skill type (see protocol for details).
+## Level 2 — Regression / Compatibility
 
-### Level 1 — Syntax & Build (Critical — blocks pipeline)
+For brownfield work:
+1. Protect previously passing behavior in the affected area.
+2. Prefer changed/targeted tests first; run the wider suite when blast radius or release policy warrants it.
+3. Check scope with `git diff` / changed-file evidence.
+4. Preserve public contracts unless the user explicitly approved a breaking change and migration path.
 
-```
-1. All new/modified files parse without syntax errors
-   - TypeScript/JavaScript: `npx tsc --noEmit` or `eslint`
-   - Python: `python -m py_compile [files]` or `ruff check`
-   - Go: `go vet ./...`
-   - Rust: `cargo check`
-   - Java: `javac -d /tmp [files]`
-   - C#: `dotnet build` or `csc /target:library /out:/tmp/test.dll [files]`
-   - C++: `g++ -fsyntax-only [files]` or `clang++ -fsyntax-only [files]`
-   - GDScript: `godot --headless --check-only [files]`
-   - Luau: `luau-analyze [files]`
-   - HTML/CSS: `htmlhint [files]` / `stylelint [files]`
+Typical compatibility rules when applicable:
+- REST/OpenAPI: do not silently remove/rename existing endpoints or required response fields;
+- GraphQL: do not silently remove/rename public types/fields or change incompatible field types;
+- Protobuf/gRPC: preserve field numbers/types and RPC compatibility;
+- persistent schemas/data: prove migration and rollback/forward-compatibility as required.
 
-2. Project builds successfully
-   - Detect build command from package.json, Makefile, etc.
-   - Run build → must exit 0
+Greenfield work has no historical regression baseline, but still needs acceptance tests for implemented behavior.
 
-3. No new lint errors introduced
-   - IF lint tool detected in project-profile.json:
-     - Run linter on changed files only
-     - Compare error count with baseline (from project-profile health)
-     - New errors = WARN (don't block, projects may have pre-existing lint issues)
-```
+## Level 3 — Security / Reliability / Project Standards
 
-**On failure:** STOP pipeline. Report exact error. Skill must self-fix (up to 3 retries).
+Always enforce material safety properties on touched surfaces:
+- no real hardcoded credentials/secrets;
+- imports/dependencies resolve;
+- project conventions and protected paths are respected;
+- auth/authorization, billing, destructive data operations, tenancy, concurrency, and other sensitive boundaries receive deeper checks when touched.
 
-### Level 2 — Regression Safety (Critical for Brownfield — blocks pipeline)
+Do not require tenant filters, circuit breakers, retries, idempotency, caches, or other infrastructure unless the verified architecture/failure semantics require them.
 
-```
-1. Existing tests still pass
-   - Read baseline test count from .forgewright/project-profile.json
-   - Run existing test suite
-   - Compare: pass_count >= baseline_pass_count
-   - IF any previously-passing test now fails → REGRESSION DETECTED → STOP
+## Level 4 — Acceptance Traceability
 
-2. Scope boundary check
-   - List files modified by skill (git diff --name-only)
-   - Compare with skill's expected scope:
-     - T3a: services/, libs/
-     - T3b: frontend/
-     - T5: tests/
-     - etc.
-   - Files outside expected scope → WARN + log
+Each material output should map to a current acceptance criterion or explicit maintenance objective.
+- Tests are selected from behavior/risk, not quotas.
+- Documentation is required when the change creates a durable public/operational contract or the user asked for it; it is not mandatory for every local edit.
+- Workspace artifacts/handoffs are created only when another role/session needs them.
 
-3. API contract integrity (REST, GraphQL, gRPC)
-   - REST (OpenAPI/Swagger in `api/` or `openapi.yaml`): Check that existing endpoints are not removed, and response schemas are not broken (new endpoints/fields are OK, deletions/breaking changes → STOP)
-   - GraphQL (`.graphql` or `.gql` schemas): Check that existing types, fields, queries, mutations, or inputs are not removed or renamed, and field types are not changed (new types/fields are OK, removals → STOP)
-   - gRPC (`.proto` files): Enforce protobuf backward compatibility (no changing field numbers, no changing field types, no deleting/renaming existing fields, no removing RPC methods → STOP)
-```
+Unmapped extra work belongs under `Out of scope` / `Later` instead of being silently implemented.
 
-**For greenfield projects:** Level 2 is automatically satisfied (no baseline, no existing tests).
+## Scoring (Optional Telemetry)
 
-**On failure:** STOP pipeline. Skill must revert breaking changes and re-implement.
+A project may compute a 0–100 quality score for dashboards on `STANDARD` / `DEEP` work, but **the score is telemetry, not truth**:
+- hard evidence failures cannot be offset by a high aggregate score;
+- passing acceptance should not trigger make-work merely to raise an already acceptable score;
+- `QUICK` work should not be delayed to produce a scorecard.
 
-### Level 3 — Quality Standards (High — warns, configurable to block)
+If configured, preserve project-specific thresholds in `.production-grade.yaml`; do not assume one universal threshold across all projects/modes.
 
-```
-1. No stubs in production code
-   - grep for: TODO, FIXME, HACK, XXX, "Not implemented", "throw new Error('Not implemented')", "pass  # TODO", "raise NotImplementedError"
-   - Exclude: test files, documentation, comments marked as intentional
-   - Found in production code → WARN (default) or STOP (if strict mode)
+## Recovery
 
-2. No hardcoded secrets
-   - grep for patterns: sk-*, key-*, Bearer *, password=*, SECRET=*
-   - Check for .env values hardcoded in source
-   - Found → STOP (always critical, regardless of mode)
+When a gate fails:
+1. record the exact failing check and evidence;
+2. apply the smallest evidence-supported correction;
+3. re-run the same check;
+4. after two failures on the same step, STOP repeated attempts;
+5. use `research-gate.md` only if a material unknown blocks the next decision; otherwise escalate with options and residual risk.
 
-3. Import resolution
-   - For each new file: verify all imports resolve to real modules
-   - Relative imports → check file exists
-   - Package imports → check in package.json/go.mod/requirements.txt
-   - Unresolvable → WARN
+Never “improve quality” by expanding scope unrelated to the failed acceptance criterion.
 
-4. Convention compliance (brownfield only)
-   - IF .forgewright/code-conventions.md exists:
-     - Check naming convention matches (high-confidence patterns only)
-     - Check file organization matches detected pattern
-     - Deviations → WARN with suggestion
-```
+## UI / Visual Verification
 
-### Level 4 — Acceptance Traceability (Medium — informational)
-
-```
-1. Output maps to requirement
-   - IF BRD exists (.forgewright/product-manager/BRD/):
-     - Check that skill output addresses at least one acceptance criterion
-     - Unmapped output → INFO (logged, not blocking)
-
-2. Test coverage for new code
-   - IF in BUILD phase AND QA has not run yet:
-     - Check if TDD was followed (test files exist alongside implementation)
-     - No test files → WARN: "Implementation without corresponding tests"
-
-3. Documentation exists
-   - Workspace artifacts written to .forgewright/<skill>/
-   - If workspace directory empty → WARN: "No workspace artifacts produced"
-```
-
-## Quality Scoring
-
-After each validation run, compute a quality score (0-100):
-
-```
-Score Calculation:
-  Level 1 (Build):        25 points — all-or-nothing (passes: 25, fails: 0)
-  Level 2 (Regression):   25 points — all-or-nothing (passes: 25, N/A for greenfield: 25)
-  Level 3 (Standards):    30 points — proportional
-    - No stubs:           10 points (found any: 0)
-    - No secrets:         10 points (found any: 0)
-    - Imports resolve:    5 points (proportional to % resolved)
-    - Conventions match:  5 points (proportional to % match, or full if N/A)
-  Level 4 (Traceability): 20 points — proportional
-    - Mapped to req:      10 points (proportional to coverage)
-    - Has tests:          5 points (yes: 5, no: 0)
-    - Has docs:           5 points (yes: 5, no: 0)
-
-Total: sum of all points
-```
-
-### Quality Thresholds
-
-| Score | Grade | Action |
-|-------|-------|--------|
-| 95-100 | A | ✓ Proceed immediately |
-| 90-94 | B | ✓ Proceed with minor warnings logged |
-| 75-89 | C | 🔄 Auto-retry (see Escalation Ladder below) |
-| 60-74 | D | 🔄 Escalate to ASIP research gate |
-| 0-59 | F | ✗ Stop — unacceptable quality, must remediate |
-
-### Escalation Ladder
-
-**Instead of binary pass/fail, quality gate failures trigger progressive escalation:**
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│ QUALITY GATE ESCALATION LADDER                                   │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│ Score 95-100 (A) → ✅ Continue pipeline                         │
-│                                                                  │
-│ Score 90-94  (B) → ⚠️ Log warnings, continue                    │
-│                    Record issues in quality-metrics.json          │
-│                                                                  │
-│ Score 75-89  (C) → 🔄 Auto-retry with focused fixes (1 retry)   │
-│                    1. Identify failing checks                    │
-│                    2. Apply targeted fixes (no scope expansion)  │
-│                    3. Re-run quality gate                        │
-│                    4. If still C → escalate to D behavior        │
-│                                                                  │
-│ Score 60-74  (D) → 🔄 Escalate to ASIP research gate            │
-│                    1. Trigger self-improving-loop.md             │
-│                    2. Research best practices for failing area   │
-│                    3. Re-plan the skill execution                │
-│                    4. If still D after research → escalate to F  │
-│                                                                  │
-│ Score 0-59   (F) → 🛑 Stop — require user decision:             │
-│                    [1] Retry with different approach              │
-│                    [2] Lower threshold (acknowledge tech debt)   │
-│                    [3] Skip quality gate (manual override)       │
-│                    Log override reason in quality-metrics.json   │
-│                                                                  │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-**Rules:**
-- Auto-retry (C) is limited to 1 attempt — no infinite loops
-- ASIP escalation (D) counts toward the session tracker's consecutive failure count
-- User override (F) requires explicit acknowledgment and is logged for audit
-
-**Configurable in `.production-grade.yaml`:**
-```yaml
-quality:
-  minimum_score: 90          # default: pass threshold
-  block_score: 60            # default: stop below this
-  auto_retry_threshold: 75   # default: auto-retry above this
-  strict_mode: false         # if true: Level 3 violations also block
-  skip_regression: false     # if true: skip Level 2 (not recommended)
-```
-
-
-## Quality Scorecard Display
-
-After each skill, display mini-scorecard:
-
-```
-┌─ Quality Gate: T3a Backend ──────────┐
-│ Build:       ✓ Compiles              │
-│ Regression:  ✓ 142/142 tests pass    │
-│ Standards:   ⚠ 1 TODO found         │
-│ Traceability: ✓ Mapped to AC-001-007 │
-│ Score: 92/100 (A)                    │
-└──────────────────────────────────────┘
-```
-
-## Aggregate Scorecard (at Gates)
-
-At each strategic gate, show aggregate quality across all completed tasks:
-
-```
-━━━ Quality Summary (Gate 3) ━━━━━━━━━━━━━━━━━━━━
-Task          Build  Regr.  Standards  Trace   Score
-T3a Backend    ✓      ✓       ⚠         ✓      92
-T3b Frontend   ✓      ✓       ✓         ✓      96
-T5 QA          ✓      ✓       ✓         ✓      100
-T6a Security   ✓      ✓       ✓         ✓      100
-T6b Review     ✓      ✓       ✓         ✓      100
-─────────────────────────────────────────────────
-Overall: 97/100 (A) ████████████████████░
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-## ⚠️ UI/Visual Verification (Gate 3 / UX/UI Specifics)
-
-For any task involving user interfaces, styling, or visual components (HTML/CSS, frontend frameworks, game engine UI):
-1. **Empirical Confidence Cap:** AI can only achieve a maximum of 80% confidence in UI tasks through automated DOM/structural tests (e.g., using `chrome-devtools` or static analysis).
-2. **Mandatory Human-in-the-Loop:** The remaining 19% required to reach the 99% Empirical Confidence threshold MUST come from the User.
-3. **Execution:** The AI MUST present a screenshot, a live component preview, or explicitly ask the User to verify the aesthetics/layout before clearing the UX/UI Quality Gate. AI self-approval for visual aesthetics is strictly prohibited.
-
-## Integration with Existing Protocols
-
-- **task-validator.md:** Quality Gate is a SUPERSET of task-validator. In parallel mode, task-validator runs first (contract compliance), then quality gate runs on merged output.
-- **input-validation.md:** Quality Gate runs AFTER skill execution; input-validation runs BEFORE. They are complementary.
-- **conflict-resolution.md:** Authority boundaries are enforced regardless of quality score. A skill cannot bypass authority by having a high quality score.
+Structural/DOM/snapshot checks can prove layout rules, presence, accessibility, and regressions, but subjective visual quality needs visual evidence. For material UI/art changes:
+- inspect a rendered screenshot/preview/device output when available;
+- use user approval only when subjective preference, an approval gate, or release acceptance genuinely requires it;
+- otherwise report what was structurally/visually verified and any remaining subjective uncertainty without inventing a confidence percentage.
 
 ## Metrics Storage
 
-Write quality metrics to `.forgewright/quality-metrics.json` after each run:
+When quality telemetry is useful, record only measured facts (commands, exit codes, test counts, findings, changed files, timestamps/durations from actual tooling). Never invent duration, coverage, score, or pass evidence.
 
-```json
-{
-  "session_id": "session-20260314-1324",
-  "measurements": [
-    {
-      "task_id": "T3a",
-      "skill": "software-engineer",
-      "measured_at": "ISO-8601",
-      "levels": {
-        "build": { "status": "pass", "points": 25 },
-        "regression": { "status": "pass", "points": 25, "tests_baseline": 142, "tests_current": 142 },
-        "standards": { "status": "warn", "points": 27, "issues": ["1 TODO in services/auth/handler.ts:42"] },
-        "traceability": { "status": "pass", "points": 20 }
-      },
-      "total_score": 97,
-      "grade": "A"
-    }
-  ]
-}
-```
+---
+
+*Acceptance claims still follow `kernel/VERIFY.md`; this protocol defines how much evidence to collect.*

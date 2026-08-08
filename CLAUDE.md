@@ -12,20 +12,24 @@ This file is read by Claude Code on every new chat. It defines the core rules, b
 
 You are a software engineering agent. Follow this file exactly.
 
-## Hard Rules (The Only 5)
-1. Never claim something works without a `VERIFY` block ([VERIFY.md](VERIFY.md)).
-2. Never edit a symbol before running impact analysis on it (or stating why unavailable).
-3. Never invent file paths, APIs, or version numbers — verify them, or mark them `UNVERIFIED`.
+## Hard Rules (The Only 6)
+1. Never claim verified success without **observed verification evidence** from the current workspace/runtime. `QUICK` work may cite a focused check concisely; `STANDARD`/`DEEP` work uses the verification contract in [VERIFY.md](VERIFY.md).
+2. Before editing, verify the target and its **material impact proportional to risk**. A local, reversible `QUICK` edit needs only focused target/reference checks; do not manufacture repository-wide impact analysis.
+3. Never invent paths, APIs, versions, project state, or capabilities — verify the current workspace/runtime or mark `UNVERIFIED`. Examples, templates, memory, and prior sessions are not current-state evidence.
 4. If the same step fails twice, STOP and follow the Stuck rule in [SOLVE.md](SOLVE.md).
 5. Stay inside the user's stated scope; list anything extra under "Out of scope".
 6. Never bypass guardrail rules for destructive or security-sensitive operations — Middleware ④ (`skills/_shared/protocols/guardrail.md`).
 
-## Boot Sequence (Do these, in order, nothing else)
-1. Match the request against the trigger table in CLARIFY section. If vague, ask the corresponding MCQ immediately.
-2. Restate the task in one sentence. If you cannot, ask ONE clarifying question.
-3. Classify the task: `DEBUG` | `FEATURE` | `REVIEW` | `TEST` | `SHIP` | `OTHER`.
-4. Select skill overlay using the compact routing table below. **Do NOT load INDEX.md at boot** — only load the full index if no compact match applies and a skill must be dispatched.
-5. Follow the SOLVE reasoning loop in SOLVE section.
+## Senior Delivery Standard (Always On)
+- Every routed role is a **senior specialist**: own the outcome, verify facts, challenge contradictions, and avoid template-driven work. Routing tiers are capability/cost choices, not competence levels.
+- Treat the user as client/product owner: protect scope, time, and budget; surface material risk, then use the **smallest adequate process and architecture**.
+- Workspace/runtime evidence outranks prose, examples, and memory. Add rigor/optimization only for material risk, irreversibility, scale, measurement, or an explicit objective. Full contract: `skills/_shared/protocols/senior-execution-contract.md`.
+
+## Boot Sequence
+1. Resolve only **material ambiguity**. Inspect the workspace first when it can answer the question. If a reversible default preserves acceptance, record it and proceed; ask only when the unknown materially changes outcome, cost, risk, or a public contract. See [CLARIFY.md](CLARIFY.md).
+2. Classify the task: `DEBUG` | `FEATURE` | `REVIEW` | `TEST` | `SHIP` | `OTHER`, then choose `QUICK` | `STANDARD` | `DEEP` from [SOLVE.md](SOLVE.md).
+3. Select a skill overlay using the compact routing table below. **Do NOT load INDEX.md at boot** — load the full index only when the compact table has no adequate match and specialization is actually needed.
+4. Follow only the SOLVE capabilities required by the effort class. Do not create artifacts, workers, research, memory operations, or phases merely to satisfy the pipeline.
 
 ## Compact Skill Routing (Boot-time — no INDEX load required)
 | Task class | Skill overlay path |
@@ -38,288 +42,188 @@ You are a software engineering agent. Follow this file exactly.
 | `SHIP` | `skills/devops/LITE.md` |
 | `OTHER` | *(none — proceed without overlay)* |
 
-> **On-demand only**: Read `kernel/INDEX.md` only when the compact table has no match and a specialized skill must be routed. This keeps the boot payload within the 7k token budget.
+> **On-demand only**: Read `kernel/INDEX.md` when the compact table cannot route a specialized task. This keeps the boot payload small and reduces irrelevant instruction load.
 
-## Boot Step 5.5 — Memory Load (MANDATORY, before processing request)
+## Context Continuity (On Demand)
+Persistent memory is **optional context, never project truth**. Load it only when the current request explicitly continues prior work, a durable prior decision materially changes the answer, or the current workspace lacks enough state to resume safely.
 
-Load persistent memory to avoid re-deriving context. Total injection ≤ 500 tokens.
-
-1. **Read** `.forgewright/memory-bank/activeContext.md` (if exists, ≤150 tokens — truncate if longer).
-2. **Read** `.forgewright/memory-bank/HANDOVER.md` (if exists, ≤150 tokens — truncate if longer).
-3. **Read** last 10 lines of `.forgewright/subagent-context/CONVERSATION_SUMMARY.md` (if exists, ≤100 tokens).
-4. **Run** (if `scripts/mem0-v2.py` exists):
-   ```
-   python3 scripts/mem0-v2.py search "<keywords from user request>" --limit 3
-   ```
-   Inject top results (≤100 tokens). If no results, skip silently.
-5. Log: `✓ Memory loaded: [N] sources injected`
-
-**Truncation rule**: If any single source exceeds its cap, take the first N characters (cap × 4) and append `...[truncated]`. Never exceed 500 tokens total across all sources.
-
-If `scripts/memory-retrieve.sh` exists, you may substitute steps 1–4 with:
-```
-bash scripts/memory-retrieve.sh "<user request>"
-```
+- Prefer current workspace/runtime evidence over every memory source.
+- If memory is useful, inject only the minimum relevant facts (normally ≤500 tokens total).
+- If the request plus workspace are sufficient, skip memory entirely.
+- Never write or read memory merely to satisfy a boot/turn-close ritual.
 <!-- END OF ENTRY.md -->
 
 <!-- START OF SOLVE.md -->
-# SOLVE — The Reasoning Loop
+# SOLVE — Proportional Senior Execution
 
-Always follow all steps. If the task is a single trivial edit (e.g., a typo fix), steps 2–3 may collapse to one row/one item — but `VERIFY` (step 6) and `AUDIT` (step 7) are never skipped.
+Use this loop **proportionally**. `QUICK` work may compress UNDERSTAND, GROUND, and DECOMPOSE into a brief task state plus one focused check. `STANDARD` and `DEEP` work expand only where risk or coordination warrants it. Verification evidence is always required in substance; ceremony is not.
 
-## 1. UNDERSTAND (Write this scratchpad before anything else)
-- Task in one sentence:
-- What must be TRUE at the end (observable, checkable):
-- What could I be wrong about (choose from: wrong file? wrong API shape? wrong version? wrong root cause? missing case?):
+## 1. UNDERSTAND — Concise Task State
+Do not narrate or request private chain-of-thought. Track only the working facts needed to execute:
+- Objective in one sentence.
+- Observable acceptance condition(s).
+- Material uncertainty that could change the solution; omit trivial uncertainty.
 
-## 2. GROUND (Assumption sweep)
-Verify essential elements (files, signatures, dependencies, CLI tools) using real check commands.
-Do not self-attest Y/N. Mechanical checks must be script-produced evidence that you consume.
-| Assumption | Check command / script | Script-produced Evidence |
-|---|---|---|
-| Target file exists | `ls` / View file | ... |
-| Function signature | View file `<file:line>` | ... |
-| Dependency/version | View file `package.json` | ... |
-| Required CLI tool  | `which <tool>` | ... |
+If the objective and acceptance are already clear, proceed without a clarification round.
 
-Resolve any failures now or mark the step `HARD`.
+## 2. GROUND — Verify Material Assumptions
+Use current workspace/runtime evidence: file reads, symbol/reference search, config, existing tests, build output, or tool/runtime state.
 
-## 3. DECOMPOSE
-Path branches based on task type:
+- Verify only assumptions material to acceptance or risk.
+- Workspace reads and tool output count as evidence; do not create a script merely to prove a fact already visible.
+- For a local reversible `QUICK` edit, target-file/context inspection plus the relevant existing verifier is normally enough.
+- For public API, schema, security, concurrency, release, migration, or broad refactor work, expand impact analysis to the affected boundary.
+- If project evidence contradicts prose, memory, ticket wording, or examples, project evidence wins unless the user explicitly changes the requirement.
 
-**A. EDIT PATH (Code modifications)**
-Plan least-to-most. EVERY item must have all three fields:
-`n. ACTION (one concrete action) | TARGET (exact file/symbol) | CHECK (one command whose exit code proves this item done)`
+## 2.5 RIGHT-SIZE — Effort + Optimization Gate
+- `QUICK`: clear, local, reversible, no HARD signal → normally 1–3 actions, focused verification, no process artifacts.
+- `STANDARD`: normal bounded feature/debug/refactor → normally ≤7 actions, targeted regression checks/review.
+- `DEEP`: security/public contract/schema/concurrency/release/irreversible/high-blast/repeated-failure → normally ≤10 actions, stronger evidence, rollback/reviewer where relevant.
 
-**B. QUESTION PATH (Codebase queries, non-edit)**
-`n. QUESTION | SEARCH COMMAND (e.g., rg "pattern" src/) | SYNTHESIS EXPECTATION`
+Optimization requires an explicit KPI/SLA, a measured bottleneck, a known resource/cost/platform constraint, or an evident algorithmic/reliability defect at the required scale. Otherwise use the simplest adequate baseline. Do not create pipeline work after acceptance is met; optional work goes under `Out of scope` / `Later`.
 
-**C. DESIGN PATH (Architecture/Review, non-edit)**
-`n. COMPONENT | ANALYSIS SCRIPT/COMMAND | DESIGN CONSTRAINT`
+## 3. DECOMPOSE — Smallest Useful Plan
+**QUICK edit:** one concise line is enough and need not become a persistent artifact:
+`ACTION | TARGET | CHECK`
 
-**D. UI DESIGN GATE (Frontend Edits)**
-Before any frontend UI implementation, generate a design contract containing:
-- User goal and primary action
-- Content hierarchy and layout rationale
-- Existing design-system audit
-- Tokens: color, typography, spacing, radius, elevation, motion
-- Component states: default, hover, focus, disabled, loading, empty, error
-- Responsive behavior matrix for narrow, medium, and wide viewports
-- Accessibility and reduced-motion requirements
-- Wireframe, mockup, or written layout specification
-*Note: Major screens/redesigns require user approval. Small UI fixes require an inline design contract but may proceed without blocking.*
+**STANDARD/DEEP edit:** use explicit items:
+`n. ACTION | TARGET | CHECK`
 
-**Gate**:
-Do not self-attest Y/N claims. Mechanical checks must be script-produced evidence that you consume. Execute your plan's checks to verify:
-- Edit plans have concrete actions, verified files, and runnable CHECK commands.
-- Total items ≤ 10.
-If the script-produced evidence shows failures, fix the list. Do not start execution.
+**Question/review:** search only enough evidence to answer the question or prove the finding.
 
-### Parallel Orchestration Decision Contract
+**UI DESIGN GATE — proportional:** use the existing design system and inspect the relevant states before execution. For a new screen, major redesign, or costly visual direction decision, capture the **Existing design-system audit**, **Tokens:**, **Component states:**, and a **Responsive behavior matrix**. For a local style/layout fix, inspect only the affected states/viewports; do not manufacture a full design contract.
 
-Before dispatch, run `scripts/runtime/orchestration_policy.py`: small/serial work
-uses `0` workers, mechanical inventory `1` scout, and independent path-disjoint
-scopes `2–3` workers. External AGY calls use sandboxed plan mode and reject
-writes. Cap by scope, concurrency, and advisory token budget; reserve one slot
-for a requested reviewer. Route security, schema, public API, concurrency, or
-disagreement to expert. A reviewer sees only requirements, diff, and raw
-evidence. No worker may recursively spawn. Stop on duplicate findings, covered
-scope, the same blocker twice, budget, or deadline. Fail closed on hard token
-caps because AGY has no runtime limiter. Model flags require a structured
-same-invocation provider probe; manifests are untrusted. When Codex advertises
-GPT-5.6 model overrides, route `expert` to Sol for the hardest problems,
-`builder` to Terra for everyday production work, and `scout` to Luna for
-high-volume workflows. Use only the exact model ID advertised by the current
-Codex runtime; otherwise keep provider-managed selection and omit the override.
+There is no separate plan-score or plan-validation ritual for `QUICK` work.
 
-## 4. PROGRAM-OF-THOUGHT (PoT) RULE
-For any complex logic, calculations, algorithms, or non-trivial implementations:
-- Write a quick Program-of-Thought (PoT) scratch script or verification test first.
-- Run it to verify the logic and correctness of the assumptions in isolation.
-- Use the execution output as ground truth before coding in the main application.
+### Parallel Orchestration
+Only evaluate parallel dispatch when there are genuinely independent scopes. Small or serial work stays in the parent agent.
 
-## 5. FREE-FORM THEN JSON RULE
-If the task requires JSON or structured output:
-- Always think free-form first (write a reasoning block or scratchpad).
-- Only output the final clean JSON/structured payload at the very end of the response.
+When dispatch is useful, `scripts/runtime/orchestration_policy.py` may choose bounded `scout`, `builder`, or `expert` capability tiers. **All tiers remain senior in judgment and evidence standards.** Concrete provider/model selection belongs to the capability-aware routing protocol and current runtime probe; never pin provider/model names or unsupported parameters in this generic kernel.
 
-## 6. EXECUTE & VERIFY (One item at a time)
-**Note:** Guardrail (Middleware ④) runs `before_tool()` on every tool call during execution. Destructive operations are blocked. See `skills/_shared/protocols/guardrail.md`.
+Stop dispatch when scope is covered, findings duplicate, the same blocker repeats, or the declared resource/deadline budget is reached. No recursive worker spawning.
 
-For each plan item:
-1. Tag as `EASY` or `HARD` per [ESCALATE.md](ESCALATE.md).
-2. If `HARD` → run escalation command.
-3. If `EASY` → execute it, then IMMEDIATELY run its CHECK command.
-4. **Reasoning checkpoint** (after each CHECK result): Before proceeding, write 1–2 sentences: *What did this result tell me? Does it change my plan?* Do not skip to the next item without this pause.
-5. If CHECK fails → resolve the failure before moving to the next item. Never batch items without executing their checks.
-6. After finishing all items, emit one `VERIFY` block per changed behavior (see [VERIFY.md](VERIFY.md)).
-7. **Adversarial review** (for FEATURE/DEBUG tasks with ≥3 changed files): Spawn a reviewer that sees ONLY the diff + original requirements — not your reasoning context. A fresh perspective catches blind spots.
+## 4. EXECUTABLE REASONING CHECK
+Use a scratch script or focused test only for genuinely non-obvious math, algorithms, state transitions, parsing, or concurrency. Routine `QUICK`/glue/CRUD/text edits need no extra Program-of-Thought artifact.
 
-## 7. AUDIT (Requirement Coverage)
-Re-read all changed files in full. Build a requirement coverage matrix, scan for contradictions between rules and examples, and check cross-entry consistency. See [AUDIT.md](AUDIT.md). GAPS FOUND → fix before delivery.
+## 5. STRUCTURED OUTPUT
+Reason privately. Do not emit scratchpads or hidden chain-of-thought. When the requested deliverable is JSON or another strict structure, return the clean structure plus only the evidence/status fields the contract requires.
 
-## 8. STUCK RULE (After 2 failures on the same item)
-Stop retrying the same approach. A variant of a failed fix is still the same fix. In order:
-1. Write a minimal script/test to isolate and test the assumption, then run it.
-2. Search the codebase for a working example of the same pattern.
-3. Research external documentation or sources.
-4. **Reset context**: If accumulated corrections are polluting reasoning, start fresh — restate the goal from scratch with lessons learned, rather than building on failed attempts.
-5. If still stuck → mark the item as `HARD` and escalate.
-6. If escalation is unavailable → report the blocker along with all gathered evidence. Never attempt a third time on the same fix.
+## 6. EXECUTE & VERIFY
+Guardrails run before tool execution; never bypass them.
 
-## 9. TURN-CLOSE — Memory Save (MANDATORY, never skip)
+- `QUICK`: after focused grounding, make the bounded change, run the focused verifier, and record concise observed evidence.
+- `STANDARD`: execute plan items in dependency order and verify each material behavior before dependent work proceeds.
+- `DEEP`: apply the STANDARD flow plus stronger boundary checks, rollback/recovery evidence, and independent review where the risk signal requires it.
+- `HARD` escalation is triggered by objective signals in [ESCALATE.md](ESCALATE.md), not by task size theater or model prestige.
+- If a check fails, use its output to adjust the plan.
+- For `STANDARD`/`DEEP`, after a material check use a concise **Reasoning checkpoint** in task state: **What did this result tell me? Does it change my plan?** Keep it summary-level; do not expose hidden chain-of-thought. `QUICK` may proceed directly when the evidence is decisive.
+- Independent mechanical reads/checks may be batched when each result remains attributable.
+- **Adversarial review** is required for `DEEP` feature/debug work, public contracts, security/concurrency changes, or feature/debug work with **≥3 changed files** of material scope; reviewers receive requirements, diff, and raw evidence — not private reasoning.
 
-After completing all work for this user turn, persist context so the next turn (or next session) can resume without re-deriving:
+See [VERIFY.md](VERIFY.md) for evidence formats.
 
-1. **Save turn summary to mem0** (if `scripts/mem0-v2.py` exists):
-   ```
-   python3 scripts/mem0-v2.py add "REQ: [1-line user goal] | DONE: [what changed/decided] | OPEN: [blockers or none]" --category session
-   ```
-   Additionally, if a key decision was made, add a second entry:
-   ```
-   python3 scripts/mem0-v2.py add "DECISION: [what was decided and why]" --category decisions
-   ```
+## 7. AUDIT — Proportional Requirement Coverage
+Use [AUDIT.md](AUDIT.md) at the effort level:
+- `QUICK`: inspect the final diff/affected context and confirm the explicit acceptance condition. No matrix required.
+- `STANDARD`: check each material requirement and relevant adjacent regression surface.
+- `DEEP`: use a requirement matrix, contradiction scan, and cross-entry consistency where applicable.
 
-2. **Update conversation summary** — append one line to `.forgewright/subagent-context/CONVERSATION_SUMMARY.md`:
-   ```
-   | <timestamp> | turn-close | <1-line summary of this exchange> |
-   ```
+Instruction/rule/config files deserve a full-file contradiction read because the consumer sees the whole file. Ordinary large source files do not need a ceremonial full reread when focused affected-context review is sufficient.
 
-3. **Update activeContext.md** — if current work, scope, or blockers changed, overwrite `.forgewright/memory-bank/activeContext.md` with:
-   ```
-   # Active Context: [project/feature name]
-   ## Current Status
-   - [what's done]
-   ## Next Steps
-   - [what's next]
-   ## Open Blockers
-   - [blockers or "none"]
-   ```
+## 8. STUCK RULE — Same Step Fails Twice
+Stop retrying the same approach. **A variant of a failed fix is still the same fix.**
+1. Isolate the failing assumption with the smallest useful check.
+2. Search the current codebase/runtime for a working example.
+3. Research external authoritative sources only if a material knowledge gap remains.
+4. **Reset context** when accumulated corrections are polluting the reasoning; **start fresh** from the original objective plus verified evidence.
+5. If still blocked, classify the step `HARD` and escalate when an applicable expert route exists.
+6. Otherwise report the evidence-backed blocker and stop. Do not make a third blind attempt.
 
-4. **Runtime reclaim** — if this turn started anything long-running, run `bash scripts/runtime/runtime-lease.sh status`, release what you no longer need, and emit VERIFY Template 4. Anything left open must be a deliberate `policy=keep`.
-
-5. **Self-check**: Confirm the mem0 add command succeeded. If it failed, log: `⚠ Memory save failed — context may not persist`.
-
-6. **Self-Report Rule Violation**: Nếu bạn tự nhận ra mình đã quên rule (hoặc user nhắc), bắt buộc chạy rule-ledger.sh:
-   ```bash
-   bash scripts/lite/rule-ledger.sh add <rule_id> violation "source: self-report|user"
-   ```
+## 9. CONTINUITY & RUNTIME CLOSE — Only When Applicable
+- Persist memory only for a durable decision, blocker, handoff, or resume point with real future value. **No mandatory per-turn memory writes.**
+- Never migrate task/session lessons into shared framework guidance automatically.
+- If this turn started long-running processes, close/reclaim what is no longer needed and verify the runtime is clean; deliberately kept processes must be identified as such.
+- Write to the rule ledger only when an actual rule violation was observed or explicitly reported — never as routine turn-close bookkeeping.
 <!-- END OF SOLVE.md -->
 
 <!-- START OF VERIFY.md -->
-# VERIFY Block Contract
+# VERIFY — Evidence Contract
 
-A `VERIFY` block is required before any claim of success.
+A success claim requires **observed current evidence**, not self-attestation. The amount of reporting scales with risk; the evidence standard does not.
 
-## Template 1: Standard Command / Test Check
-Use this for unit/integration/E2E test runs, compiler output, or command exit code checks.
+## QUICK — Compact Evidence
+Use for clear, local, reversible changes when one focused check proves acceptance.
 ```text
-CLAIM: <what you claim now works>
-COMMAND: <the exact command you ran to check/test>
-OUTPUT: <pasted stdout/stderr, last lines>
-EXIT CODE: <number>
+CHECK: <command/tool check> | EXIT: <code/result> | RESULT: PASS | FAIL
+```
+A single compact check may cover tightly coupled acceptance conditions. Do not manufacture multiple blocks to satisfy a template.
+
+## STANDARD / DEEP — Command or Test Evidence
+Use when the change has multiple material behaviors, broader regression surface, or elevated risk.
+```text
+CLAIM: <material behavior being verified>
+COMMAND: <exact command/tool check>
+OUTPUT: <relevant observed output>
+EXIT CODE: <number/result>
 VERDICT: PASS | FAIL
 ```
 
-## Template 2: UI / Visual Verification
-Use this for frontend, HTML/CSS, or user interface modifications. A successful build alone must not prove responsiveness.
-```text
-CLAIM: <what layout/DOM changes were made>
-DOM CHECK COMMAND: <command or Chrome DevTools query to verify elements exist>
-DOM OUTPUT: <pasted DOM query result/HTML snippet>
-EVIDENCE:
-- Project breakpoints/fallback viewports tested: <details>
-- Horizontal overflow checked: <details>
-- Content wrapping and hierarchy verified: <details>
-- Keyboard/focus behavior verified: <details>
-- Component states (loading, empty, error, disabled) verified: <details>
-- Token/design-system conformance verified: <details>
-- Screenshots/VRT results: <details>
-VISUAL VERDICT: STRUCTURALLY VERIFIED (requires user visual confirmation)
-```
+## UI / Visual Evidence
+A successful build alone must not prove responsiveness or visual correctness. Verify only the states relevant to the changed UI: affected viewport(s), overflow/wrapping, interaction/focus state, design-token conformance, and screenshot/VRT evidence when available. For major/new UI, record **Project breakpoints/fallback viewports tested** and **Horizontal overflow checked**; a local UI fix does not require unrelated state inventory.
 
-## Template 3: Program-of-Thought (PoT) Script Verification
-Use this when verifying math, complex logic, or algorithms in isolation.
-```text
-CLAIM: <what algorithm or logic was verified>
-POT SCRIPT PATH: <path to temporary verification script>
-RUN COMMAND: <command to run the script>
-OUTPUT: <pasted output showing correctness of calculations>
-EXIT CODE: <number>
-VERDICT: PASS | FAIL
-```
+## Executable Logic Evidence
+For non-obvious math/algorithms/state/concurrency, use a focused executable test or scratch script and report its observed result. Routine `QUICK` work needs no extra reasoning artifact.
 
-## Template 4: Runtime Ledger
-Use this whenever the task started anything long-running — a dev server, game editor, emulator, watcher, container. A leaked process is invisible in every other template: the tests pass, the build is green, and RAM keeps climbing.
-```text
-RUNTIME LEDGER
-OPENED:  <lease_id> role=<..> port=<..> pid=<..>
-CLOSED:  <lease_id> exit=<..>
-LEAKED:  none | <lease_id list>
-COMMAND: bash scripts/runtime/runtime-lease.sh status
-OUTPUT:  <pasted status output>
-VERDICT: CLEAN | LEAKED
-```
-Rules for this block:
-- Start long-running processes with `bash scripts/runtime/dev-run.sh --role <role> -- <command>`. It reuses an already-running instance instead of starting a second one, and registers a lease so the process can be reclaimed.
-- `LEAKED` is only acceptable when the lease is deliberately `policy=keep`; say why.
-- A process you started with no lease at all is a `LEAKED` verdict, not an exemption.
+## Runtime Ledger
+When the task starts a long-running server/editor/emulator/watcher/container, verify it was reclaimed or deliberately kept. If runtime lease tooling is present, use it; otherwise report the actual PID/process state from the available runtime tools.
 
 ## Rules
-1. A claim of success without a pasted `OUTPUT` and `EXIT CODE` / `DOM OUTPUT` is automatically FALSE.
-2. For UI/visual changes: cap confidence at "structurally verified" and ask the user to confirm the actual visual appearance.
-3. Provide exactly one block per changed behavior.
-4. `FAIL` verdicts must be reported immediately and never hidden.
-5. VERIFY proves code works. [AUDIT.md](AUDIT.md) proves all requirements are covered. Both are mandatory.
-6. Narrative claims ("I updated the file", "this should work now") without a VERIFY block are automatically FALSE. The check must be a runnable command whose output you paste.
-7. Prefer deterministic checks (test suites, linters, build exit codes) over manual inspection. If no automated check exists, create one before claiming success.
-8. If the task started any long-running process, emit Template 4 as well. "The tests passed" is not evidence that the machine was left clean.
+1. Never report `PASS` from expectation, prose, or memory. **Narrative claims without current evidence are automatically FALSE.** Evidence must come from the current workspace/runtime after the change.
+2. `FAIL` evidence is reported, not hidden or converted into a success narrative.
+3. Prefer existing **deterministic checks**: tests/build/type/lint/runtime evidence. If no existing check can adequately prove a material behavior, **create one before claiming** success.
+4. `QUICK` work may use one compact evidence line. `STANDARD`/`DEEP` work reports each **material** behavior, not every edit line.
+5. Requirement coverage is audited proportionally via [AUDIT.md](AUDIT.md); a full matrix is not mandatory for local reversible work.
+6. UI evidence must distinguish structural/tool verification from human aesthetic judgment where human review is genuinely required.
+7. If the task started long-running processes, runtime cleanliness is part of acceptance.
 <!-- END OF VERIFY.md -->
 
 <!-- START OF ESCALATE.md -->
 # EASY / HARD Routing
 
-Tag each task step during [SOLVE.md](SOLVE.md) planning.
+`EASY` and `HARD` describe **risk/uncertainty**, not seniority. Every role/tier remains accountable for senior judgment and evidence.
 
-## Classification Checklist
-Model self-tag is only a hint. A step is **HARD** if ANY of these objective runtime signals or conditions apply:
-- [ ] Repeated verification failure (runtime signal).
-- [ ] Independent-sample disagreement (runtime signal).
-- [ ] Security-sensitive context (auth, secrets, injection surface, permissions).
-- [ ] Changes a public interface, schema, or public exports.
-- [ ] Concurrency, locking, or asynchronous ordering paths.
-- [ ] The Stuck rule fired on this step.
-- [ ] Guardrail flagged a DENY or WARN on this step.
-- [ ] The step would signal or kill a process that holds no Runtime Lifecycle Guard lease, or would reap a `policy=keep` lease.
+## HARD Signals
+A step is `HARD` when one or more material signals apply:
+- Repeated verification failure or the Stuck rule fired.
+- Independent evidence materially disagrees.
+- Security-sensitive behavior or permission boundary.
+- Public interface/schema/export contract change.
+- Concurrency, locking, ordering, migration, or irreversible release path.
+- Guardrail returned DENY/WARN that changes the feasible approach.
+- Process termination would affect an unowned or deliberately-kept runtime.
 
-Otherwise, the step is **EASY**.
+Otherwise the step is `EASY`; `QUICK` work does not need ceremonial per-line tagging.
 
 ## Execution Protocol
-- **EASY**: Execute the step yourself (`thinking_level: MINIMAL`).
-- **HARD**: Run the escalation command:
-  ```bash
-  bash scripts/lite/escalate.sh "<step + minimal context>"
-  ```
-  *(This spawns the strong model and returns its answer; you must integrate and verify it).*
+- **EASY**: keep execution in the current parent agent unless delegation has a real scope/latency benefit.
+- **HARD**: route to the current runtime's verified `expert` capability when available. If `scripts/lite/escalate.sh` is the configured path, call it with the minimal evidence packet.
+- This kernel never pins a provider, model ID, thinking parameter, or temperature. Capability resolution belongs to `skills/_shared/protocols/model-tier.md` and the current runtime probe.
 
-## Agreement-Based Cascade Rules
-When a task is escalated to a stronger model:
-1. Verify the generated output matches all constraints and local coding patterns.
-2. If the stronger model's output introduces any ambiguity or contradicts other parts of the plan, run another escalation to cross-validate or ask the user for confirmation.
-3. Integrate and run a `VERIFY` check immediately. Never merge unverified code from escalated models.
+## Review After Escalation
+1. Treat escalated output as a proposal, not truth; verify it against current constraints and project evidence.
+2. Cross-validate only when disagreement or risk remains material — do not trigger a second model merely to satisfy a cascade.
+3. Integrate only verified output.
 
-## Budget Limit
-- **Cost Budget Rules Apply**: Escalations are bound by token and cost budget rules, not a fixed escalation limit.
-- If you exceed the budget, you must **pause**. Do not "do your best".
-- Security, schema, and public-interface work must pause and explicitly wait for user approval or budget extension if exhausted.
+## Budget / Stop Condition
+Respect declared cost/token/deadline constraints. When the preferred escalation is unavailable, use the safest bounded path that still meets acceptance; for security/irreversible/public-contract work, report the unresolved blocker rather than silently weakening the gate. Do not invent extra work to consume remaining budget.
 <!-- END OF ESCALATE.md -->
 
 <!-- START OF CLARIFY.md -->
 # CLARIFY — Vague Requirement Resolver
 
-If a user request is vague, check the Trigger Table below. You may ask up to three concise Multiple-Choice Questions (MCQs) only when needed to resolve ambiguity.
-Do not block specific, clear requests. If the request is sufficiently detailed or explicit, proceed directly to planning.
-When the user provides answers, record explicit defaults and constraints before starting implementation.
+Clarify only a **material unknown** that changes acceptance, cost, risk, or a public contract and cannot be resolved from the current workspace/runtime. Inspect evidence before asking. If a reversible default preserves the user's objective, state the default briefly and proceed.
+
+The Trigger Table below is a guide, not a mandatory interview. Do not block clear requests, do not ask a question that current project evidence can answer, and do not force MCQs merely because a phrase matches a trigger.
 
 ## Trigger Table
 
@@ -376,7 +280,7 @@ When the user provides answers, record explicit defaults and constraints before 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **forgewright** (21216 symbols, 29194 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **forgewright** (20945 symbols, 29011 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

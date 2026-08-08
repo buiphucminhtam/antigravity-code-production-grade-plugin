@@ -56,11 +56,13 @@ Write tests at the appropriate level:
  /──────█────────\
 ```
 
-| Level | Count | Speed | What to Test |
+| Level | Typical scope | Relative cost | What to Test |
 |-------|-------|-------|--------------|
-| **Unit** | Many (50+) | Fast (<5ms each) | Pure functions, formulas, state machines |
-| **Integration** | Some (10-20) | Medium (50-200ms) | Scene transitions, service interactions |
-| **E2E** | Few (5-10) | Slow (1-5s) | Critical user paths (login, purchase) |
+| **Unit** | Broadest where logic branches justify it | Low | Pure functions, formulas, state machines |
+| **Integration** | Important component/service boundaries | Medium | Scene transitions, persistence, service interactions |
+| **E2E** | Small set of release-critical user journeys | High | Core flows such as onboarding, purchase, or primary game loop |
+
+Test count is derived from acceptance criteria, risk, state/branch surface, and regression history — never from a quota. A `QUICK` change may need one focused regression check; a `DEEP` release path may need many.
 
 ### Bug Severity Classification
 
@@ -82,7 +84,7 @@ Write tests at the appropriate level:
 
 ### Test Case Design Principles
 
-Refer to [qa-test-protocol.md](file:///Users/buiphucminhtam/GitHub/forgewright/skills/_shared/protocols/qa-test-protocol.md) for full methodologies:
+Refer to [qa-test-protocol.md](../_shared/protocols/qa-test-protocol.md) for full methodologies:
 - **Each test case has ONE assertion** (or one logical assertion group)
 - **Tests are independent** — no shared state between tests, always clean up using setup/teardown hooks
 - **Tests are deterministic** — same input always produces same output (mock Math.random, Date, and network responses)

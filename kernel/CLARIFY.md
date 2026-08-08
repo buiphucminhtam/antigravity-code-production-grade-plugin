@@ -1,8 +1,8 @@
 # CLARIFY — Vague Requirement Resolver
 
-If a user request is vague, check the Trigger Table below. You may ask up to three concise Multiple-Choice Questions (MCQs) only when needed to resolve ambiguity.
-Do not block specific, clear requests. If the request is sufficiently detailed or explicit, proceed directly to planning.
-When the user provides answers, record explicit defaults and constraints before starting implementation.
+Clarify only a **material unknown** that changes acceptance, cost, risk, or a public contract and cannot be resolved from the current workspace/runtime. Inspect evidence before asking. If a reversible default preserves the user's objective, state the default briefly and proceed.
+
+The Trigger Table below is a guide, not a mandatory interview. Do not block clear requests, do not ask a question that current project evidence can answer, and do not force MCQs merely because a phrase matches a trigger.
 
 ## Trigger Table
 

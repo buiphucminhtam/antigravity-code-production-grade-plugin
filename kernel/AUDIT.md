@@ -1,31 +1,43 @@
-# AUDIT — Requirement Coverage Check
+# AUDIT — Proportional Requirement Coverage
 
-After EXECUTE & VERIFY, before declaring success: re-read every changed file in full and compare against the original request.
+Audit against the **original user objective + current workspace evidence** before declaring success. The depth scales with risk and blast radius.
 
-## Template
+## QUICK
+For a local, reversible change:
+- Inspect the final diff and affected context.
+- Confirm the explicit acceptance condition with current evidence.
+- Check that no unrelated path changed.
+- No matrix or full-repository reread is required.
+
+If the changed file is itself an instruction/rule/config file whose consumer reads the whole document, read that file in full for contradictions even when the edit is small.
+
+## STANDARD
+Use a concise requirement checklist covering each material requirement, changed surface, and relevant adjacent regression risk. Expand to a matrix only if it improves traceability.
+
+## DEEP
+Use the full coverage structure where appropriate:
 ```text
 REQUIREMENT COVERAGE MATRIX:
-| # | Requirement (from user request) | File(s) changed | Covered? | Evidence |
-|---|------|------|------|------|
+| # | Requirement | File(s)/surface | Covered? | Evidence |
+|---|---|---|---|---|
 | 1 | ... | ... | ✅ / ⚠️ / ❌ | ... |
 
 CONTRADICTION SCAN:
-| File | Rule/instruction says | Example/template shows | Conflict? |
-|---|---|---|---|
-| ... | ... | ... | ✅ OK / ❌ CONFLICT |
-
-CROSS-ENTRY CONSISTENCY: (if multiple files serve the same role)
-| Concept | File A says | File B says | Aligned? |
+| Surface | Active rule | Example/prose | Conflict? |
 |---|---|---|---|
 | ... | ... | ... | ✅ / ❌ |
 
-VERDICT: FULL COVERAGE | GAPS FOUND → fix before delivery
+CROSS-ENTRY CONSISTENCY:
+| Concept | Surface A | Surface B | Aligned? |
+|---|---|---|---|
+| ... | ... | ... | ✅ / ❌ |
+
+VERDICT: FULL COVERAGE | GAPS FOUND
 ```
 
 ## Rules
-1. Re-read changed files IN FULL (not diffs). An agent consumes the whole file.
-2. Every numbered requirement from the user's request gets its own row.
-3. If examples/templates contradict rules in the same file → ❌ CONFLICT.
-4. GAPS FOUND verdict requires fixing before declaring done.
-5. For tasks with ≤ 2 requirements and 1 changed file, the matrix collapses to a single inline sentence — but the re-read is never skipped.
-6. If the task involved tool calls, verify no guardrail DENY events were suppressed or bypassed.
+1. Audit material requirements, not arbitrary template rows.
+2. Examples/templates must not contradict active rules; current workspace/runtime truth outranks stale prose.
+3. `GAPS FOUND` requires correction or explicit blocker reporting before success.
+4. Review guardrail/permission denials when they occurred; never suppress them to obtain a green verdict.
+5. Do not broaden scope merely because the audit noticed optional improvements; put them under `Out of scope` / `Later`.

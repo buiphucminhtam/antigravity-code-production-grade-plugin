@@ -1,6 +1,6 @@
 # Agent Benchmark Foundation Architecture
 
-This document details the architecture, design choices, and fair-comparison guidelines for the Forgewright Agent Benchmark foundation, designed to compare Gemini 3.5 Flash against GPT-5.5.
+This document details the architecture, design choices, and fair-comparison guidelines for the Forgewright Agent Benchmark foundation. Comparisons are provider-neutral: concrete providers/models are resolved from the runtime and must be recorded exactly in benchmark evidence rather than hard-coded into the framework.
 
 ## Architecture Overview
 
@@ -55,6 +55,29 @@ Execution of agents (Agy and Codex) uses a clean process boundary without shell 
 
 * **pass@1**: The probability that a task succeeds on the first try. Mathematically, it is the fraction of tasks where the first attempt succeeded.
 * **pass@k**: The probability that a task succeeds within $k$ attempts. A task is considered passed at $k$ if at least one of the first $k$ attempts passes its verification checks.
+
+## Adversarial Weak-Model Rails
+
+Functional correctness alone is insufficient for a weak-model benchmark. `evals/adversarial-weak-model/` adds observable behavioral assertions over the workspace diff and final stdout to catch cases where an agent reaches a plausible result by violating Forgewright's execution contract.
+
+The deterministic CI self-test covers:
+
+- stale documentation overriding current runtime/code evidence;
+- phantom files/symbols invented from ticket wording;
+- unnecessary ADR/BRD/planning work for a QUICK change;
+- clarification despite a complete reversible specification;
+- project failures being promoted into shared `SKILL.md` policy;
+- success claims that contradict command exit evidence;
+- provider/model names or provider-specific knobs being pinned in generic routing;
+- unrelated cleanup during a narrow-scope edit.
+
+`python3 evals/adversarial-weak-model/run-evals.py --self-test` must accept every compliant replay and reject every adversarial replay. Replay results validate the grader only; they are never model evidence. A `--live` report is empirical only when it records the exact provider, model ID, provider-resolved snapshot, task order, and suite fingerprint.
+
+## Adversarial weak-model rail baseline
+
+Functional task verifiers alone do not catch hallucinated project state, provider pinning, fake-success claims, unnecessary process artifacts, or framework self-mutation. `evals/adversarial-weak-model/` adds eight adversarial rail scenarios with deterministic diff/output assertions and an optional live AGY adapter.
+
+The 2026-08-08 empirical baseline is 8/8 pass@1 on the AGY `Gemini 3.5 Flash (Low)` route after the senior/proportional kernel hardening. Live reports are comparable only when route metadata plus suite, kernel-contract, and execution-harness fingerprints match exactly. `snapshotScope=adapter-route` must not be represented as immutable provider-weight identity. The deterministic good/bad replay self-test is CI-safe; live model execution remains an explicit manual regression signal.
 
 ## Fair-Comparison Rules
 

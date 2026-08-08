@@ -1221,7 +1221,7 @@ Forgewright hỗ trợ hạ tầng kiểm thử mã nguồn mở hoàn toàn mi�
 *   **Shift-Left Spec Gate & DoD**: Thiết lập chốt chặn chất lượng từ khâu Specs (quy trình ký duyệt ba bên PM + Dev Lead + QA Lead) kết hợp với Git Hooks (Husky + lint-staged) cục bộ và CI pipeline chạy song song cực nhanh, thực thi nghiêm ngặt tiêu chí Definition of Done (DoD).
 *   **Visual Regression (VRT)**: Sử dụng trình so sánh ảnh gốc của Playwright kết hợp `pixelmatch` tại local hoặc chạy trong Docker container chính thức trên CI (nhằm đồng bộ font/giao diện render).
 *   **Performance & Load**: Tích hợp k6 CLI đẩy số liệu thời gian thực trực tiếp về hệ thống cơ sở dữ liệu InfluxDB và trực quan hóa qua Grafana cục bộ (dựng qua Docker Compose).
-*   **Mobile E2E**: Chạy Appium, Midscene.js tương tác bằng AI, và **Maestro (Chạy Local Miễn Phí)** trực tiếp trên máy ảo Android Emulator cục bộ (tạo qua [scripts/setup-local-emulators.sh](file:///Users/buiphucminhtam/GitHub/forgewright/scripts/setup-local-emulators.sh)) hoặc iOS Simulator.
+*   **Mobile E2E**: Chạy Appium, Midscene.js tương tác bằng AI, và **Maestro (Chạy Local Miễn Phí)** trực tiếp trên máy ảo Android Emulator cục bộ (tạo qua [scripts/setup-local-emulators.sh](scripts/setup-local-emulators.sh)) hoặc iOS Simulator.
 
 ---
 
@@ -1231,7 +1231,7 @@ Forgewright tích hợp tính năng **Tự động vẽ và cập nhật Sequenc
 
 *   **Không tốn phí & Không cần chạy App**: Tự động khớp nối các lượt gọi API ở Client (`fetch`/`axios` trong file React/Next.js) sang API handler tương ứng ở Server (`route.ts`) mà không cần khởi chạy ứng dụng hay kết nối cơ sở dữ liệu.
 *   **Truy vết sâu đồ thị cuộc gọi (Call Graph)**: Tự động chạy truy vấn đệ quy qua đồ thị GitNexus để vẽ chi tiết luồng gọi (`Route -> Service -> Database/Prisma`).
-*   **Sinh sơ đồ Mermaid chuyên nghiệp**: Xuất kết quả sơ đồ trình tự chuẩn Mermaid.js và cập nhật tự động vào thư mục [docs/architecture/flows/](file:///Users/buiphucminhtam/GitHub/forgewright/docs/architecture/flows/).
+*   **Sinh sơ đồ Mermaid chuyên nghiệp**: Xuất kết quả sơ đồ trình tự chuẩn Mermaid.js và cập nhật tự động vào thư mục [docs/architecture/flows/](docs/architecture/flows/).
 *   **Lọc nhiễu thông minh & Tách tham số**: Tự động loại bỏ các hàm hệ thống/logs nhiễu (`console.log`, `execSync`, `NextResponse.json`...) để giữ sơ đồ sạch, đồng thời tách các Query Parameters truyền lên ở client và vẽ ghi chú (Mermaid Note) chi tiết.
 
 **Cách sử dụng trong các dự án khác (Submodules):**

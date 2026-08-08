@@ -40,10 +40,10 @@ User Request
 │  ⑥ QualityGate     Post-skill validation (4 levels) │
 │  ⑦ BrownfieldSafety Regression + protected paths   │
 │  ⑧ TaskTracking    Update todos, emit events        │
-│  ⑨ Memory          Async fact extraction + store     │
-│  ⑩ GracefulFailure Stuck detection, retry limits     │
-│  ⑪ ASIP            ⭐ CANONICAL self-improvement   │
-│                      (write test → research → skill) │
+│  ⑨ Memory          Durable context when useful       │
+│  ⑩ GracefulFailure Two-failure stuck/escalation     │
+│  ⑪ RecoveryResearch Research only material unknowns │
+│                      (project-local lessons only)    │
 │  ⑫ CircuitBreaker  Fault isolation + state machine  │
 │  ⑬ Bulkhead        Resource limits per worker type  │
 │  ⑭ Verification    ⭐ Evidence-First Verification   │
@@ -71,13 +71,13 @@ Result / Next Skill
 
 | # | Middleware | Source Protocol | Hook | Purpose |
 |---|-----------|----------------|------|---------|
-| ⑥ | **QualityGate** | quality-gate.md | `after_skill()` | Run 4-level validation, calculate 0-100 score |
+| ⑥ | **QualityGate** | quality-gate.md | `after_skill()` | Run verification proportional to `QUICK` / `STANDARD` / `DEEP`; score only when useful telemetry |
 | ⑦ | **BrownfieldSafety** | brownfield-safety.md | `after_skill()` | Regression check, protected path enforcement, change manifest |
 | ⑧ | **TaskTracking** | session-lifecycle.md §Hooks | `after_skill()` | Emit SKILL_COMPLETED event, update task.md |
-| ⑨ | **Memory** | memory-manager.md §Hooks + session-lifecycle §Per-request | `after_skill()` **and** `turn_close()` | After each skill: extract decisions/blockers → local_memory. **After each completed user request:** mandatory Turn-Close `add` (session + optional decisions/architecture/blockers) — not optional unless `LOCAL_MEMORY_DISABLED` / `FORGEWRIGHT_SKIP_MEMORY` |
-| ⑩ | **GracefulFailure** | graceful-failure.md | `on_error()` | Detect stuck states, manage retry counts, graceful exit. Delegates to ASIP after 2+ failures. |
-| ⑪ | **ASIP** | self-improving-loop.md | `after_skill()` + `on_error()` | **CANONICAL self-improvement loop.** 2+ failures → write verification artifact → run → research (NotebookLM/WebSearch) → update skills. Single source of truth for all self-improvement. |
-| ⑫ | **CircuitBreaker** | circuit-breaker.md | `after_skill()` | Fault isolation + state machine. Must explicitly capture and pass back the encrypted Thought Signatures in sequential function calls (Gemini 3.x) to avoid Hard Error 400. |
+| ⑨ | **Memory** | memory-manager.md + middleware/09-memory.md | `after_skill()` / `turn_close()` when useful | Persist verified durable decisions/progress/blockers for substantial work; memory is optional support, not project truth |
+| ⑩ | **GracefulFailure** | graceful-failure.md | `on_error()` | Detect stuck states and enforce the kernel two-failure stop/escalation rule. |
+| ⑪ | **RecoveryResearch** | research-gate.md | `on_error()` | No-op unless a material knowledge/evidence gap exists; research the minimum evidence needed, never self-modify shared skills. |
+| ⑫ | **CircuitBreaker** | circuit-breaker.md | `after_skill()` when remote/tool failure isolation applies | Fault isolation for repeated remote/tool failures; provider-specific call requirements belong in verified runtime adapters, not this generic protocol |
 | ⑬ | **Bulkhead** | bulkhead.md | `after_skill()` | Enforce resource limits per worker type |
 | ⑭ | **Verification** | verification.md | `after_skill()` | Verify all assumptions using Evidence-First Thinking |
 
@@ -86,11 +86,10 @@ Result / Next Skill
 ### Rule 1 — Fixed Order, No Skipping
 
 ```
-ALWAYS: Execute middleware in order ① → ⑩
-NEVER: Skip a middleware unless explicitly disabled in config
+ALWAYS: Traverse middleware in deterministic order.
+A slot may be a deliberate no-op when it is not applicable to the current effort/risk class; do not manufacture artifacts merely to prove the slot ran.
 
-Exception: If a middleware is disabled in .production-grade.yaml,
-its slot is still traversed (logged as "skipped") to maintain ordering.
+If middleware is disabled in `.production-grade.yaml`, its slot is recorded as skipped so ordering remains deterministic.
 ```
 
 ### Rule 2 — Fail-Fast for Pre-Skill, Continue for Post-Skill
@@ -101,15 +100,13 @@ Pre-Skill (①-⑤):
     - ① SessionData: WARN and continue with empty profile (new project)
     - ② ContextLoader: WARN and continue without memory
     - ③b DryRunContext: WARN and continue without prompt injection
-    - ③ SkillRegistry: FALLBACK to loading all skills
+    - ③ SkillRegistry: inspect manifest/index and load the smallest safe candidate set; do not blindly load the whole registry
     - ④ Guardrail: BLOCK — do not proceed to skill (security-critical)
     - ⑤ Summarization: WARN and continue (non-critical)
 
-Post-Skill (⑥-⑩):
-  IF middleware fails:
-    - ALWAYS continue to next middleware
-    - Log failure for debugging
-    - Never roll back the skill's work because of post-middleware failure
+Post-Skill:
+  IF an observability-only middleware fails: log degradation and continue.
+  IF verification, security, brownfield safety, or an acceptance-critical gate fails: do not claim success; preserve/revert according to the relevant protocol and resolve/escalate.
 ```
 
 ### Rule 3 — Guardrail Is the Kill Switch
@@ -148,9 +145,9 @@ Per-Skill hooks (run once per skill invocation):
   ⑥ QualityGate.after_skill()
   ⑦ BrownfieldSafety.after_skill()
   ⑧ TaskTracking.after_skill()
-  ⑨ Memory.after_skill()
+  ⑨ Memory.after_skill() / Memory.turn_close() when durable state exists
   ⑩ GracefulFailure.on_error()
-  ⑪ ASIP.after_skill() / ASIP.on_error()
+  ⑪ RecoveryResearch.on_error() only for a material unknown after failure
 
 Per-Tool hooks (run on EVERY tool call within a skill):
   ④ Guardrail.before_tool()    ← runs before each write_to_file, run_command, etc.

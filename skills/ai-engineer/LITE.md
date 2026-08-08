@@ -1,71 +1,44 @@
 ---
 name: ai-engineer
-description: "Orchestrates LLM integration, custom RAG pipelines, cognitive memory management, and prompt routing policies. Use when the user requests custom AI feature builds, RAG pipeline integrations, memory-bank customizations, or LLM-backed agentic flows."
-version: 1.0.0
+description: "Builds and integrates production AI/ML systems, RAG, model serving, evaluation, and agent workflows using current project/runtime evidence and proportional engineering."
+version: 2.0.0
 ---
 
-# Ai Engineer (LITE)
+# AI Engineer (LITE)
 
-## SOLVE Step 2: GROUND (Ai Engineer Domain Slots)
+Operate as a senior AI/ML engineer. Do not assume a provider/model, price, context limit, API parameter, or capability from memory. Resolve current project configuration/runtime first and use authoritative provider docs only when material.
+
+## GROUND
+
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Project tech stack and AI routing profiles are onboarded | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
-| Production-grade model variables and thinking levels are active | `cat .production-grade.yaml` | ... | run the check command and paste output |
-| Memory bank structures and schema directories are initialized | `find .forgewright/ -maxdepth 2 -type d` | ... | run the check command and paste output |
+| AI feature objective + measurable acceptance is defined | Current user/product contract + relevant project docs | ... | quote the exact acceptance source |
+| Existing providers/models/adapters are known | Inspect current config, manifests, adapter code, runtime capability list | ... | paste current configured/advertised identifiers |
+| Data/RAG sources and privacy boundary are known | Inspect project data contracts/current implementation | ... | cite the concrete source/contract |
+| Quality, latency, cost, platform constraints exist | Inspect explicit targets and measured baseline | ... | paste measured/configured target evidence |
+| Existing evals/telemetry are available | Inspect and run relevant test/eval scripts | ... | paste actual command/result summary |
 
-## SOLVE Step 3: DECOMPOSE (Ai Engineer Domain Slots)
-Format: `n. ACTION | TARGET | CHECK`
+Mark unavailable material facts `UNVERIFIED`; never fill them with remembered vendor specs.
 
-1. ROUTE | Match prompt task complexity to model routing rules | Verify high-stakes tasks use Gemini 3.1 Pro (`thinking_level: HIGH`) and low-risk tasks use Gemini 3.5 Flash (`thinking_level: MINIMAL`).
-2. CONFIGURE | Enforce API parameter rules Thought Signatures preservation | Ensure intermediate prompt layers do not filter out Thought Signatures, avoiding API 400 bad requests.
-3. OFFLOAD | Divert heavy outputs (>1200 tokens) via Context Offload (Middleware ④d) | Verify outputs are written under `.forgewright/offload/` and represented as compact trace handles (e.g., `refs/n-X-tool-hash.md`).
-4. REINFORCE | Apply ASIP edge adjustments to SQLite Cognitive Graph (FluxMem) nodes | Verify failed execution loops trigger a 0.5 decay while successful workflows trigger a 1.2 reinforcement.
+## DECOMPOSE
 
-## Common Mistakes Checklist
-- **Stripping Thought Signatures**: Using custom text or regex parsers on model output streams that accidentally strip thought signatures, triggering immediate API 400 failures.
-- **Bypassing Sandbox Redaction**: Allowing raw tool executions to run without filtering through Middleware ④c (Tool Sandbox), causing API keys or credentials to leak into context caching layers.
-- **Context Overload (Missing Offload)**: Failing to enforce the 1200-token threshold for large tool outputs, leading to rapid context window exhaustion and increased API latency.
-- **Hardcoding Temperatures**: Specifying standard temperature overrides (like 0.0 or 0.7) for reasoning tasks, violating
-- **Fragmented Memory Updates**: Manually editing JSON-based memory files directly instead of letting `mem0-v2.py` or the SQLite memory manager handle cognitive updates.
+Use `ACTION | TARGET | CHECK` for `QUICK`; expand only when risk warrants it.
 
-### Step 1: Verify the orchestrator's production-grade configurations and budgets
-```bash
-cat .production-grade.yaml
-cat .forgewright/budget.yaml
-```
+1. **BASELINE** | Use the project's current approved model/system when one exists | Run representative acceptance/eval cases.
+2. **COMPARE (conditional)** | Benchmark multiple viable options only when quality/cost/latency/reliability targets make the choice material | Compare on the same representative cases and measured metrics.
+3. **RETRIEVAL (conditional)** | Add RAG/retrieval only when external/private knowledge is required and a simpler prompt/context path is insufficient | Measure retrieval quality and answer grounding.
+4. **ROUTING (conditional)** | Add multi-model routing only when distinct workload classes plus measured benefit justify its complexity | Verify routing decision, fallback semantics, cost/quality impact.
+5. **PRODUCTIONIZE** | Add monitoring/fallback/caching/batching only where failure modes or targets justify them | Run the relevant reliability/performance checks.
 
-### Step 2: Build a cost-aware, RAG-grounded model dispatcher in `src/ai-dispatcher.ts`
-```typescript
-import { GeminiClient } from 'forgewright-gemini';
+## Common Senior Mistakes to Avoid
 
-export class AIDispatcher {
-  private client: GeminiClient;
+- Hard-coding a fashionable provider/model instead of respecting the project's current runtime.
+- Benchmarking three or more models by ritual when the project has one approved option and no decision to make.
+- Adding vector DB/RAG/agents/memory because they are available rather than required by acceptance.
+- Treating LLM-as-judge or confidence numbers as ground truth without calibration/representative cases.
+- Optimizing token/latency cost before a measured baseline or target exists.
+- Persisting a failed-session lesson into shared framework policy automatically.
 
-  constructor() {
-    this.client = new GeminiClient({
-      // Safe: Enforces the mandatory Temperature 1.0 rule
-      temperature: 1.0,
-      preserveThoughtSignatures: true
-    });
-  }
+## VERIFY
 
-  // Handle task routing with adaptive thinking budget configs
-  public async dispatchTask(taskPrompt: string, complexity: 'HIGH' | 'LOW') {
-    const model = complexity === 'HIGH' ? 'gemini-3.1-pro' : 'gemini-3.5-flash';
-    const thinkingBudget = complexity === 'HIGH' ? 1024 : 0;
-
-    console.log(`[ROUTE] Dispatching to ${model} (Budget: ${thinkingBudget} tokens)`);
-
-    return await this.client.generate({
-      model,
-      prompt: taskPrompt,
-      thinkingConfig: { budget: thinkingBudget }
-    });
-  }
-}
-```
-
-### Step 3: Run the memory-consolidator script to optimize RAG performance
-```bash
-python3 scripts/memory-consolidate.py
-```
+Completion evidence must match the claim: representative eval results for quality, measured latency/cost for performance claims, integration tests for contracts, and current runtime/config evidence for provider/model capability claims.

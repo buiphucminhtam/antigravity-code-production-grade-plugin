@@ -72,32 +72,25 @@ add_warning() {
   WARNINGS+=("$1")
 }
 
-if [[ -f "$PROJECT_ROOT/AGENTS.md" ]] && grep -q '\[PIPELINE_RESET\]' "$PROJECT_ROOT/AGENTS.md"; then
-  add_check "AGENTS pipeline reset rule" "pass" "AGENTS.md contains PIPELINE_RESET"
-else
-  add_issue "AGENTS.md missing PIPELINE_RESET rule"
-  add_check "AGENTS pipeline reset rule" "fail" "missing"
-fi
+for surface in AGENTS.md CLAUDE.md GEMINI.md; do
+  if [[ -f "$PROJECT_ROOT/$surface" ]] \
+    && grep -q 'Senior Delivery Standard' "$PROJECT_ROOT/$surface" \
+    && grep -q 'RIGHT-SIZE' "$PROJECT_ROOT/$surface"; then
+    add_check "$surface kernel contract" "pass" "senior + proportional execution present"
+  else
+    add_issue "$surface missing current senior/proportional kernel contract"
+    add_check "$surface kernel contract" "fail" "stale or missing"
+  fi
+done
 
-if [[ -f "$PROJECT_ROOT/CLAUDE.md" ]] && grep -q '\[PIPELINE_RESET\]' "$PROJECT_ROOT/CLAUDE.md"; then
-  add_check "CLAUDE pipeline reset rule" "pass" "CLAUDE.md contains PIPELINE_RESET"
+ACTIVATION_PROTOCOL="$PROJECT_ROOT/skills/_shared/protocols/pipeline-activation.md"
+if [[ -f "$ACTIVATION_PROTOCOL" ]] \
+  && grep -q '`QUICK`' "$ACTIVATION_PROTOCOL" \
+  && grep -q 'Do not emit magic activation tokens' "$ACTIVATION_PROTOCOL"; then
+  add_check "Pipeline activation protocol" "pass" "current proportional activation contract present"
 else
-  add_issue "CLAUDE.md missing PIPELINE_RESET rule"
-  add_check "CLAUDE pipeline reset rule" "fail" "missing"
-fi
-
-if [[ -f "$PROJECT_ROOT/GEMINI.md" ]] && grep -q '\[PIPELINE_RESET\]' "$PROJECT_ROOT/GEMINI.md"; then
-  add_check "Gemini/Antigravity CLI rule" "pass" "GEMINI.md contains PIPELINE_RESET"
-else
-  add_warning "GEMINI.md missing or lacks PIPELINE_RESET rule"
-  add_check "Gemini/Antigravity CLI rule" "warning" "missing"
-fi
-
-if [[ -f "$PROJECT_ROOT/skills/_shared/protocols/pipeline-activation.md" ]]; then
-  add_check "Pipeline activation protocol" "pass" "source of truth exists"
-else
-  add_issue "pipeline-activation protocol missing"
-  add_check "Pipeline activation protocol" "fail" "missing"
+  add_issue "pipeline-activation protocol missing or stale"
+  add_check "Pipeline activation protocol" "fail" "missing/stale"
 fi
 
 if [[ -f "$MANIFEST_FILE" ]]; then
@@ -140,11 +133,12 @@ else
 fi
 
 if [[ "$CHECK_SESSION" == true ]]; then
-  if [[ -f "$PROJECT_ROOT/.forgewright/mem0/nodes.jsonl" ]] && grep -q '"id": "plan-quality"' "$PROJECT_ROOT/.forgewright/mem0/nodes.jsonl"; then
-    add_check "Plan score memory marker" "pass" "plan-quality marker exists"
+  if { [[ -f "$PROJECT_ROOT/.forgewright/mem0/nodes.jsonl" ]] && grep -q '"id": "plan-quality"' "$PROJECT_ROOT/.forgewright/mem0/nodes.jsonl"; } \
+    || [[ -f "$PROJECT_ROOT/.forgewright/subagent-context/INTERPRETED_REQUEST.md" ]]; then
+    add_check "Session planning evidence" "pass" "planning/request evidence exists"
   else
-    add_issue "Plan score memory marker missing"
-    add_check "Plan score memory marker" "fail" "missing"
+    add_issue "Session planning evidence missing"
+    add_check "Session planning evidence" "fail" "missing"
   fi
 fi
 

@@ -1,6 +1,5 @@
 ---
 name: code-reviewer
-model: opus
 description: "Reviews code for quality — architecture conformance, anti-patterns, performance issues, maintainability. Read-only analysis that detects circular dependencies, N+1 queries, dead code, naming violations, and layering breaches. Use when the user asks for a code review, wants feedback on code quality, PR review, tech debt analysis, or architecture conformance checks."
 version: 2.0.0
 author: forgewright

@@ -1,8 +1,7 @@
 #!/bin/bash
 # forgewright-lesson-migrator.sh
-# Migrates session-level lessons from .forgewright/plan-lessons.md and
-# execution-lessons.md to the relevant SKILL.md Planning Improvements /
-# Execution Learnings sections. Tracks state to avoid duplicates.
+# Legacy framework lesson migrator. Project/session lessons remain local by default.
+# Mutating shared SKILL.md files now requires an explicit framework-mutation command/flag.
 
 set -euo pipefail
 
@@ -396,6 +395,13 @@ with open('$METRICS_FILE', 'w') as f:
 migrate() {
     local type="${1:-both}"  # "plan", "exec", or "both"
 
+    if [ "${FORGEWRIGHT_ALLOW_FRAMEWORK_MUTATION:-0}" != "1" ]; then
+        warn "Framework skill mutation is disabled by default."
+        warn "Project-local lessons remain in .forgewright/plan-lessons.md and execution-lessons.md."
+        warn "For explicit Forgewright framework development, use: $0 migrate-framework [plan|exec|both]"
+        return 0
+    fi
+
     init_state
 
     local migrated_count=0
@@ -466,12 +472,12 @@ case "${1:-status}" in
     migrate)           migrate "${2:-both}" ;;
     migrate-plan)      migrate "plan" ;;
     migrate-exec)      migrate "exec" ;;
+    migrate-framework) FORGEWRIGHT_ALLOW_FRAMEWORK_MUTATION=1 migrate "${2:-both}" ;;
     status)            show_status ;;
     init)              init_state; echo "Migration state initialized." ;;
-    *)                 echo "Usage: $0 {migrate|migrate-plan|migrate-exec|status|init}"
-                       echo "  migrate         — migrate all new lessons to skill files"
-                       echo "  migrate-plan    — migrate plan lessons only"
-                       echo "  migrate-exec    — migrate execution lessons only"
+    *)                 echo "Usage: $0 {migrate|migrate-plan|migrate-exec|migrate-framework|status|init}"
+                       echo "  migrate*        — safe by default; leaves lessons project-local"
+                       echo "  migrate-framework [plan|exec|both] — EXPLICITLY mutate shared SKILL.md files; Forgewright framework development only"
                        echo "  status          — show migration state"
                        echo "  init            — initialize migration state file"
                        exit 1 ;;

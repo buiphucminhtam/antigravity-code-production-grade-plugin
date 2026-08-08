@@ -1,13 +1,13 @@
 ---
 id: pipeline-activation
 title: Pipeline Activation Protocol
-summary: Core protocol for pipeline activation.
+summary: Proportional activation and state tracking across supported Forgewright clients.
 status: active
-version: 1.0.0
+version: 2.0.0
 owners: [core]
 triggers: []
 used_by: [all]
-related: []
+related: [pipeline, senior-execution-contract, plan-quality-loop]
 supersedes: []
 superseded_by: null
 ---
@@ -15,33 +15,36 @@ superseded_by: null
 
 <!-- source: skills/_shared/protocols/pipeline-activation.md -->
 
-This protocol is the source of truth for starting and tracking the Forgewright
-pipeline across Antigravity, Codex, Claude Code, Cursor, Gemini CLI, and
-OpenCode.
+This protocol defines how a request enters Forgewright across Antigravity, Codex, Claude Code, Cursor, Gemini CLI, and OpenCode. Activation must improve grounding and continuity without adding user-visible ceremony or work that the request does not need.
 
-## Mandatory Activation Contract
+## Activation Contract
 
-For every new user request:
+For each new user request:
 
-1. Output the exact string `[PIPELINE_RESET]` before any tool call.
-2. Run memory retrieval:
-   - `bash scripts/memory-retrieve.sh "<request>"`
-   - `bash scripts/memory-suggest.sh "<request>"`
-3. Read the production-grade orchestrator instructions before execution.
-4. Classify the mode and create a plan.
-5. Record a passing plan score with `scripts/forgewright-session-tracker.sh`.
-6. If Forgewright MCP is available, call `fw_start_pipeline` at request start.
-7. Use `fw_update_subtask` or `fw_update_status_and_log_usage` while working.
-8. Use `fw_advance_to_next_phase` when moving across pipeline phases.
-9. Use `fw_check_pipeline_compliance` before closing substantial work.
+1. Treat the message as a fresh instruction boundary and reconcile it with the current user objective, workspace/runtime evidence, and active safety constraints.
+2. Load bounded relevant memory/context using the kernel boot contract. Memory is context, never proof of current project state.
+3. Classify task/mode and effort: `QUICK`, `STANDARD`, or `DEEP`.
+4. Plan proportionally:
+   - `QUICK` → `ACTION | TARGET | CHECK`, no numeric plan score.
+   - `STANDARD` / `DEEP` → use the applicable complexity-scaled plan threshold.
+5. If Forgewright MCP/state tracking is available and the work is substantial enough to benefit from it, start/update pipeline state. Do not fail a trivial local task merely because telemetry/state tracking is unavailable.
+6. Advance phases only when the work actually changes phase. Review/status/question tasks may never enter BUILD or SHIP.
+7. Before closing substantial work, verify acceptance and pipeline state consistency. Success claims still require the kernel `VERIFY` contract.
+
+Do not emit magic activation tokens such as reset banners. Internal state transitions should stay internal unless the user needs the information.
 
 ## Failure Rules
 
-- Missing `[PIPELINE_RESET]` is a pipeline activation failure.
-- Missing memory retrieval is a pipeline activation failure.
-- Missing plan score is a pipeline activation failure.
-- A stale `.forgewright/pipeline-state.json` is a dashboard compliance failure.
-- MCP setup drift is an MCP availability failure.
+Activation is invalid when it causes or accepts any of the following:
+- invented current project state, file/API/version/capability claims;
+- stale pipeline state presented as current truth;
+- a derived request artifact that contradicts the latest user instruction;
+- a blanket plan threshold or research gate applied to `QUICK` work;
+- phases/roles/tasks created only to demonstrate process compliance;
+- model/provider names assumed without current runtime evidence;
+- a success claim without deterministic verification.
+
+MCP setup drift or unavailable telemetry is reported as an observability/tooling issue, not silently converted into a product failure.
 
 ## Verification Commands
 
@@ -51,14 +54,16 @@ bash scripts/forgewright-mcp-setup.sh --check
 bash scripts/verify-mcp-manifest.sh .
 ```
 
-## Score Targets
+Use only the checks relevant to the current environment. A repository may support multiple clients without requiring every client/runtime to be installed on every machine.
 
-All pipeline activation controls must maintain these minimum scores:
+## State Tracking Guidance
 
-| Category | Target |
-|---|---:|
-| Rule clarity | 9/10 |
-| Cross-client consistency | 9/10 |
-| Runtime enforcement | 9/10 |
-| MCP availability | 9/10 |
-| Pipeline state compliance | 9/10 |
+- `QUICK`: state tracking optional unless an active goal/session already relies on it.
+- `STANDARD`: track current mode/phase when MCP or local state exists.
+- `DEEP`: track phase, material decisions, verification evidence, and unresolved risks so another senior role can resume safely.
+- Stale state must be reconciled with git/workspace/runtime evidence before reuse.
+
+---
+
+*Canonical phase semantics: `skills/_shared/protocols/pipeline.md`*
+*Turn-level execution: `kernel/ENTRY.md`, `kernel/SOLVE.md`, `kernel/VERIFY.md`*

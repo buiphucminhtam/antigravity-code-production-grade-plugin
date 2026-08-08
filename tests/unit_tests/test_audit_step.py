@@ -53,18 +53,19 @@ def test_audit_in_self_check():
     )
 
 
-def test_solve_preamble_mentions_audit():
+def test_solve_preamble_requires_evidence_without_audit_ceremony():
     with open("kernel/SOLVE.md", "r") as f:
         content = f.read()
-    assert "`AUDIT` (step 7)" in content, (
-        "SOLVE.md preamble must mention AUDIT is never skipped"
+    assert (
+        "Verification evidence is always required in substance; ceremony is not"
+        in content
     )
+    assert "## 7. AUDIT — Proportional Requirement Coverage" in content
 
 
-def test_audit_never_skipped():
-    with open("kernel/SOLVE.md", "r") as f:
+def test_quick_audit_does_not_require_matrix():
+    with open("kernel/AUDIT.md", "r") as f:
         content = f.read()
-    # The preamble must say both VERIFY and AUDIT are never skipped
-    assert "VERIFY" in content.split("\n")[2] and "AUDIT" in content.split("\n")[2], (
-        "Line 3 of SOLVE.md must mention both VERIFY and AUDIT as never-skip"
-    )
+    quick = content.split("## QUICK", 1)[1].split("## STANDARD", 1)[0]
+    assert "No matrix" in quick
+    assert "Confirm the explicit acceptance condition" in quick

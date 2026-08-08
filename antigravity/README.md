@@ -12,7 +12,7 @@
 cd antigravity/planning/my-feature
 vim PLAN.md SCOPE.md TASKS.md
 
-# 3. Plan with score ≥ 9.0 before implementing
+# 3. Pass the applicable STANDARD/DEEP plan threshold (Antigravity is not for QUICK work)
 
 # 4. Track progress
 ./scripts/antigravity/antigravity.sh status
@@ -32,10 +32,10 @@ Antigravity là nơi lưu trữ tất cả các kế hoạch, tài liệu thiế
 |--------------|--------------|
 | Single file change | ❌ Không cần |
 | Small feature (1-2 components) | ❌ Không cần |
-| Medium feature (3+ components) | ✅ Có |
-| Full Build / Game Build | ✅ Bắt buộc |
-| Multi-team coordination | ✅ Bắt buộc |
-| New integration (auth, payment, etc.) | ✅ Có |
+| Medium feature (3+ components) | ⚠️ Chỉ khi coordination/architecture thực sự cần artifact bền vững |
+| Full Build / Game Build | ⚠️ Dùng khi scope đủ lớn/đa lane; không bắt buộc chỉ vì tên mode |
+| Multi-team coordination | ✅ Có |
+| New high-risk integration (auth, payment, etc.) | ✅ Thường nên dùng |
 
 ### Pipeline Integration
 

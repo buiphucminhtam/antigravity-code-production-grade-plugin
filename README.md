@@ -346,15 +346,16 @@ the source of truth for gates, role lanes, model-aware dispatch, and evidence.
 
 ## Architecture and Safety Model
 
-The Forgewright pipeline revolves around predictable constraint enforcement, operating on a rigid loop designed to prevent AI hallucinations from polluting the main branch:
+The Forgewright pipeline revolves around predictable constraint enforcement. The phases remain canonical, but execution is right-sized: irrelevant phases are skipped rather than converted into make-work.
 `INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN`
 
 ### Verification and Safety Layers
 
 - **Evidence-Gated Logic**: The documented kernel workflow requires script-layer verification before a success claim. Enforcement is scoped to the declared runtime and tests in the [canonical-runtime ADR](docs/adr/0001-canonical-production-runtime.md); legacy paths are not represented as universally enforced.
 - **Strict Guardrails**: Middleware behavior has local unit coverage on the MCP surface. The current production construction evidence does not establish that every legacy tool path traverses it; see the [conformance matrix](docs/adr/0001-canonical-production-runtime.md#claim-to-enforcement-conformance-matrix).
-- **Execution Blockers**: When the AI encounters the same error multiple times, the orchestration kernel halts the active thread and forces a context reset, breaking infinite loops.
-- **Visual Validation**: For UI changes, the AI must explicitly capture layout regressions and perform visual verification against established design tokens.
+- **Execution Blockers**: When the AI encounters the same error multiple times, the orchestration kernel halts repetition and requires new evidence, a materially different approach, or escalation instead of blind retries.
+- **Weak-Model Adversarial Gate**: CI replays compliant and deliberately bad agent behaviors and requires the grader to accept all compliant cases while rejecting stale-state, phantom-symbol, fake-success, make-work, self-mutation, provider-pinning, and scope-creep violations. Live model runs are recorded separately as empirical evidence.
+- **Visual Validation**: For UI changes, verification is proportional to risk; changed visual behavior is inspected with an appropriate preview/screenshot when structural tests cannot establish appearance.
 
 **[Read the Full Architecture Document ➔](docs/architecture.md)**
 

@@ -1,80 +1,51 @@
 ---
 id: self-check
 title: Self-Check Protocol
-summary: Core protocol for self check.
+summary: Proportional pre-completion checklist grounded in current acceptance and evidence.
 status: active
-version: 1.0.0
+version: 2.0.0
 owners: [core]
 triggers: []
 used_by: [all]
-related: []
+related: [senior-execution-contract, verification, quality-gate, research-gate]
 supersedes: []
 superseded_by: null
 ---
 # Self-Check Protocol
 
-<!-- source: skills/_shared/protocols/self-check.md -->
-<!-- This is the single source of truth for the Pre-Completion Checklist -->
+Before claiming completion, verify the checks that materially apply. A checklist is not permission to manufacture work.
 
-Before finishing ANY task, verify ALL of the following:
+| Check | Senior completion rule |
+|---|---|
+| Current intent | Latest user instruction is reconciled with current workspace/runtime evidence. |
+| Effort/plan | `QUICK` used `ACTION | TARGET | CHECK`; `STANDARD`/`DEEP` passed the applicable threshold. No universal 9/10 rule. |
+| Scope | No adjacent feature, infrastructure, research, or documentation was added without requirement/risk/measured benefit. |
+| Evidence | Material claims are supported by current deterministic evidence or explicitly marked `UNVERIFIED`. |
+| Tests/checks | Run the smallest checks that prove acceptance, plus broader regression/security/release gates when risk warrants them. |
+| Audit | Apply `kernel/AUDIT.md` proportionally: QUICK diff + acceptance, STANDARD checklist, and for DEEP use the **AUDIT coverage matrix** plus contradiction/cross-entry checks when applicable. |
+| Impact | Existing symbols/contracts were checked for callers/dependents when their blast radius is material. |
+| Safety | Guardrail/protected-path/security findings relevant to the change are resolved or blocking. |
+| Approval | Human approval exists only where the project/safety/release/preference contract actually requires it. |
+| Handoff/memory | Persist a compact handoff/durable memory only for substantial work that another session/role will need. |
+| Learning | Useful lessons stay project-local. Shared Forgewright skills are not auto-mutated from session outcomes. |
 
-| # | Check | Action if Failed |
-|---|-------|-----------------|
-| 0 | ✅ IntentGate analysis done? | If mode reclassified, note Intent vs Literal shift |
-| 1 | ✅ Request interpreted? | Go back to Step 0 |
-| 2 | ✅ Plan scored ≥ 9.0? | Improve plan first |
-| 3 | ✅ Assumptions declared? | Write verification artifacts for each assumption |
-| 4 | ✅ Verification artifacts run? | Run artifacts → get pass/fail evidence before proceeding |
-| 4.5 | ✅ Guardrail log clean? | Check .forgewright/guardrail-log.jsonl for any DENY/WARN events |
-| 5 | ✅ Test cases prepared? | For medium/large features, write test cases/stubs first |
-| 6 | ✅ Code changed? | Implement code to satisfy requirements & test cases |
-| 6.5 | ✅ AUDIT coverage matrix clean? | Re-read changed files in full, check requirement coverage & contradictions (kernel/AUDIT.md) |
-| 7 | ✅ Tests run & verified? | Run QA tests to verify 100% pass |
-| 8 | ✅ Scope respected? | Flag scope creep |
-| 9 | ✅ User approval? | Wait for approval (if gate) |
-| 10 | ✅ Turn-Close memory saved? | Save before ending turn |
-| 11 | ✅ Memory Bank updated? | Update progress.md at session end |
-| 12 | ✅ Skill self-improved? | Run lesson migrator → check if skills evolved |
+## Testing Fit
 
-## ⚠️ MANDATORY RULE
+Prefer test-first for bugs, public contracts, and non-trivial behavior with meaningful regression risk. For clear reversible `QUICK` work, an existing deterministic lint/typecheck/build/behavior check may be the correct verifier. Do not create test stubs or Given/When/Then artifacts solely because a template labels the task “complex.”
 
-```
-For Complex Tasks: Given/When/Then (BA) → Write Tests/Stubs FIRST (QA) → Code (Dev) → Run Tests → Pass ✓
-For Simple Tasks:  Code (Dev) → Write & Run Tests (QA) → Pass ✓
-```
+## Failure / Recovery
 
-**Tests come BEFORE implementation for complex tasks.** Writing test stubs first forces clearer thinking about edge cases and acceptance criteria — leading to better iteration and fewer rework cycles. Never wait for user to ask for tests. Apply complexity-based hybrid testing flow.
+If a required verifier fails:
+1. keep the exact evidence;
+2. apply one evidence-supported correction and re-run the same check when appropriate;
+3. after the same step fails twice, stop repeated attempts;
+4. use the Research Gate only if a material unknown blocks the next decision;
+5. otherwise escalate with verified completed work, blocker, options, and residual risk.
 
-## Session-End Ritual (NEW v8.2)
+## Session Close
 
-**Before closing any session, ALWAYS run:**
-
-```
-1. Update progress.md:
- - Mark completed tasks
- - Add blockers/open questions
- - Update last_updated timestamp
-
-2. Update session state (automated):
- python3 scripts/memory-middleware.py session-log end "[summary]"
- # → Sets status to "completed"
- # → Adds completed_at timestamp
- # → Updates activeContext.md automatically
-
-3. Generate handover if needed:
- python3 scripts/memory-middleware.py handover
- # → Creates HANDOVER.md for next session
- # → Includes goals, tasks, blockers, next steps
-
-4. Migrate lessons to skill files + skill update check:
- bash scripts/forgewright-lesson-migrator.sh migrate
- # For every failed assumption this session:
- # a. Was it a test/script failure? → execution lesson
- # b. Was it a plan failure? → planning lesson
- # c. Was research done? → append to relevant SKILL.md
-```
+For substantial multi-session work, update the project’s active task/decision/handoff state using the available runtime tools. Do not require memory writes, handover files, or lesson migration for trivial turns. **Never run automatic lesson-to-`SKILL.md` migration as a session-close ritual.**
 
 ---
 
-*Source: skills/_shared/protocols/self-check.md*
-*Synced to: AGENTS.md, CLAUDE.md*
+*Completion claims still follow `kernel/VERIFY.md`.*

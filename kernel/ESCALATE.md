@@ -1,35 +1,28 @@
 # EASY / HARD Routing
 
-Tag each task step during [SOLVE.md](SOLVE.md) planning.
+`EASY` and `HARD` describe **risk/uncertainty**, not seniority. Every role/tier remains accountable for senior judgment and evidence.
 
-## Classification Checklist
-Model self-tag is only a hint. A step is **HARD** if ANY of these objective runtime signals or conditions apply:
-- [ ] Repeated verification failure (runtime signal).
-- [ ] Independent-sample disagreement (runtime signal).
-- [ ] Security-sensitive context (auth, secrets, injection surface, permissions).
-- [ ] Changes a public interface, schema, or public exports.
-- [ ] Concurrency, locking, or asynchronous ordering paths.
-- [ ] The Stuck rule fired on this step.
-- [ ] Guardrail flagged a DENY or WARN on this step.
-- [ ] The step would signal or kill a process that holds no Runtime Lifecycle Guard lease, or would reap a `policy=keep` lease.
+## HARD Signals
+A step is `HARD` when one or more material signals apply:
+- Repeated verification failure or the Stuck rule fired.
+- Independent evidence materially disagrees.
+- Security-sensitive behavior or permission boundary.
+- Public interface/schema/export contract change.
+- Concurrency, locking, ordering, migration, or irreversible release path.
+- Guardrail returned DENY/WARN that changes the feasible approach.
+- Process termination would affect an unowned or deliberately-kept runtime.
 
-Otherwise, the step is **EASY**.
+Otherwise the step is `EASY`; `QUICK` work does not need ceremonial per-line tagging.
 
 ## Execution Protocol
-- **EASY**: Execute the step yourself (`thinking_level: MINIMAL`).
-- **HARD**: Run the escalation command:
-  ```bash
-  bash scripts/lite/escalate.sh "<step + minimal context>"
-  ```
-  *(This spawns the strong model and returns its answer; you must integrate and verify it).*
+- **EASY**: keep execution in the current parent agent unless delegation has a real scope/latency benefit.
+- **HARD**: route to the current runtime's verified `expert` capability when available. If `scripts/lite/escalate.sh` is the configured path, call it with the minimal evidence packet.
+- This kernel never pins a provider, model ID, thinking parameter, or temperature. Capability resolution belongs to `skills/_shared/protocols/model-tier.md` and the current runtime probe.
 
-## Agreement-Based Cascade Rules
-When a task is escalated to a stronger model:
-1. Verify the generated output matches all constraints and local coding patterns.
-2. If the stronger model's output introduces any ambiguity or contradicts other parts of the plan, run another escalation to cross-validate or ask the user for confirmation.
-3. Integrate and run a `VERIFY` check immediately. Never merge unverified code from escalated models.
+## Review After Escalation
+1. Treat escalated output as a proposal, not truth; verify it against current constraints and project evidence.
+2. Cross-validate only when disagreement or risk remains material — do not trigger a second model merely to satisfy a cascade.
+3. Integrate only verified output.
 
-## Budget Limit
-- **Cost Budget Rules Apply**: Escalations are bound by token and cost budget rules, not a fixed escalation limit.
-- If you exceed the budget, you must **pause**. Do not "do your best".
-- Security, schema, and public-interface work must pause and explicitly wait for user approval or budget extension if exhausted.
+## Budget / Stop Condition
+Respect declared cost/token/deadline constraints. When the preferred escalation is unavailable, use the safest bounded path that still meets acceptance; for security/irreversible/public-contract work, report the unresolved blocker rather than silently weakening the gate. Do not invent extra work to consume remaining budget.

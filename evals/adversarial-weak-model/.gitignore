@@ -1,0 +1,3 @@
+# Live reports are local evidence unless explicitly promoted to a reviewed baseline.
+results*.json
+runs/

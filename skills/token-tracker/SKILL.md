@@ -1,6 +1,5 @@
 ---
 name: token-tracker
-model: haiku
 description: >
   Track and analyze LLM token usage across projects. Monitor costs,
   generate reports, set budgets, and visualize usage patterns.

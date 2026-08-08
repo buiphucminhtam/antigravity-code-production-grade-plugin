@@ -114,7 +114,7 @@ Requirements:
 Before moving to Phase 5:
 - Service-to-service clients compile and type-check against OpenAPI specs
 - Event producers and consumers handle the full lifecycle (publish, consume, idempotency, dead-letter)
-- External API clients wrap SDKs with circuit breaker and retry
+- External API clients define bounded timeout/failure behavior; add retry/circuit breaker only when retry semantics and failure impact justify them
 - Migration runner can run up/down/status
 - All integration tests pass
 
@@ -122,11 +122,11 @@ Before moving to Phase 5:
 
 ## Quality Bar
 
-- All service clients are auto-generated from specs, not hand-written
-- Every outbound call has circuit breaker, retry, timeout, and logging
-- Event consumers are idempotent (duplicate events produce same result)
-- Migration runner is transaction-safe and uses locking
-- Mock/stub available for every external dependency
+- Generate clients from authoritative specs when the project uses contract-first APIs; otherwise follow the established client pattern
+- Remote calls have explicit timeout/failure semantics; retry/circuit breaker/idempotency are added only where the verified failure model requires them
+- Event consumers are idempotent when duplicate delivery is possible
+- Migration locking/transactions match the database and migration tool's actual guarantees
+- Mock/stub external dependencies only where tests need isolation; do not create unused wrappers
 
 ## Context Bridging
 

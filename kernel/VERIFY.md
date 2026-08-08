@@ -1,68 +1,39 @@
-# VERIFY Block Contract
+# VERIFY — Evidence Contract
 
-A `VERIFY` block is required before any claim of success.
+A success claim requires **observed current evidence**, not self-attestation. The amount of reporting scales with risk; the evidence standard does not.
 
-## Template 1: Standard Command / Test Check
-Use this for unit/integration/E2E test runs, compiler output, or command exit code checks.
+## QUICK — Compact Evidence
+Use for clear, local, reversible changes when one focused check proves acceptance.
 ```text
-CLAIM: <what you claim now works>
-COMMAND: <the exact command you ran to check/test>
-OUTPUT: <pasted stdout/stderr, last lines>
-EXIT CODE: <number>
+CHECK: <command/tool check> | EXIT: <code/result> | RESULT: PASS | FAIL
+```
+A single compact check may cover tightly coupled acceptance conditions. Do not manufacture multiple blocks to satisfy a template.
+
+## STANDARD / DEEP — Command or Test Evidence
+Use when the change has multiple material behaviors, broader regression surface, or elevated risk.
+```text
+CLAIM: <material behavior being verified>
+COMMAND: <exact command/tool check>
+OUTPUT: <relevant observed output>
+EXIT CODE: <number/result>
 VERDICT: PASS | FAIL
 ```
 
-## Template 2: UI / Visual Verification
-Use this for frontend, HTML/CSS, or user interface modifications. A successful build alone must not prove responsiveness.
-```text
-CLAIM: <what layout/DOM changes were made>
-DOM CHECK COMMAND: <command or Chrome DevTools query to verify elements exist>
-DOM OUTPUT: <pasted DOM query result/HTML snippet>
-EVIDENCE:
-- Project breakpoints/fallback viewports tested: <details>
-- Horizontal overflow checked: <details>
-- Content wrapping and hierarchy verified: <details>
-- Keyboard/focus behavior verified: <details>
-- Component states (loading, empty, error, disabled) verified: <details>
-- Token/design-system conformance verified: <details>
-- Screenshots/VRT results: <details>
-VISUAL VERDICT: STRUCTURALLY VERIFIED (requires user visual confirmation)
-```
+## UI / Visual Evidence
+A successful build alone must not prove responsiveness or visual correctness. Verify only the states relevant to the changed UI: affected viewport(s), overflow/wrapping, interaction/focus state, design-token conformance, and screenshot/VRT evidence when available. For major/new UI, record **Project breakpoints/fallback viewports tested** and **Horizontal overflow checked**; a local UI fix does not require unrelated state inventory.
 
-## Template 3: Program-of-Thought (PoT) Script Verification
-Use this when verifying math, complex logic, or algorithms in isolation.
-```text
-CLAIM: <what algorithm or logic was verified>
-POT SCRIPT PATH: <path to temporary verification script>
-RUN COMMAND: <command to run the script>
-OUTPUT: <pasted output showing correctness of calculations>
-EXIT CODE: <number>
-VERDICT: PASS | FAIL
-```
+## Executable Logic Evidence
+For non-obvious math/algorithms/state/concurrency, use a focused executable test or scratch script and report its observed result. Routine `QUICK` work needs no extra reasoning artifact.
 
-## Template 4: Runtime Ledger
-Use this whenever the task started anything long-running — a dev server, game editor, emulator, watcher, container. A leaked process is invisible in every other template: the tests pass, the build is green, and RAM keeps climbing.
-```text
-RUNTIME LEDGER
-OPENED:  <lease_id> role=<..> port=<..> pid=<..>
-CLOSED:  <lease_id> exit=<..>
-LEAKED:  none | <lease_id list>
-COMMAND: bash scripts/runtime/runtime-lease.sh status
-OUTPUT:  <pasted status output>
-VERDICT: CLEAN | LEAKED
-```
-Rules for this block:
-- Start long-running processes with `bash scripts/runtime/dev-run.sh --role <role> -- <command>`. It reuses an already-running instance instead of starting a second one, and registers a lease so the process can be reclaimed.
-- `LEAKED` is only acceptable when the lease is deliberately `policy=keep`; say why.
-- A process you started with no lease at all is a `LEAKED` verdict, not an exemption.
+## Runtime Ledger
+When the task starts a long-running server/editor/emulator/watcher/container, verify it was reclaimed or deliberately kept. If runtime lease tooling is present, use it; otherwise report the actual PID/process state from the available runtime tools.
 
 ## Rules
-1. A claim of success without a pasted `OUTPUT` and `EXIT CODE` / `DOM OUTPUT` is automatically FALSE.
-2. For UI/visual changes: cap confidence at "structurally verified" and ask the user to confirm the actual visual appearance.
-3. Provide exactly one block per changed behavior.
-4. `FAIL` verdicts must be reported immediately and never hidden.
-5. VERIFY proves code works. [AUDIT.md](AUDIT.md) proves all requirements are covered. Both are mandatory.
-6. Narrative claims ("I updated the file", "this should work now") without a VERIFY block are automatically FALSE. The check must be a runnable command whose output you paste.
-7. Prefer deterministic checks (test suites, linters, build exit codes) over manual inspection. If no automated check exists, create one before claiming success.
-8. If the task started any long-running process, emit Template 4 as well. "The tests passed" is not evidence that the machine was left clean.
+1. Never report `PASS` from expectation, prose, or memory. **Narrative claims without current evidence are automatically FALSE.** Evidence must come from the current workspace/runtime after the change.
+2. `FAIL` evidence is reported, not hidden or converted into a success narrative.
+3. Prefer existing **deterministic checks**: tests/build/type/lint/runtime evidence. If no existing check can adequately prove a material behavior, **create one before claiming** success.
+4. `QUICK` work may use one compact evidence line. `STANDARD`/`DEEP` work reports each **material** behavior, not every edit line.
+5. Requirement coverage is audited proportionally via [AUDIT.md](AUDIT.md); a full matrix is not mandatory for local reversible work.
+6. UI evidence must distinguish structural/tool verification from human aesthetic judgment where human review is genuinely required.
+7. If the task started long-running processes, runtime cleanliness is part of acceptance.
 

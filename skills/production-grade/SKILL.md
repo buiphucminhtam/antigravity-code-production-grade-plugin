@@ -17,24 +17,22 @@ description: >
 
 ## Overview
 
-Adaptive meta-skill orchestrator for all software engineering work. Analyzes the user's request, identifies which skills are needed, builds a minimal task graph, and executes — from a single code review to a full 17-skill greenfield build.
+Adaptive meta-skill orchestrator for software/product delivery. It analyzes the user's request and current project evidence, selects only the capabilities needed, builds a minimal task graph, and executes — from a single local review to a multi-role greenfield build.
 
-**80 skills, one orchestrator.** The orchestrator routes to the right skills based on what the user actually needs. No forced full-pipeline execution for everyday tasks.
+**One manifest-driven orchestrator.** Resolve the current skill inventory from project truth (`product-manifest.json` / `kernel/INDEX.md`) and load only what the request needs. No forced full-pipeline execution for everyday tasks.
 
 **All skills are bundled in this plugin. Single install, everything included.**
 
 ### ⚠️ MANDATORY: Pipeline State Management (MCP Tools)
 If you are running in an environment with the Forgewright MCP Server connected, YOU MUST explicitly manage the pipeline state using the exposed `fw_*` tools. This ensures any connected IDE or Dashboard accurately tracks your progress.
-1. When starting a new goal/session, call `fw_start_pipeline`.
-2. When transitioning from one Phase to the next (e.g. from Phase 0 Interpret to Phase 1 Define), you MUST call `fw_advance_to_next_phase`.
-3. If a step requires explicit human approval (e.g. locking the architecture), call `fw_request_gate_approval`.
-**Failure to call these MCP tools will cause the user's dashboard to permanently hang at "Interpret".**
+1. For substantial tracked work, call `fw_start_pipeline` when starting a new goal/session.
+2. Advance state only through phases the work actually enters; compressed `QUICK` work does not need artificial phase transitions.
+3. Use `fw_request_gate_approval` only for an actual human-approval contract, not merely because a phase exists.
+If state telemetry is unavailable, report the observability degradation when material; do not convert it into a false product failure.
 
-### ⚠️ MANDATORY RULE: GEMINI 3 PARAMETERS
-- **Deprecate `thinking_budget`**: Never use the legacy `thinking_budget` parameter in API calls or prompts. It will cause API Error 400.
-- **Implement `thinking_level`**: Use `thinking_level: MINIMAL` for high-throughput Agentic modes or `thinking_level: HIGH` for Architect/Coding modes requiring verified reasoning.
-- **Gemini Temperature Policy**: Gemini 3.x reasoning-heavy should use temperature `1.0` with `thinking_level` HIGH. Gemini 3.5 Flash high-throughput/agentic can use temperature `1.0` with `thinking_level` MINIMAL and strict grounding. Do not leave blanket `1.0` for Claude/GPT deterministic tasks.
+### Provider / Model Runtime Policy
 
+Keep the canonical orchestrator provider-neutral. Use `skills/_shared/protocols/model-tier.md` and runtime-advertised capabilities/IDs for provider-specific parameters. Never assume a model family, temperature, thinking parameter, or provider feature from stale prose.
 
 ### Middleware Chain (v8.0 — DeerFlow Pattern)
 
@@ -43,7 +41,7 @@ Every skill invocation is wrapped by an ordered middleware chain. Implementation
 ```
 Pre-Skill:  ① SessionData → ② ContextLoader → ③b DryRunContext → ③ SkillRegistry → ④ Guardrail → ⑤ Summarization
             ═══ SKILL EXECUTION ═══
-Post-Skill: ⑥ QualityGate → ⑦ BrownfieldSafety → ⑧ TaskTracking → ⑨ Memory → ⑩ GracefulFailure → ⑪ ASIP → ⑫ CircuitBreaker → ⑬ Bulkhead → ⑭ Verification
+Post-Skill: ⑥ QualityGate → ⑦ BrownfieldSafety → ⑧ TaskTracking → ⑨ Memory → ⑩ GracefulFailure → ⑪ RecoveryResearch → ⑫ CircuitBreaker → ⑬ Bulkhead → ⑭ Verification
 ```
 
 | # | Middleware | File | Hook | Purpose |
@@ -59,7 +57,7 @@ Post-Skill: ⑥ QualityGate → ⑦ BrownfieldSafety → ⑧ TaskTracking → �
 | ⑧ | TaskTracking | `middleware/08-task-tracking.md` | after_skill | Update todos, emit events |
 | ⑨ | Memory | `middleware/09-memory.md` | after_skill + turn_close | Persistent fact extraction |
 | ⑩ | GracefulFailure | `middleware/10-graceful-failure.md` | on_error | Retry logic, stuck detection |
-| ⑪ | ASIP | `skills/_shared/protocols/self-improving-loop.md` | after_skill + on_error | Canonical self-improvement (ASIP) |
+| ⑪ | RecoveryResearch | `skills/_shared/protocols/research-gate.md` | on_error | Research only for a material evidence/knowledge gap; no framework self-mutation |
 | ⑫ | CircuitBreaker | `skills/_shared/protocols/circuit-breaker.md` | after_skill | Fault isolation + state machine |
 | ⑬ | Bulkhead | `skills/_shared/protocols/bulkhead.md` | after_skill | Resource limits per worker type |
 | ⑭ | Verification | `skills/_shared/protocols/verification.md` | after_skill | Evidence-First verification check |
@@ -70,11 +68,11 @@ Post-Skill: ⑥ QualityGate → ⑦ BrownfieldSafety → ⑧ TaskTracking → �
 Skills are loaded on-demand based on classified mode. Read `.forgewright/skills-config.json` for the mode→skill mapping.
 
 ```
-Instead of loading all 80 skill descriptions (~95KB), only load skills relevant to the mode:
+Instead of loading the full current skill registry, load only skills relevant to the mode:
   Review mode  → loads 1 skill  (~3KB)
   Feature mode → loads 5 skills (~15KB)
   Full Build   → loads 10 skills (~30KB)
-  Fallback     → load all skills (classification failure)
+  Fallback     → inspect manifest/index and load the smallest safe candidate set; do not blindly load everything
 ```
 
 ## When to Use
@@ -113,120 +111,26 @@ If detected:
 
 If not detected → proceed normally (no changes).
 
-## Phase 0.B — Request Interpretation (MANDATORY)
+## Phase 0.B — Request Interpretation
 
-**⚠️ DO NOT SKIP THIS STEP. EVER.**
+Normalize the request before routing, but keep interpretation proportional. For a clear `QUICK` request, this may be a short internal pass rather than a separate artifact.
 
-Before ANY skill execution, interpret the user's request:
+Capture only what affects execution:
+- objective and observable acceptance;
+- explicit constraints / non-goals;
+- current verified project state relevant to the request;
+- material assumptions or decisions still unresolved;
+- the smallest appropriate mode/effort class.
 
-1. **Extract 9 dimensions** (from chat-interpreter):
-   - Task: What they actually want
-   - Target tool: Forgewright mode
-   - Output format: What they expect
-   - Constraints: Explicit limits
-   - Input: What they're providing
-   - Context: Prior decisions, project state
-   - Audience: Who uses output
-   - Success criteria: How they know it's done
-   - Examples: Reference systems
+Ask the user only when ambiguity can materially change the product contract, safety, irreversible data, public behavior, budget/scope, or expensive architecture direction. Do not use invented ambiguity/completeness percentages, fixed question counts, or an unbounded clarification loop.
 
-2. **Scan for vague patterns** (from credit-killing patterns):
-   - Vague verb ("help me", "make it", "do something") → ask specifics
-   - Two tasks in one → ask priority
-   - No success criteria → derive and confirm
-   - Emotional description → extract technical fault
-   - Assumed knowledge → inject context
-   - No project context → pull from project-profile.json
-   - No scope boundary → ask what's in/out
-   - No file path → ask for location
+BDD/Gherkin is useful when behavior scenarios materially improve acceptance/test handoff; it is not mandatory for text/config/status work or obvious local changes.
 
-### IntentGate — Explicit Intent Analysis (NEW Phase 0.D)
-
-**Purpose:** Before classifying into modes, verify we understand the user's TRUE goal. This prevents literal misinterpretation — user says "fix the login" but actually wants OAuth added.
-
-**Trigger:** Runs AFTER vague pattern scanning, BEFORE clarification questions.
-
-**Three reflection questions — answer them YOURSELF as the agent:**
-
-```
-INTENTGATE ANALYSIS:
-After scanning for vague patterns, ask yourself:
-1. "What is the USER'S GOAL behind this request?" (not the literal action)
-2. "What does success look like to the USER?" (what would they consider done?)
-3. "What would the USER consider a complete fix/implementation?"
-
-If the literal interpretation differs from the Intent Analysis:
-→ Highlight the discrepancy in the structured request
-→ If HIGH confidence: proceed with Intent, note mode reclassification
-→ If MEDIUM/LOW confidence: ask 1 clarifying question to confirm intent
-```
-
-**Rules:**
-- IntentGate is 3 reflection questions MAX — answer them yourself, do NOT ask the user
-- Only ask the user if the intent is genuinely ambiguous (MEDIUM/LOW confidence)
-- IntentGate adds 0 token overhead if confidence is HIGH — it's internal reflection
-- If mode reclassified based on Intent Analysis, note it explicitly
-
-**Output:** Append Intent Analysis to the structured request below.
-
-3. **Auto-Clarification Loop (Phase 0.E - NEW v8.8):**
-   - **Ambiguity Score Assessment:** Chấm điểm độ mơ hồ (Ambiguity Score: $0.0 - 1.0$). Nếu score $> 0.4$, bắt buộc dừng tiến trình code và đặt câu hỏi làm rõ.
-   - **6W1H Completeness Checklist:** Chấm điểm độ hoàn thiện yêu cầu ($0.0 - 1.0$) dựa trên 7 tiêu chí 6W1H.
-   - **Thực thi vòng lặp (No hard limit):** Tự động đặt câu hỏi làm rõ và lặp lại cho đến khi điểm hoàn thiện đạt $\ge 0.85$. Tuyệt đối không tiến hành code khi chưa đạt ngưỡng chất lượng đầu vào này.
-   - **Chuẩn hóa Gherkin/BDD:** Mọi đặc tả tính năng đã làm rõ phải được viết dưới dạng kịch bản Given/When/Then để làm đầu vào cho QA sinh test case tự động.
-
-4. **Generate Structured Request:**
-   ```
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   🔍 INTERPRETED REQUEST (v8.8 Input Upgraded)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   Mode: [detected]
-   Confidence: [HIGH/MEDIUM/LOW]
-   Ambiguity Score: [Score/1.0 - Halted if > 0.4]
-   6W1H Completeness Score: [Score/1.0 - Target >= 0.85]
-
-   Intent: "[original message quoted]"
-
-   What you want:
-     [1-sentence clear description]
-
-   Intent Analysis (Phase 0.D):
-   - User's true goal: [1-sentence — what they actually want, not what they said]
-   - Success definition: [from the USER's perspective]
-   - Intent vs Literal: [if different from what they said, note it here]
-     ✗ Literal: [what they literally said]
-     ✓ Intent: [what they actually need]
-
-   Key decisions made:
-     [Defaults applied with reasoning]
-
-   Scope:
-     ✓ [In scope]
-     ✗ [Out of scope]
-
-   BDD/Gherkin Scenarios (MANDATORY):
-     Given [Context]
-     When [Action]
-     Then [Expected Outcome]
-
-   Success criteria:
-     [How we know it's done]
-
-   Plan Quality & Self-Improvement Loop (MANDATORY Phase 2):
-   - Initial Plan Score: [Score/10]
-   - Optimization Iterations: [N times (0 if score >= 9.0 on first try)]
-   - Research Gate Triggered: [Yes/No (and what was researched if Yes)]
-   - Final Plan Score: [Score/10 - Must be >= 9.0]
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ```
-
-**Phase 1 — Analyze the request:**
-
-Read `.forgewright/subagent-context/INTERPRETED_REQUEST.md` (from chat-interpreter Phase 0.A) for the authoritative request analysis. The chat-interpreter has already performed 9-dimension extraction and mode detection.
+If `.forgewright/subagent-context/INTERPRETED_REQUEST.md` exists, treat it as a derived cache/handoff. The latest user instruction remains authoritative for intent, and current workspace/runtime evidence remains authoritative for project state. Refresh the cache when either changes.
 
 ## Enhanced Mode Classification with Fuzzy Matching (v8.7+)
 
-Detailed classification confidence levels, fuzzy trigger matching rules, trigger patterns, fallback chains, and planning/UX suggestions are documented in [references/mode-classification.md](file:///Users/buiphucminhtam/GitHub/forgewright/skills/production-grade/references/mode-classification.md).
+Detailed classification confidence levels, fuzzy trigger matching rules, trigger patterns, fallback chains, and planning/UX suggestions are documented in [references/mode-classification.md](references/mode-classification.md).
 
 ## Coding-Level Adaptation
 
@@ -244,7 +148,7 @@ codingLevel: 8  # 1-10 scale (default: 8 = senior/terse)
 | **8-10** (Senior) | **Terse** | Code-focused, minimal commentary. Only flag unexpected decisions or gotchas. Diff-style output preferred. No tutorials, no hand-holding. Assume deep familiarity with tools and patterns. |
 
 **Rules:**
-- If `codingLevel` is not set, default to **Standard (5)**
+- If `codingLevel` is not set, default to **Senior (8)**
 - Coding level affects **output verbosity**, NOT **code quality** — all levels produce production-grade code
 - Engagement Mode (Express/Standard/Thorough/Meticulous) controls **interaction depth** — coding level controls **explanation depth**. They are independent dimensions.
 
@@ -254,11 +158,15 @@ All skills MUST follow the sensitive file protection protocol:
 
 !`cat skills/_shared/protocols/sensitive-file-protection.md 2>/dev/null || echo "Protocol not found — apply defaults: never read .env without user approval, redact secrets in output, check .gitignore before commit"`
 
-## Plan Quality Loop
+## Senior Execution + Plan Quality
 
-**ALL skills** MUST run the plan quality loop before doing any work. No exceptions — every skill plans first, scores, improves until ≥ 9.0:
+All roles operate under the shared senior execution contract. Senior means evidence-backed judgment and ownership, not extra ceremony or a specific provider/model.
 
-!`cat skills/_shared/protocols/plan-quality-loop.md 2>/dev/null || echo "Protocol not found — apply defaults: every skill must plan first, score against 9 criteria, complexity-scaled threshold (6.0-9.0 by mode), improve loop with research + skill self-improvement"`
+!`cat skills/_shared/protocols/senior-execution-contract.md 2>/dev/null || echo "Protocol not found — apply defaults: senior-by-default, evidence-first, smallest adequate solution, no speculative optimization"`
+
+Use the shared plan-quality protocol proportionally: `QUICK` work uses the mini-plan fast path; `STANDARD` / `DEEP` work uses the applicable complexity-scaled threshold. Never impose a blanket 9.0 score on routine work.
+
+!`cat skills/_shared/protocols/plan-quality-loop.md 2>/dev/null || echo "Protocol not found — apply defaults: QUICK fast path; otherwise complexity-scaled threshold (6.0-9.0 by mode), research only for material gaps"`
 
 ## Webhook State & Telemetry Protocol
 
@@ -266,73 +174,17 @@ All skills MUST follow the sensitive file protection protocol:
 
 !`cat skills/_shared/protocols/webhook-telemetry-protocol.md 2>/dev/null || echo "Protocol not found — apply defaults: POST to FORGEWRIGHT_WEBHOOK_URL/api/v1/telemetry and /api/v1/state instead of using OSC sequences."`
 
-### ⚠️ ASIP Enforcement for Plan Quality
+### Evidence-Driven Recovery
 
-**After 2 consecutive failed plan attempts (score < 9.0):**
-1. **TRIGGER MANDATORY RESEARCH GATE** — Cannot skip
-2. **Record attempt:** `bash scripts/forgewright-session-tracker.sh plan <score>`
-3. **Check if gate needed:** `bash scripts/forgewright-session-tracker.sh check`
-4. **Research Priority Order:**
-   ```
-   a) CHECK NotebookLM availability:
-      nlm --version 2>/dev/null || echo "NOT_AVAILABLE"
-      └─ If NOT_AVAILABLE → SKIP to (b)
-   
-   b) TRY NotebookLM CLI (if available):
-      nlm notebook create "[Project] - [Skill] - [Topic]"
-      nlm research start "[topic]" --mode deep
-      nlm notebook query <id> "Best practices?"
-   
-   c) FALLBACK to Web Search (always available):
-      WebSearch: "best practices [topic]"
-      WebSearch: "[framework] [pattern] implementation"
-   ```
-5. SYNTHESIZE findings into 1-3 actionable insights
-6. Update skill SKILL.md (Planning Improvements section)
-7. Append to `.forgewright/plan-lessons.md`
-8. RE-PLAN with injected knowledge
-9. Re-score — only proceed if ≥ 9.0
+Use `kernel/SOLVE.md`, `skills/_shared/protocols/graceful-failure.md`, and `skills/_shared/protocols/research-gate.md`.
 
-**⚠️ BA Scope Exception:**
-- If weak criteria reveals **unclear project requirements**, STOP research and trigger BA skill
-- BA will ask clarifying questions → define scope → resume Plan Quality Loop
-- This is NOT blocking — scope elicitation IS the Forgewright workflow
+- `QUICK` work has no numeric plan score requirement.
+- `STANDARD` / `DEEP` use the applicable plan threshold.
+- After the same step fails twice, stop repeating it. Research only when a material knowledge/evidence gap blocks the next decision; otherwise escalate with the evidence and alternatives.
+- Store lessons project-locally. Do **not** mutate shared Forgewright skill/protocol files unless improving Forgewright itself is the explicit task and the framework regression gates pass.
+- A higher model tier may review/disagree, but it does not replace evidence.
 
-**This is NON-NEGOTIABLE. The system will not proceed until research is complete.**
-
-## Execution Blocker Loop
-
-> **DEPRECATED — Use ASIP (Adaptive Self-Improving Loop) instead.**
->
-> The canonical execution blocker loop is now in `self-improving-loop.md` (ASIP Phase 2).
-> This section is kept for reference only.
-
-~~**ANY time a blocker is encountered during implementation, MUST run this loop BEFORE asking user:**~~
-
-~~!`cat skills/_shared/protocols/execution-blocker-loop.md 2>/dev/null || echo "Protocol not found — apply defaults: assess → research (web/codebase/docs) → synthesize → attempt → verify → improve skill. Max 3 cycles."`~~
-
-See **ASIP (Adaptive Self-Improving Loop)** below for the canonical execution blocker loop.
-
-## Adaptive Self-Improving Loop (ASIP)
-
-**Combined Plan Quality + Execution Blocker Loop with mandatory NotebookLM research:**
-
-!`cat skills/_shared/protocols/self-improving-loop.md 2>/dev/null || echo "Protocol not found — apply defaults: 2 failures → research via NotebookLM → update skill → retry"`
-
-**Core principle:** Every failure is a learning opportunity. Skills improve over time based on real failures.
-
-### ASIP Metrics
-
-Track project adaptation:
-```json
-{
-  "totalResearchGates": 0,
-  "totalSkillUpdates": 0,
-  "uniquePatterns": 0,
-  "lessonsLearned": 0,
-  "failuresAvoided": 0
-}
-```
+Legacy ASIP files/metrics may remain for backward compatibility; their old mandatory-research/self-mutation semantics are deprecated by the current Research Gate and Senior Execution Contract.
 
 ## Review Intensity Mode
 
@@ -344,11 +196,11 @@ User can override per-invocation with `--review [mode]` flag.
 
 ## Model Tier Assignment
 
-**Assign optimal Claude model tier to each skill invocation:**
+Select a capability tier independently from any provider/model name. Never invent or pin a provider model that the current runtime has not advertised.
 
-!`cat skills/_shared/protocols/model-tier.md 2>/dev/null || echo "Protocol not found — apply defaults: Sonnet for most skills. Haiku for /sprint-status, /help, /scope-check, /onboard. Opus for /architecture-review, /gate-check, /code-review."`
+!`cat skills/_shared/protocols/model-tier.md 2>/dev/null || echo "Protocol not found — apply defaults: scout for bounded read-only discovery, builder for normal implementation/verification, expert for objectively hard/high-risk decisions or disagreement."`
 
-Override per-invocation with `--model [haiku|sonnet|opus]` flag.
+If the runtime supports explicit model overrides, use only exact advertised IDs. Otherwise keep provider-managed selection.
 
 ## Optional Expert CLI Mode
 
@@ -360,20 +212,15 @@ Expert CLI mode is optional, supports single-provider setups, and must not requi
 
 ## Mode Execution (Non-Full-Build)
 
-Detailed execution instructions, QA test sequences, and task flows for each non-Full-Build mode (e.g. Goal, Feature, Harden, Ship, Test, Review, Architect, Document, Explore, Research, Optimize, Design, Mobile, Game Build, XR Build, Analyze, Custom, Debug, AI Build, Migrate) are documented in [references/mode-execution.md](file:///Users/buiphucminhtam/GitHub/forgewright/skills/production-grade/references/mode-execution.md).
+Detailed execution instructions, QA sequences, and task flows for non-Full-Build modes are documented in [references/mode-execution.md](references/mode-execution.md).
 
-## Chat Interpretation (Pre-Processing — BEFORE everything else)
+## Chat Interpretation (Request Boundary)
 
-> **Powered by prompt-master methodology.** Run BEFORE Phase 0.C on every user message.
+Treat every new user message as a fresh instruction boundary: reconcile it with current workspace evidence and existing constraints before acting. Do **not** emit magic reset tokens or other user-visible ceremony.
 
-Every user message is first interpreted through the `chat-interpreter` Cursor subagent. This converts vague natural language into a structured, unambiguous pipeline request — eliminating the need for users to speak "prompt engineer."
+Use `chat-interpreter` when the request is materially ambiguous, multi-domain, or expensive to misread. A clear `QUICK` request may be interpreted inline under the kernel boot sequence.
 
-### 🛑 Momentum Breaker (MANDATORY)
-
-Before invoking the chat interpreter or calling any tools to process a new user request, **you MUST output the exact string `[PIPELINE_RESET]` to the user**. 
-This physical action acts as a "brake" to interrupt Conversational Momentum. Once this flag is outputted, you are strictly bound to follow the 5-step pipeline (0.A -> 0.B -> 1 -> 2 -> 3) without bypassing to direct tool execution (Tool-first reflex).
-
-**Phase 0.A — Chat Interpretation:**
+**Phase 0.A — Chat Interpretation (when needed):**
 
 ```
 Invoke: /chat-interpreter [user's message]
@@ -383,7 +230,7 @@ Invoke: /chat-interpreter [user's message]
 
 1. **9-Dimension Extraction** — silently extracts: Task, Target tool, Output format, Constraints, Input, Context, Audience, Success criteria, Examples
 
-2. **Mode Detection** — maps the request to Forgewright's 19 modes with confidence level (HIGH/MEDIUM/LOW)
+2. **Mode Detection** — maps the request to Forgewright's 24 modes with confidence level (HIGH/MEDIUM/LOW)
 
 3. **Gap Detection** — identifies missing information (max 3 clarifying questions if needed)
 
@@ -443,19 +290,19 @@ After your answers, I'll route to the right pipeline.
 ```
 
 **Reading the interpreted request before proceeding:**
-All subsequent pipeline steps read `.forgewright/subagent-context/INTERPRETED_REQUEST.md` as the authoritative source of user intent — not the raw chat message.
+`.forgewright/subagent-context/INTERPRETED_REQUEST.md` is a derived handoff/cache, not a higher authority than the current user message. If they differ, re-interpret from the current request and verified project state before continuing.
 
 ## Tool-Specific Routing (from prompt-master)
 
-Prompts, techniques, and template mappings for various AI code interfaces, reasoning engines, local LLMs, image generators, and autonomous agents are documented in [references/tool-routing.md](file:///Users/buiphucminhtam/GitHub/forgewright/skills/production-grade/references/tool-routing.md).
+Prompts, techniques, and template mappings for supported tool surfaces are documented in [references/tool-routing.md](references/tool-routing.md).
 
 ## Auto-Initialization, Updates, and Session Lifecycle
 
-System requirements, power level selection, auto-update mechanisms, session loading, memory retrieval, subagent context preparation, and subagent invocation protocols are documented in [references/initialization-and-lifecycle.md](file:///Users/buiphucminhtam/GitHub/forgewright/skills/production-grade/references/initialization-and-lifecycle.md).
+System requirements, session loading, memory retrieval, subagent context preparation, and invocation protocols are documented in [references/initialization-and-lifecycle.md](references/initialization-and-lifecycle.md).
 
 ## Full Build Pipeline
 
-When mode is **Full Build**, follow this EXACT sequence:
+When mode is **Full Build**, use this coordination skeleton while applying the Senior Execution Contract. Full Build means end-to-end ownership, **not that every role/task/artifact must execute**. Mark inapplicable lanes `SKIPPED` with a short evidence-based reason; never create work merely to fill the pipeline.
 
 1. **Print kickoff banner:**
 ```
@@ -470,7 +317,7 @@ mkdir -p skills/_shared/protocols/
 mkdir -p .forgewright/
 ```
 
-3. **Write shared protocols** to `skills/_shared/protocols/`:
+3. **Ensure canonical shared protocols are available** in `skills/_shared/protocols/` (reuse the current Forgewright/submodule files; do not rewrite existing canonical protocols):
 
 | Protocol File | Content |
 |---------------|---------|
@@ -489,7 +336,7 @@ mkdir -p .forgewright/
 | `credit-killing-patterns.md` | 35 patterns that waste tokens: 7 task, 6 context, 6 format, 6 scope, 5 reasoning, 5 agentic |
 | `prompt-techniques.md` | 5 safe techniques: Role Assignment, Few-Shot, XML Tags, Grounding Anchors, Chain of Thought. Also lists forbidden techniques: ToT, GoT, USC, prompt chaining, MoE |
 
-Read these from the plugin's `skills/_shared/protocols/` directory and copy them. If plugin path is unavailable, write from the summaries above.
+Read these from the current Forgewright installation/submodule. Copy/link only when the target project explicitly needs local protocol files and they are absent. **Never reconstruct a missing canonical protocol from the summary table**; mark it `UNVERIFIED` and use the kernel/shared contract that is actually available.
 
 4. **Codebase discovery — detect greenfield vs brownfield:**
 
@@ -590,102 +437,44 @@ Read these from the plugin's `skills/_shared/protocols/` directory and copy them
 
 5. **Engagement mode:**
 
-Notify user via notify_user:
+Resolve interaction depth without interrupting the client unnecessarily:
+- Reuse an explicit user/project setting when present.
+- Otherwise default to **Standard** internally: communicate material decisions/risks, but ask for approval only when preference, contract, safety, irreversible data, or release acceptance genuinely requires it.
+- `Express`: maximum autonomy; only hard/material gates interrupt.
+- `Thorough` / `Meticulous`: use only when the user explicitly requests more review depth or the engagement contract requires it.
 
-```
-How deeply should the pipeline involve you in decisions?
-
-1. **Standard (Recommended)** — 3 gates + moderate architect interview. Best balance of speed and control.
-2. **Express** — Minimal interaction. 3 gates only, auto-derive architecture from BRD. Fastest.
-3. **Thorough** — Deep interviews at PM and Architect. Full capacity planning. Review phase summaries.
-4. **Meticulous** — Maximum depth. Approve each ADR individually. Review every agent output. Full control.
-```
-
-Write the choice to `.forgewright/settings.md`:
-```markdown
-# Pipeline Settings
-Engagement: [express|standard|thorough|meticulous]
-```
-
-All skills read this file at startup to adapt their depth. The engagement mode controls:
-- **PM interview depth** — Express: 2-3 questions. Standard: 3-5. Thorough: 5-8. Meticulous: 8-12.
-- **Architect discovery depth** — Express: auto-derive. Standard: 5-7 questions. Thorough: 12-15 with capacity planning. Meticulous: full walkthrough + individual ADR approval.
-- **Phase summaries** — Thorough/Meticulous show intermediate outputs between phases.
-- **Gate detail** — Meticulous adds per-skill output review at each gate.
+Do not use fixed question quotas. A senior role asks the **minimum questions needed to change a decision**. Record the resolved mode in `.forgewright/settings.md` only when persistent state is useful.
 
 5b. **Execution strategy — Scope Analysis & Recommendation:**
 
 Before asking the user, the orchestrator should analyze the project scope and generate a data-driven recommendation — this avoids wasting the user's time with uninformed "how would you like to proceed?" questions. This runs AFTER Gate 2 (architecture approved), when the full scope is known.
 
-**Step 5b-1: Scope Metrics Collection**
+**Step 5b-1: Decide Whether Strategy Analysis Is Worth It**
 
-Read the approved architecture and BRD to extract these metrics:
+If fewer than two meaningful implementation lanes can run independently, use sequential execution and skip the rest of Step 5b. Do not calculate synthetic complexity scores just to justify orchestration.
 
-```
-From docs/architecture/ and api/:
-  service_count    = number of backend services/modules
-  endpoint_count   = number of API endpoints
-  db_model_count   = number of database models/entities
+For multi-lane work, inspect only facts that affect concurrency: dependency edges, write scopes, shared schemas/contracts/config, integration points, and actual local worker/resource limits.
 
-From product-manager/BRD/:
-  page_count       = number of frontend pages/screens
-  user_story_count = number of user stories
+**Step 5b-2: Contract Freeze / Dependency Check**
 
-From .production-grade.yaml:
-  has_frontend     = features.frontend (true/false)
-  has_mobile       = features.mobile (true/false)
-  has_ai_ml        = features.ai_ml (true/false)
-  architecture     = project.architecture (monolith/microservices)
+Before parallel work, identify which public/shared contracts must be frozen or serialized. If workers would concurrently mutate the same schema, package manifest, generated asset source, or configuration surface, either split ownership explicitly or keep that work sequential.
 
-Derived:
-  parallel_task_count = count of active BUILD tasks (T3a + T3b? + T3c? + T4)
-  integration_points  = number of cross-service API calls
-  shared_deps         = number of shared libraries/packages
-```
+**Step 5b-3: Dependency & Contention Analysis**
 
-**Step 5b-2: Complexity Scoring**
-
-Calculate a complexity score (1-10) from the metrics:
-
-| Factor | Weight | Score Formula |
-|--------|--------|---------------|
-| Service count | 25% | 1-2: score 2, 3-5: score 5, 6+: score 8 |
-| Page count | 15% | 1-3: score 2, 4-8: score 5, 9+: score 8 |
-| Cross-cutting concerns | 20% | shared_deps × 2 + integration_points |
-| Architecture type | 20% | monolith: 2, modular-monolith: 5, microservices: 8 |
-| Feature breadth | 20% | +2 per active platform (web, mobile, AI/ML) |
+Choose parallelism from evidence, not invented wall-clock estimates:
 
 ```
-complexity_score = weighted_sum(factors)
+For each active task, record:
+  depends_on       = required predecessor contracts/artifacts
+  write_scope      = files/modules/schemas it may modify
+  shared_contracts = APIs/schemas/assets/config it consumes or changes
+  resource_class   = light / normal / heavy based on actual tool/runtime needs
+
+parallel_candidate = tasks with no dependency edge and non-overlapping write_scope
+contention_risk     = shared mutable contracts + overlapping write paths + limited local resources
 ```
 
-**Step 5b-3: Time Estimation**
-
-Estimate wall-clock execution time for both modes:
-
-```
-Base times per task (approximate):
-  T3a (Backend):  ~15-40 min (scales with service_count)
-  T3b (Frontend): ~10-25 min (scales with page_count)
-  T3c (Mobile):   ~10-20 min (scales with page_count)
-  T4  (DevOps):   ~5-10 min
-  T5  (QA):       ~10-20 min
-  T6a (Security): ~5-10 min
-  T6b (Review):   ~5-10 min
-
-Sequential time:
-  total_sequential = sum of all active task times (BUILD + HARDEN)
-
-Parallel time:
-  build_parallel  = max(T3a, T3b, T3c) + T4    # longest worker + sequential T4
-  harden_parallel = max(T5, T6a, T6b)           # longest worker
-  merge_overhead  = 2-5 min per parallel group  # validation + merge
-  total_parallel  = build_parallel + merge_overhead + harden_parallel + merge_overhead
-
-Speed gain:
-  speedup_factor = total_sequential / total_parallel
-  time_saved     = total_sequential - total_parallel
-```
+Use measured historical command/runtime telemetry when available. **Never invent minute estimates or speedup factors** for agent work.
 
 **Step 5b-4: Risk Assessment (Parallel Mode)**
 
@@ -693,84 +482,47 @@ Evaluate risks specific to parallel execution:
 
 | Risk | Condition | Severity | Mitigation |
 |------|-----------|----------|------------|
-| **Merge conflict** | shared_deps > 2 OR services share DB models | Medium-High | Merge Arbiter auto-resolves configs; code conflicts escalate |
-| **Shared schema divergence** | Multiple workers read same schema, one modifies | Medium | Contract locks schema as readonly for all workers |
-| **Package version mismatch** | Workers add conflicting dependency versions | Low | Merge Arbiter unions package.json, runs dedupe |
-| **Integration failure post-merge** | Workers build against stale API contracts | Medium | All workers share same frozen api/ snapshot |
-| **Resource exhaustion** | 4 Gemini CLI processes × large context | Low | MAX_WORKERS cap + timeout per worker |
-| **Rollback complexity** | Post-merge integration fail, hard to isolate | Medium | Per-branch rollback via merge-arbiter protocol |
+| **Merge conflict** | Workers overlap write scopes | Depends on overlap | Split ownership or serialize shared files; never claim auto-resolution succeeded without merge/test evidence |
+| **Shared schema divergence** | Multiple workers can mutate the same schema/contract | High | Freeze contract or assign one owner before dispatch |
+| **Package/config mismatch** | Multiple workers edit dependency/config files | Medium | Assign a single merge owner and re-run install/build/lockfile checks |
+| **Integration failure post-merge** | Workers consume stale or incompatible contracts | Medium-High | Share a verified frozen contract snapshot and run integration checks after merge |
+| **Resource exhaustion** | Concurrent workers exceed actual RAM/CPU/process policy | Environment-specific | Derive a bounded concurrency cap from runtime policy/observed resources |
+| **Rollback complexity** | Merged changes are hard to isolate | Medium | Preserve lane commits/worktrees and validate merge incrementally |
 
-```
-Risk level:
-  LOW    — service_count <= 2, no shared deps, monolith
-  MEDIUM — service_count 3-5, some shared deps, modular
-  HIGH   — service_count 6+, heavy integration, microservices
-```
+Assign risk from these observed conditions; do not infer it from service count or architecture labels alone.
 
 **Step 5b-5: Generate Recommendation**
 
-Based on analysis, determine the recommended mode:
+Prefer sequential execution unless parallel work is genuinely independent and coordination overhead is justified:
 
 ```
-IF complexity_score >= 5 AND parallel_task_count >= 3 AND risk_level != HIGH:
-  recommendation = PARALLEL
-  reason = "Scope large enough to benefit from parallelization"
+IF count(parallel_candidate) >= 2 AND contention_risk in {LOW, MEDIUM} AND resource budget allows:
+  recommendation = PARALLEL for only those independent lanes
+ELSE:
+  recommendation = SEQUENTIAL / bounded concurrency
 
-ELIF complexity_score >= 5 AND risk_level == HIGH:
-  recommendation = PARALLEL with caution
-  reason = "Large scope benefits from parallel, but high integration risk"
-
-ELIF complexity_score < 5 OR parallel_task_count < 3:
-  recommendation = SEQUENTIAL
-  reason = "Scope too small for parallel overhead to pay off"
+Never parallelize merely because a task count or complexity score is high.
+Freeze shared contracts before independent workers consume them, and serialize schema/config migrations that have ordering risk.
 ```
 
-**Step 5b-6: Present to User**
+**Step 5b-6: Apply or Surface the Strategy**
 
-Notify user via notify_user with the analysis:
+For normal delivery, apply the evidence-supported strategy and report it briefly in status. Ask the user only when the choice changes cost/scope/risk they need to accept, or when they explicitly asked to choose the execution strategy.
 
-```
-━━━ Execution Strategy Analysis ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📊 Project Scope:
-  Services: [N]  |  Pages: [N]  |  Endpoints: [N]
-  Platforms: [Web / Mobile / AI]
-  Architecture: [monolith / modular / microservices]
-  Complexity Score: [X]/10
-
-⏱ Time Estimates:
-  Sequential:  ~[X] min (all tasks one-by-one)
-  Parallel:    ~[Y] min (independent tasks simultaneous)
-  ⚡ Speedup:   ~[Z]x faster ([N] min saved)
-
-⚠️ Parallel Risks:
-  • Merge conflict risk: [Low/Medium/High] — [detail]
-  • Integration risk: [Low/Medium/High] — [detail]
-  • Resource usage: [N] concurrent Gemini CLI workers
-
-📋 Recommendation: [PARALLEL / SEQUENTIAL]
-   Reason: [explanation]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-1. **[Recommended mode] (Recommended)** — [brief why]
-2. **[Other mode]** — [brief why user might want this]
-3. **Chat about this** — Discuss the analysis or ask questions
-```
+Report measured facts only: independent lanes, shared write paths/contracts, concurrency cap, and material merge/integration risks. Do not show fabricated time savings.
 
 **Step 5b-7: Save Decision**
 
-Append to `.forgewright/settings.md`:
+Append persistent settings only when useful:
 ```markdown
-Execution: [parallel|sequential]
-Max_Workers: 4
-Complexity_Score: [X]
-Estimated_Time_Sequential: [N]min
-Estimated_Time_Parallel: [N]min
-Risk_Level: [LOW|MEDIUM|HIGH]
+Execution: [parallel|sequential|bounded]
+Max_Workers: [derived from actual runtime/resource policy]
+Independent_Lanes: [task ids]
+Shared_Write_Risk: [LOW|MEDIUM|HIGH]
+Reason: [evidence-based summary]
 ```
 
-Write analysis report to `.forgewright/scope-analysis.md` for future reference.
+Write `.forgewright/scope-analysis.md` only for substantial multi-lane work where another role/session will benefit from the artifact.
 
 When **Parallel** is selected, the BUILD and HARDEN phases use the parallel-dispatch skill (`skills/parallel-dispatch/SKILL.md`) to spawn git worktrees, distribute Task Contracts, and merge results. When **Sequential** is selected, the pipeline behaves as before.
 
@@ -790,55 +542,47 @@ When **Parallel** is selected, the BUILD and HARDEN phases use the parallel-disp
 
    **Detect greenfield Full Build** (any of: Step 4 logged **Greenfield**; empty/minimal codebase with net-new product intent; user said "from scratch" / "new SaaS" / equivalent):
 
-   - **Greenfield Full Build — BA is mandatory (no silent skip):**
-     - Do **not** skip BA because the model self-scored 6W1H ≥ 6/7. Self-scores are optimistic; greenfield needs **documented client answers**.
-     - **MUST** read `skills/business-analyst/SKILL.md` and run through at least **one full elicitation cycle** (stakeholder + structured questions per engagement depth: Express minimum **3** client-answered items, Standard **3–5**, Thorough **5+** with **2 rounds** if gaps remain) until:
-       - `.forgewright/business-analyst/handoff/ba-package.md` exists **and**
-       - Open gaps are either resolved or explicitly logged as **client-acknowledged assumptions** (not BA guesses).
-     - Log: `⧖ Greenfield Full Build — mandatory BA before PM`
-     - **Escape hatches (only these):** (1) `.production-grade.yaml` → `features.skip_define_ba: true`, or (2) `notify_user` with explicit option **"Skip BA — I accept incomplete requirements risk"** (user must choose; never auto-skip), or (3) `ba-package.md` already present from **this session** with completeness sign-off.
+   - **Greenfield Full Build — BA owns requirement coherence, not a question quota:**
+     - Read `skills/business-analyst/SKILL.md` when material product/contract gaps exist or when a durable BA handoff benefits downstream roles.
+     - If the user already supplied a sufficiently concrete spec, validate/summarize it into a concise handoff **without forcing an elicitation round**.
+     - Ask only for unknowns that can materially change product behavior, cost/scope, safety, data contracts, or expensive architecture direction.
+     - Any unresolved material assumption must be explicit and traceable; do not silently guess it.
+     - A BA package is useful for multi-role handoff, but its absence must not block a clearly specified build merely to satisfy ceremony.
 
    **Brownfield Full Build** (existing meaningful codebase):
 
    - If `.forgewright/business-analyst/handoff/ba-package.md` exists → read it, pass to PM. Log: `✓ BA package loaded — requirements pre-validated`
-   - If no BA package: run 6W1H completeness. If average < 6/7 **or** the request describes a **net-new product/surface** (major scope) → run BA as above (same minimum elicitation as Standard depth).
-   - If score ≥ 6/7 **and** incremental change only **and** no net-new product → may skip BA. Log: `✓ Requirements sufficiently complete — proceeding to PM`
+   - If no BA package: inspect material requirement gaps directly. Route to BA when gaps can change the contract; otherwise proceed with a concise verified scope handoff.
+   - Do not treat a self-scored completeness number as evidence. Use the actual user spec, project state, and unresolved decisions.
 
-   **Non–Full-Build modes** (Feature, etc.): keep conditional BA per the Feature Mode section (6W1H below 6/7 → BA).
+   **Non–Full-Build modes** (Feature, etc.): route to BA only when material requirement ambiguity remains after grounding; do not route solely because a numeric completeness heuristic is low.
 
    - **Context-aware routing (v7.0):** If project-profile shows health issues, suggest addressing them:
      - `health.tests_pass == false` → suggest Harden mode first
      - `risk.known_cves > 0` (Critical/High) → warn and suggest Security audit
      - `risk.tech_debt_score > 7` → suggest addressing tech debt before new features
 
-8. **Research the domain** — use search_web before asking the user anything (skip if polymath already researched).
+8. **Research the domain only when needed** — use the Research Gate for a material current/niche/technical knowledge gap. Do not browse merely because Full Build mode exists, and do not browse to avoid asking a genuinely preference-based client question.
 
-9. **Create task tracking:**
+9. **Create task tracking when useful:**
 
-Create a `task.md` file in `.forgewright/` with all 13 tasks and their statuses. Track dependencies and completion.
+Track only applicable work and dependencies. Canonical task IDs may remain for compatibility, but mark irrelevant lanes `SKIPPED` instead of inventing tasks so a fixed count is filled.
 
 10. **Begin Phase 1** — read `phases/define.md` and start immediately. Do NOT ask "should I proceed?"
    - **Memory save (session start):** Run `python3 scripts/mem0-v2.py add "Session started: [mode] mode for [brief request]. Engagement: [level]" --category session`
 
-**Key principle:** Research, plan, start building. Pause at the 3 approval gates. **Exception — greenfield Full Build:** BA elicitation is a **hard gate before PM**; do not jump to T1 until `ba-package.md` exists and minimum rounds above are satisfied (unless an explicit escape hatch in 7.5 was used). In Thorough/Meticulous mode, show phase summaries between major phases (inform; strategic gates still rule).
+**Key principle:** Ground, right-size, plan, execute, verify. Pause only at material approval gates defined by the user/project/safety contract. In Thorough/Meticulous mode, show additional phase summaries as requested; do not turn informational handoffs into mandatory approvals.
 
-**After every user request is satisfied** (end of assistant turn, before going idle): run **Turn-Close memory** (see `session-lifecycle.md` §Per-request memory).
+After a **substantial** user request, persist only durable decisions/progress/blockers that will matter to a later session. Do not write memory for trivial chat/status turns, and never treat remembered state as proof of the current workspace.
 
 ## Quality Gate Integration
 
-After EVERY skill completes (in any mode — Full Build, Feature, Harden, etc.), run the Universal Quality Gate Protocol (`skills/_shared/protocols/quality-gate.md`):
+Use the Universal Quality Gate Protocol (`skills/_shared/protocols/quality-gate.md`) proportionally:
+- `QUICK`: focused acceptance + directly relevant safety checks; no scorecard required.
+- `STANDARD`: changed-behavior/static/regression checks at meaningful boundaries.
+- `DEEP`, merges, and releases: full applicable gate + independent review/compatibility/security evidence.
 
-1. **Per-skill validation:** Level 1 (Build), Level 2 (Regression), Level 3 (Standards), Level 4 (Traceability)
-2. **Score computation:** 0-100 quality score per skill output
-3. **Threshold enforcement:** Score < `quality.block_score` (default 60) → STOP. Score < `quality.minimum_score` (default 90) → WARN at next gate.
-4. **Display mini-scorecard** after each skill in task_boundary status
-5. **Aggregate scorecard** displayed at each strategic gate
-
-**For brownfield projects:** Level 2 (Regression) compares against the baseline snapshot from brownfield-safety.md. Any previously-passing test that now fails = regression = STOP.
-
-**For greenfield projects:** Level 2 is auto-satisfied (no baseline).
-
-> **Quality Scoring:** See `skills/_shared/protocols/quality-gate.md` for the authoritative scoring rubric (4 levels, 100-point scale: Build 25, Regression 25, Standards 30, Traceability 20) and grade thresholds (A/B/C/F).
+For brownfield projects, any newly introduced regression in previously passing affected behavior is blocking. For greenfield projects, prove the implemented acceptance criteria rather than inventing a historical baseline. Numeric quality scores are optional telemetry and never override hard evidence.
 
 
 ### Session Handoff Protocol
@@ -873,10 +617,10 @@ When context reaches 80% capacity or session needs to transfer:
 ```
 
 **When to trigger handoff:**
-- Context at ≥ 80% capacity
-- Session exceeds 2 hours
-- User takes a break and returns
-- Multi-day project continuation
+- The runtime/tool reports material context pressure (do not guess a percentage).
+- The user explicitly transfers/continues in another session.
+- Work spans sessions/days and a fresh role needs a bounded resume package.
+- A failure/ownership transition requires an auditable handoff.
 
 ### Token Budget Management
 
@@ -885,10 +629,10 @@ When context reaches 80% capacity or session needs to transfer:
 │ TOKEN BUDGET MANAGEMENT │
 ├─────────────────────────────────────────────────────────────────────┤
 │ │
-│ Threshold Monitoring: │
-│ - 70% context → Begin aggressive compaction │
-│ - 80% context → Trigger checkpoint + handoff preparation │
-│ - 95% context → HALT and generate handoff │
+│ Context Monitoring (only from runtime/tool evidence): │
+│ - Rising pressure → compact verbose logs / duplicate context │
+│ - Material pressure → checkpoint current task + decisions │
+│ - Critical reported pressure → generate bounded handoff before continuing │
 │ │
 │ Compaction Strategy: │
 │ - Replace verbose logs with summaries │
@@ -933,16 +677,11 @@ When context reaches 80% capacity or session needs to transfer:
 | API contract violation | Integration fails | Update contract, sync teams |
 | Security vulnerability | Scan finds CVE | Apply patch or workaround |
 
-**Retry Limits:**
-- Compilation errors: 3 retries
-- Test failures: 3 retries (with fixes)
-- Missing deps: 2 retries
-- Merge conflicts: escalate to user
-- Security issues: 1 attempt, then escalate
+**Retry / stuck rule:** Follow `kernel/SOLVE.md`: after the same step fails twice, STOP repeated attempts and use evidence-driven escalation/research. Do not maintain a second retry-count policy here.
 
 ### Logging Standards
 
-Every skill execution should log:
+Substantial execution should log only what another role/session needs. `QUICK` work may use a one-line change/check record. Any timestamp/duration must come from actual tooling; never estimate it:
 
 ```markdown
 ## Skill Execution Log
@@ -1004,7 +743,7 @@ Track these metrics per pipeline execution:
 
 ### Metrics, Performance, and Configuration Reference
 
-Metric collection schemas, performance targets, dependency injection patterns, configuration schemas, environment variables, emergency procedures, communication protocols, test topologies, CI/CD templates, deployment checklists, and the complete 80-skill catalog are documented in [references/technical-reference.md](file:///Users/buiphucminhtam/GitHub/forgewright/skills/production-grade/references/technical-reference.md).
+Metric collection schemas, performance targets, dependency injection patterns, configuration schemas, environment variables, emergency procedures, communication protocols, test topologies, CI/CD templates, deployment checklists, and technical catalog guidance are documented in [references/technical-reference.md](references/technical-reference.md). Canonical skill/mode counts come from `product-manifest.json` / `kernel/INDEX.md`, not prose.
 
 ### Knowledge Transfer Protocol
 
@@ -1040,101 +779,7 @@ When transitioning between sessions:
 
 ### Skill Catalog
 
-Complete list of 80 skills organized by category:
-
-**Orchestration & Meta:**
-1. Orchestrator (production-grade)
-2. Polymath
-3. Parallel Dispatch
-4. Memory Manager
-5. Skill Maker
-6. MCP Generator
-7. Token Tracker
-8. Instinct System
-9. Strategic Compaction
-10. Hook Expert (generated/hook-expert)
-
-**Engineering:**
-11. Business Analyst
-12. Product Manager
-13. Solution Architect
-14. Software Engineer
-15. Software Engineer (Go)
-16. Software Engineer (Python)
-17. Software Engineer (Rust)
-18. Frontend Engineer
-19. Fullstack Engineer
-20. QA Engineer
-21. Security Engineer
-22. Code Reviewer
-23. Code Reviewer (Go)
-24. Code Reviewer (Python)
-25. Code Reviewer (Rust)
-26. Code Quality Engineer
-27. DevOps
-28. SRE
-29. Build & Release Engineer
-30. Data Scientist
-31. Technical Writer
-32. UI Designer
-33. Interaction Designer
-34. Art Director
-35. Vision Review
-36. Mobile Engineer
-37. Mobile Tester
-38. API Designer
-39. Database Engineer
-40. Debugger
-41. Prompt Engineer
-42. Prompt Optimizer
-43. AI Engineer
-44. Accessibility Engineer
-45. Performance Engineer
-46. UX Researcher
-47. Data Engineer
-48. XLSX Engineer
-49. Project Manager
-50. Eval Engineer
-
-**Game Development:**
-51. Game Designer
-52. Game Engineer
-53. AI Behavior Engineer
-54. Animation Engineer
-55. Game Accessibility Engineer
-56. LiveOps Engineer
-57. Unity Engineer
-58. Unity MCP
-59. Unreal Engineer
-60. Godot Engineer
-61. Godot Multiplayer
-62. Roblox Engineer
-63. Phaser 3 Engineer
-64. Three.js Engineer
-65. Level Designer
-66. Narrative Designer
-67. Technical Artist
-68. Game Audio Engineer
-69. Game Asset & VFX
-70. Unity Shader Artist
-71. Unity Multiplayer
-72. Unreal Technical Artist
-73. Unreal Multiplayer
-74. XR Engineer
-
-**Growth & Marketing:**
-75. Growth Marketer
-76. Conversion Optimizer
-
-**Testing:**
-77. Autonomous Testing
-
-**Data Acquisition:**
-78. Web Scraper
-79. NotebookLM Researcher
-
-**Workflow:**
-80. Goal-Driven
+Do not use a hard-coded skill count/list here. Resolve current skills from `product-manifest.json`, `skills-registry.yaml`, and `kernel/INDEX.md`. If those sources disagree, treat the manifest/index validation as a project-truth issue and resolve it before routing.
 
 ### Session Lifecycle Hooks
 
@@ -1148,7 +793,7 @@ Call these hooks at the appropriate lifecycle points:
 | Architecture approved | `ARCH_DECISION(tech_stack, services, rationale)` | Save architecture to memory — see Gate 2.5 |
 | Error occurs | `ERROR(task_id, type, details)` | Update session-log, save blocker to memory |
 | Pipeline ends | Session End | Summarize, save to memory, update project profile |
-| User request answered | `TURN_CLOSE` | Mandatory memory `add` — see session-lifecycle §Per-request memory |
+| Substantial request/decision closed | `TURN_CLOSE` | Persist only durable project decisions/progress/blockers; skip trivial turns |
 
 ## User Experience Protocol
 
@@ -1599,7 +1244,7 @@ For ALL brownfield projects (any mode, not just Full Build), activate the safety
 
 ## Common Mistakes
 
-A comprehensive table of common operational/architectural mistakes and their resolutions is documented in [references/common-mistakes.md](file:///Users/buiphucminhtam/GitHub/forgewright/skills/production-grade/references/common-mistakes.md).
+A comprehensive table of common operational/architectural mistakes and their resolutions is documented in [references/common-mistakes.md](references/common-mistakes.md).
 
 ## Execution Learnings
 

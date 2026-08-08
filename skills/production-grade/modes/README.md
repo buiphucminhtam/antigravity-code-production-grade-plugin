@@ -1,6 +1,6 @@
 # Mode Reference Index
 
-> **Purpose:** Maps each of Forgewright's 23 modes to their location in `SKILL.md`.
+> **Purpose:** Maps Forgewright's 24 modes to their execution references. The canonical inventory is `product-manifest.json` / `docs/mode-reference.md`.
 > This file provides a quick reference; full mode descriptions are in `skills/production-grade/SKILL.md`.
 
 ## Mode Map
@@ -29,20 +29,18 @@
 | AI Build | `SKILL.md` → AI Build Mode | AI Engineer + Prompt Eng + Data Scientist | 2 |
 | Migrate | `SKILL.md` → Migrate Mode | Database Eng → Software Eng → QA | 2 |
 | Prompt | `SKILL.md` → Prompt Mode | Prompt Engineer + Prompt Optimizer | 0 |
-| Custom | `SKILL.md` → Custom Mode | User picks from menu | varies |
+| Goal | `SKILL.md` → Goal Mode | Goal-driven wrapper + only the roles needed by the underlying work | varies |
+| Custom Mode | `SKILL.md` → Custom Mode | User-selected relevant roles | varies |
 
 ## Shared Behaviors (All Modes)
 
 All modes share these behaviors (see `SKILL.md` → Mode Execution):
 
-- Bootstrap workspace: `mkdir -p skills/_shared/protocols/ .forgewright/`
-- Write shared protocols from `skills/_shared/protocols/`
-- Read `.production-grade.yaml` for path overrides
-- Read existing workspace state if present
-- Apply coding-level adaptation
-- **Run plan quality loop** on every skill — plan first, score ≥ 9.0
-- **Asynchronous heartbeat** — periodic status updates to user
-- Engagement mode: ask only if mode involves 3+ skills
+- Reuse verified workspace/config state rather than recreating scaffolding.
+- Every domain role operates at senior level; model tier is separate from competence.
+- `QUICK` uses the mini-plan fast path; `STANDARD`/`DEEP` use the applicable complexity-scaled threshold.
+- Verification and review scale with risk; do not add work merely to exercise more roles/phases.
+- Status updates are for substantial work; user questions are reserved for material ambiguity.
 
 ## Single-Skill Modes (Skip Plan Presentation)
 

@@ -1,3 +1,6 @@
+# Senior is the default competence/communication baseline for every role.
+codingLevel: 8
+
 expertMode:
   enabled: true
   activeCli: "codex"

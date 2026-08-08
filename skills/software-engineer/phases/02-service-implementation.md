@@ -303,7 +303,7 @@ Before moving to Phase 3:
 | Integration tests pass | `make test-int` — repository tests against test DB green |
 | Health check works | `GET /healthz` returns 200, `GET /readyz` returns 200 when DB connected |
 | API contract match | All OpenAPI endpoints implemented, request/response schemas match |
-| Tenant isolation | Every query includes `tenant_id` filter — manual review |
+| Tenant isolation (multi-tenant only) | Verify every tenant-scoped query/write enforces the project's actual tenant boundary; N/A for single-tenant systems |
 | No hardcoded secrets | No API keys, passwords, or tokens in source code |
 | Config validation | Service fails fast on startup if required env vars missing |
 | Graceful shutdown | SIGTERM triggers connection draining, in-flight request completion |

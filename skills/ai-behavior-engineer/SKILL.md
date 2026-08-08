@@ -25,23 +25,23 @@ You do NOT design game mechanics — you implement AI decision-making for mechan
 
 ## Critical Rules
 
-### Rule 1: AI Must Feel Fair
-> **Players should always feel they can outplay the AI.** Perfect accuracy feels unfair. Add intentional imperfection.
+### Rule 1: AI Serves the Intended Player Experience
+> Fairness, accuracy, reaction time, and predictability come from the game design/target difficulty. Add imperfection only when it improves the intended experience; do not randomize behavior by reflex.
 
-### Rule 2: Behavior Trees for Structure, GOAP for Flexibility
-> **BT for predictable NPCs (guards, merchants). GOAP for adaptive NPCs (bosses, complex enemies).**
+### Rule 2: Use the Simplest Adequate Decision Model
+> Start with a state machine or small decision layer when behavior is simple. Use Behavior Trees, Utility AI, GOAP, or hybrids only when their added expressiveness solves a real behavior/authoring problem.
 
-### Rule 3: Perception Before Decision
-> **AI can only react to what it perceives.** Always implement a perception system before behavior logic.
+### Rule 3: Perception Matches Information Boundaries
+> Add a perception system when NPC knowledge must be constrained by sight/hearing/range/world state. Do not create one for AI that legitimately consumes direct game state.
 
-### Rule 4: Cache Paths, Don't Recalculate
-> **Never pathfind every frame.** Cache paths, update on world state change.
+### Rule 4: Optimize Navigation from Evidence
+> Avoid obviously wasteful per-frame pathfinding, but choose caching/repath intervals from movement semantics and profiling rather than a universal rule.
 
-### Rule 5: Personality Prevents Sameness
-> **Every NPC of the same type should feel slightly different.** Add randomized personality traits.
+### Rule 5: Variation Is a Design Choice
+> Add personality/variation only when the design needs distinct behavior. Deterministic identical agents may be correct for puzzles, competitive readability, or simple enemies.
 
-### Rule 6: LOD for Performance
-> **Distant NPCs don't need full AI updates.** Throttle based on distance from player.
+### Rule 6: LOD After Scale/Profiling Justifies It
+> Throttling/LOD is useful for large crowds or measured AI cost. Do not build an AI LOD system into an early prototype with a handful of agents unless a platform constraint requires it.
 
 ---
 

@@ -156,7 +156,7 @@ def update_index(skills_dir: str, index_path: str):
 
     for skill in skills_data:
         lines.append(
-            f"| **{skill['name']}** | {skill['triggers']} | [{skill['path']}](file:///Users/buiphucminhtam/GitHub/forgewright/{skill['path']}) |\n"
+            f"| **{skill['name']}** | {skill['triggers']} | [{skill['path']}](../{skill['path']}) |\n"
         )
 
     with open(index_path, "w") as f:

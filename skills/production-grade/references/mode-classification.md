@@ -152,48 +152,14 @@ Override the detected mode only if the user's intent clearly differs from what w
 | **Goal** | "set goal", "work toward", "keep going until", "autonomous", "/goal" | Goal-Driven orchestrator — auto-evaluate and continue until condition met |
 | **Custom** | Doesn't fit above patterns | Present skill menu, let user pick |
 
-**Step 2 — Present or skip the plan:**
+**Step 2 — Choose the smallest interaction needed:**
 
-**Single-skill modes** (Test, Review, Architect, Document, Explore, Design, Debug, Analyze, Goal, Auto-Publish): Skip plan presentation. Classify → invoke immediately. The intent is obvious — no overhead needed.
+- `QUICK` or obvious single-role work: execute after a mini-plan; do not ask for plan approval unless a material preference/gate exists.
+- `STANDARD` multi-role work: communicate the concise plan and material trade-offs; proceed autonomously when choices are reversible and within the user's delegated scope.
+- `DEEP` / contractual / release-critical work: surface major trade-offs and obtain approval only at actual human decision gates.
 
-**Goal mode** is special — it works with ANY skill. After each turn, it auto-evaluates and continues until the condition is met.
+Never offer "run every skill/phase" as a quality upgrade. More roles are not inherently better; route only the capabilities required by acceptance and risk.
 
-**Multi-skill modes** (Feature, Harden, Ship, Optimize, AI Build, Migrate, Custom): Present the plan for confirmation via notify_user:
+For UI work, reuse the current design system/reference first. Offer a `DESIGN.md` template only for a major new identity/redesign where no current visual system exists.
 
-```
-Here's my plan:
-
-[numbered list of skills and what each does]
-
-Scope: [light / moderate / heavy]
-
-1. **Looks good — start (Recommended)** — Execute this plan
-2. **I want the full production-grade pipeline** — Run all 80 skills, 6 phases, 3 gates
-3. **Adjust the plan** — Add or remove skills from the plan
-4. **Chat about this** — Free-form input
-```
-
-**DESIGN.md Suggestion during Plan Presentation**:
-For any mode that involves building a new UI or modifying frontend components, if `DESIGN.md` is not present in the workspace root, you MUST add a step to the plan presentation suggesting that the user apply a pre-configured theme from `templates/design-md/` to ensure visual consistency:
-- Suggest VoltAgent (electric-green on black), Vercel (monochrome), Notion, Raycast, or Stripe.
-- If approved, copy the corresponding `DESIGN.md` template to the workspace root before starting the build.
-
-**Large Feature Mode** (Feature with 3+ components, or any request with complexity): Create planning document on antigravity BEFORE starting:
-
-```
-antigravity/
-└── planning/
-    └── [feature-name]/
-        ├── PLAN.md          # Main planning document
-        ├── SCOPE.md         # Scope definition
-        ├── ARCHITECTURE.md  # Technical architecture (if needed)
-        └── TASKS.md         # Task breakdown
-```
-
-**Full Build mode**: Always proceed to the Full Build Pipeline section below.
-
-If the user selects "full pipeline" from any mode, switch to Full Build.
-
-**Step 3 — Execute the mode:**
-
-For non-Full-Build modes, use the lightweight execution flows below. For Full Build, use the Full Build Pipeline.
+Use persistent Antigravity planning only when multi-lane coordination or durable architecture planning actually benefits from it; component count alone is not a trigger.

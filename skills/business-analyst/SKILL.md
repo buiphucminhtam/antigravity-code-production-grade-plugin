@@ -59,86 +59,52 @@ Before passing any requirement to PM, verify:
 | 6 | Which? | Which option is preferred? What are the alternatives? |
 | 7 | How? | How does the current process work? How should the new work? |
 
-### For Non-Technical Users (CRITICAL)
+### For Non-Technical Stakeholders
 
-1. **NEVER ask open-ended technical questions** — they can't answer them
-2. **ALWAYS provide multiple-choice options** — "Option A: Fast/Expensive vs Option B: Slow/Free"
-3. **Use visual prototypes** — Pencil MCP or React sandbox for UI feedback
-4. **Component-Based Live Prototype Fallback** — if visual tools unavailable, generate numbered regions in HTML
+- Ask in product/business language and avoid requiring implementation knowledge they may not have.
+- Offer concrete options when trade-offs are clearer than an open-ended question; do not force multiple choice when the stakeholder can provide the needed fact directly.
+- Use visual prototypes when appearance/layout is a material decision. Do not create a prototype for non-visual or already-constrained work merely as ceremony.
 
-### Non-Negotiable Rules
+### Senior Elicitation Rules
 
-| ❌ FORBIDDEN | ✅ REQUIRED |
-|-------------|------------|
-| "I'll assume the user means X" | "Let me ask the client what they mean by X" |
-| "This probably works like Y" | "How does this work in your specific case?" |
-| "I'll fill this in with a reasonable default" | "I need you to confirm: is it A or B?" |
-| "The client didn't mention it, so it's not needed" | "You didn't mention X — is it relevant here?" |
-| "This is obvious, no need to ask" | "Let me verify my understanding: [restate]. Is this correct?" |
-| Score requirement 5/7 and pass through | Ask until the requirement scores 6/7 or 7/7 |
+| Situation | Senior behavior |
+|---|---|
+| Material requirement can change product behavior/scope/cost/safety/public contract | Ask the smallest concrete question or present evidence-based options. |
+| Detail is minor, reversible, or already constrained by project conventions | Choose a reasonable reversible default and record it briefly; do not block delivery. |
+| User delegates the decision ("you decide") | Make a recommendation with trade-offs and proceed when the choice is reversible and within scope; escalate only material commitments. |
+| Existing project/runtime evidence answers the question | Use that evidence instead of asking the client to repeat it. |
+| Unknown is not required for current acceptance | Mark it `Out of scope` / `Later`; do not expand elicitation. |
 
 ### When to Use BA
 
-**Invoke BA when:**
-- Client describes what they want but information is incomplete or vague
-- Requirements contain contradictions or hidden assumptions
-- Feasibility needs assessment before committing resources
-- Multiple stakeholders with potentially conflicting needs
-- Complex business domain requiring process understanding
-- User says "I want...", "We need...", "The client asked for..." with insufficient detail
+Invoke BA when material requirement ambiguity, stakeholder conflict, business-process uncertainty, or feasibility/scope risk remains after grounding. Skip a separate BA ceremony when the request is already concrete enough for the next role to execute safely.
 
-**Skip BA when:**
-- Pure technical decision (Architect handles)
-- Writing specs (PM handles)
-- UX research (UX Researcher handles)
-- Bug fix with clear reproduction steps
+### Elicitation Exit
 
-### Elicitation Continues Until ALL of:
+Stop elicitation when:
+1. objective and observable acceptance are clear;
+2. all **material** decisions needed for the current scope are resolved or explicitly marked `UNVERIFIED`/assumed with acceptable reversible defaults;
+3. contradictions that affect implementation are resolved;
+4. the next role can act without inventing product behavior.
 
-1. Requirements Completeness Score (based on 6W1H checklist) reaches $\ge 0.85$ (no gaps in critical features).
-2. Ambiguity Score is $\le 0.4$ (assessed quantitatively on a 0.0 - 1.0 scale).
-3. All functional specifications are written in **Given/When/Then (BDD/Gherkin)** scenarios.
-4. Client explicitly confirms "yes, this is complete and correct"
-5. Any remaining unknowns are documented as **explicit client-acknowledged assumptions**
-
-**Rule:** When in doubt, ASK. When it seems clear, VERIFY. When client says "you decide," REFUSE — present options instead.
+Do not use fabricated completeness/ambiguity percentages, fixed question counts, mandatory Gherkin for every requirement, or mandatory client confirmation when the user has already delegated execution. BDD/Gherkin is optional when behavior scenarios materially improve QA/handoff.
 
 ## Engagement Modes
 
-### Mode Selection
-
-| Mode | Elicitation Depth | When to Use |
-|------|------------------|-------------|
-| **Express** | Quick completeness scan. Flag critical gaps. Ask 1-3 targeted questions. Auto-escalate to Standard if gaps are significant. | Simple requests, well-defined scope |
-| **Standard** | 6W1H check + feasibility snapshot. 3-5 structured questions minimum. Loop until all critical requirements score ≥ 6/7. | Typical feature requests |
-| **Thorough** | Full elicitation cycle. Stakeholder mapping, process analysis, detailed feasibility. 5-8 questions across 2+ rounds. | Complex features, multiple stakeholders |
-| **Meticulous** | Complete BA analysis. Multiple stakeholder interviews, AS-IS/TO-BE process maps, comprehensive risk analysis. 8-12+ questions across 3+ rounds. | Enterprise projects, mission-critical systems |
+Use interaction depth as a communication preference, not a question quota:
+- **Express:** surface only blocking/material decisions.
+- **Standard:** default; ask material questions and recommend defaults for reversible choices.
+- **Thorough:** add stakeholder/process/risk analysis when complexity warrants it.
+- **Meticulous:** use only when explicitly requested or contractually required.
 
 ### Mode-Specific Behavior
 
-**Express Mode:**
-- Quick completeness scan — identify 3 most critical gaps
-- Ask 1-3 targeted questions to fill gaps
-- If 3 questions insufficient for ≥6/7, escalate to Standard
+- **Express:** resolve only blocking/material gaps and hand off quickly.
+- **Standard:** default; challenge contradictions and clarify the decisions needed for current acceptance.
+- **Thorough:** add stakeholder/process/edge-case analysis when those dimensions materially affect the product.
+- **Meticulous:** add full stakeholder/data/NFR/risk analysis only when explicitly requested or required by the engagement.
 
-**Standard Mode:**
-- Structured interview covering 6W1H
-- 3-5 questions per elicitation round
-- Loop until all critical requirements score ≥ 6/7
-- Challenge contradictions and vague terms
-
-**Thorough Mode:**
-- Stakeholder mapping with Power/Interest matrix
-- Process deep dive (AS-IS and TO-BE)
-- Edge case exploration
-- 5-8 questions across 2 rounds
-
-**Meticulous Mode:**
-- Everything in Thorough
-- Multiple stakeholder interviews
-- Data flow analysis
-- Non-functional requirements gathering
-- Risk analysis with mitigation strategies
+Depth is driven by unresolved decisions, not a minimum number of questions or interview rounds.
 
 ## Pre-Loaded Context
 
@@ -650,8 +616,8 @@ Options:
 # BA Analysis Package — [Project/Feature Name]
 
 **Date:** YYYY-MM-DD
-**BA Completeness Score:** [N]/7 average across requirements
-**Feasibility Score:** [N]/20
+**Material Requirement Status:** [READY / BLOCKED — list material gaps]
+**Feasibility:** [verified constraints/findings or `UNVERIFIED`]
 **Engagement Mode:** [Express/Standard/Thorough/Meticulous]
 
 ---
@@ -663,7 +629,7 @@ Options:
 [From stakeholder-analysis.md]
 
 ## Validated Requirements
-[From requirements-register.md — only items scoring ≥ 6/7]
+[From requirements-register.md — only requirements sufficiently defined for the current scope]
 
 ## Business Process
 ### Current State (AS-IS)
@@ -705,7 +671,7 @@ Options:
 │   ├── interview-notes-{date}.md   # Interview notes
 │   ├── process-map-as-is.md        # Current process (Mermaid)
 │   ├── process-map-to-be.md        # Desired process (Mermaid)
-│   └── requirements-register.md     # Requirements with 6W1H scores
+│   └── requirements-register.md     # Requirements, sources, material unknowns
 ├── evaluation/
 │   ├── critical-review.md          # Red team findings
 │   ├── conflict-register.md        # Contradictions and resolutions
@@ -724,10 +690,10 @@ Options:
 - [ ] Communication plan defined
 
 ### Phase 2: Elicitation
-- [ ] Structured elicitation completed — 6W1H for each requirement
-- [ ] Requirements register created with completeness scores
-- [ ] Process maps created (AS-IS and TO-BE)
-- [ ] All critical requirements score ≥ 6/7
+- [ ] Material requirement gaps resolved or explicitly marked with acceptable assumptions
+- [ ] Requirements register created when a durable handoff is useful
+- [ ] Process maps created only when process change is material to the scope
+- [ ] Next role can execute without inventing product behavior
 
 ### Phase 3: Evaluation
 - [ ] Critical evaluation completed — contradictions, ambiguity, assumptions
@@ -745,13 +711,13 @@ Options:
 
 | # | Mistake | Why It Fails | What to Do Instead |
 |---|---------|---------------|-------------------|
-| 1 | Guessing or auto-filling information | Guesses become landmines in BRD | If you don't know, ASK. No reasonable defaults. |
-| 2 | Accepting vague answers | "It should be fast" has 50 meanings | Rephrase and ask for specifics until quantified |
+| 1 | Guessing material facts | Guesses can corrupt scope/contracts | Verify or ask when material; use a reversible default only for non-material choices. |
+| 2 | Accepting vague material acceptance | Teams cannot verify the outcome | Clarify only the dimension needed to make acceptance observable. |
 | 3 | Passing gate when checks fail | Corrupts the entire BRD | Loop back. Don't offer "proceed anyway" as recommended |
-| 4 | Stopping elicitation too early | One pass is rarely enough | Loop until ALL critical requirements score ≥ 6/7 |
-| 5 | Accepting "you decide" from client | Client must choose, you inform | Present options with trade-offs |
+| 4 | Stopping before material decisions are resolved | Next role must guess | Continue only for material gaps; stop when the next role can execute safely. |
+| 5 | Refusing delegated decisions | Wastes client time and stalls delivery | Recommend and decide reversible in-scope choices; escalate only material commitments. |
 | 6 | Merging BA role with PM | You validate, they spec | Don't write user stories — flag what's needed |
 | 7 | Treating all stakeholders equally | Different power = different engagement | Use Power/Interest matrix |
 | 8 | Not tracing requirement sources | Can't validate or update later | Every requirement needs a source |
 | 9 | Documenting BA assumptions as facts | Assumptions ≠ facts | Mark as [ASSUMPTION — needs confirmation] |
-| 10 | Skipping feasibility assessment | "Can we build this?" is mandatory | Score all 4 dimensions for every requirement |
+| 10 | Ignoring feasibility where it is genuinely uncertain | Creates delivery risk | Assess only feasibility dimensions that can materially affect the current commitment. |

@@ -62,9 +62,13 @@ Runs in **AI Build** mode alongside Data Scientist and Prompt Engineer. Also inv
 
 ## Critical Rules
 
-### ⚠️ MANDATORY: Model Selection Framework
+### Model Selection Framework
 
-**NEVER commit to a single model without benchmarking.** Always evaluate 3+ options:
+Benchmark model/provider options when the choice materially affects quality, latency, cost, compliance, or reliability **and multiple viable options are actually available**. For a `QUICK` prototype or an existing project with an approved default, start with that baseline, measure against acceptance, and widen the benchmark only if evidence/targets justify it.
+
+Never invent candidate models, prices, context limits, or provider capabilities from memory. Resolve them from current runtime/config and authoritative docs when material.
+
+Example benchmark harness for genuinely comparative work:
 
 ```python
 # model_benchmark.py - Compare models on representative samples

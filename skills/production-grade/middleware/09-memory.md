@@ -1,50 +1,52 @@
 # Middleware 09 — Memory
 
-> **Source:** `memory-manager.md` §Hooks + `session-lifecycle.md` §Per-request
-> **Hook:** `after_skill()` AND `turn_close()`
-> **Purpose:** Async fact extraction and persistent storage
+> **Source:** `memory-manager.md` / session lifecycle
+> **Hook:** `after_skill()` and `turn_close()` when durable state exists
+> **Purpose:** Preserve useful cross-session context without confusing memory with current project truth.
 
-## Execution
+## Principles
 
-### After Each Skill
+- Current workspace/runtime evidence outranks memory.
+- Memory is optional support, not a hard dependency for ordinary delivery.
+- Persist only facts likely to matter later: durable decisions, verified architecture/contracts, unresolved blockers, release state, or substantial progress.
+- Skip trivial chat/status turns and routine `QUICK` edits unless continuity genuinely benefits.
+- Never store secrets or unverified guesses as facts.
+- Never migrate project/session lessons automatically into shared Forgewright `SKILL.md` files.
 
-```
-1. Extract key decisions and blockers from skill output
-2. Run: python3 scripts/mem0-v2.py add "<facts>" --category decisions
-3. Store skill completion facts
-```
+## After a Substantial Skill / Decision
 
-### After Each User Request (turn_close)
+When memory tooling is available:
+1. extract only verified durable facts and decisions;
+2. include evidence/source context when useful;
+3. store blockers as unresolved, not as conclusions;
+4. avoid duplicating facts already represented in project files/state.
 
-```
-1. Mandatory memory add:
-   python3 scripts/mem0-v2.py add "Session: [mode] mode, engagement: [level]" --category session
+## Turn Close
 
-2. Optional additional stores:
-   - Decisions: architecture choices, key rationale
-   - Blockers: unresolved issues for next session
-   - Architecture: tech stack, service decomposition
-```
+For a substantial request, persist a compact continuation record when another session is likely to need it. A valid record may contain:
+- objective / acceptance state;
+- verified completed work;
+- important decisions and why;
+- unresolved blockers/risks;
+- exact next action.
 
-### Lesson Migration Hook (ASIP v8.3)
+Do not write a mandatory “session memory” entry on every user message.
 
-On session end, migrate lessons from session-level files to skill-level persistent storage:
+## Project Lessons
 
-```bash
-# Part of session-end ritual (step 4)
-bash scripts/forgewright-lesson-migrator.sh migrate
-```
+Research/debugging lessons stay in project-local state such as:
+- `.forgewright/plan-lessons.md`;
+- `.forgewright/execution-lessons.md`;
+- decision logs / handoffs.
 
-This pushes new entries from `.forgewright/plan-lessons.md` and `.forgewright/execution-lessons.md` into the relevant `SKILL.md` `## Planning Improvements` / `## Execution Learnings` sections, avoiding duplicates via migration state tracking.
-
-## Outputs
-
-- Cross-session memory persistence
-- Future sessions can search for relevant context
-- Project knowledge compounds over time
+Legacy `forgewright-lesson-migrator.sh` must **not** mutate framework skills by default. Explicit framework-learning/mutation requires Forgewright itself to be the task scope and a separate reviewed command/flag.
 
 ## Failure Handling
 
-- If mem0-v2 unavailable/fails → ABORT execution immediately with a fatal error. Memory is a non-negotiable hard constraint.
-- Overrides via `MEM0_DISABLED` or `FORGEWRIGHT_SKIP_MEM0` are strictly BLOCKED. The system will automatically override these flags, print a compliance warning, and force-enable the full memory mechanism.
-- System uses SQLite (built-in) — no external dependencies.
+If memory/SQLite tooling is missing or fails:
+- continue the product task when memory is not an acceptance/safety requirement;
+- report the observability/continuity degradation when material;
+- never fabricate recovered memory;
+- never override an explicit memory-disable setting merely to satisfy middleware ceremony.
+
+If the task explicitly concerns memory infrastructure itself, then memory-tool failure is part of the task and should be verified/debugged normally.

@@ -18,11 +18,11 @@ tags: [backend, api, services, implementation, clean-architecture, tdd]
 
 | Rule | Why It Matters |
 |------|---------------|
-| **TDD Iron Law** | No production code without a failing test first. Delete it. Start over. |
-| **Business logic in services** | Handlers validate + delegate. Services own the logic. Keep it testable. |
-| **Tenant isolation mandatory** | Every query must include tenant_id. Missing it = data breach. |
-| **No auth from scratch** | Use JWKS/OAuth2 middleware. Never parse JWTs with custom code. |
-| **Circuit breakers everywhere** | One slow dependency cascades to all services. Protect yourself. |
+| **Tests match risk** | For bugs and behavior changes, prefer a failing regression test first when feasible. For routine reversible scaffolding/config, a focused deterministic check may be enough. |
+| **Match project architecture** | Keep business logic testable, but do not invent service/repository layers solely to satisfy this template. |
+| **Enforce real tenant boundaries** | If the product is multi-tenant, every tenant-scoped data path must enforce the verified tenant boundary. Do not invent `tenant_id` for single-tenant systems. |
+| **Use proven auth primitives** | Follow the project's approved auth library/middleware; never implement token crypto/verification ad hoc. |
+| **Resilience where failure warrants it** | Timeouts/retries/circuit breakers belong on remote failure paths when impact and retry semantics justify them, not on every call. |
 
 ---
 
@@ -86,19 +86,11 @@ If `.forgewright/codebase-context.md` exists and mode is `brownfield`:
 
 ---
 
-## TDD Iron Law
+## Test-First Where It Buys Confidence
 
-```
-NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
-```
+For bug fixes, non-trivial behavior changes, public contracts, and logic with meaningful regression risk, use a failing test/reproduction before the fix when feasible. For `QUICK` low-risk changes, do not create artificial tests when an existing deterministic build/lint/typecheck/behavior check proves the acceptance criterion.
 
-**No exceptions:**
-- Don't keep it as "reference"
-- Don't "adapt" it while writing tests
-- Don't look at it
-- **Delete means delete**
-
-### Red-Green-Refactor Cycle
+### Red-Green-Refactor Cycle (preferred for behavior changes)
 
 ```
 1. RED    → Write failing test describing desired behavior
@@ -1007,12 +999,12 @@ async function handleCreateOrder(req: Request, res: Response) {
 | Business logic in handlers | Handlers validate + delegate. Logic in service layer. |
 | Database queries in services | Services call repositories, never DB clients directly. |
 | Swallowing errors | Use Result types. Let unexpected errors bubble. |
-| Missing tenant isolation | Every query includes tenant_id. No exceptions. |
-| Hardcoded config | All config from env vars, validated at startup. |
-| No idempotency on writes | Every POST accepts Idempotency-Key header. |
-| Auth from scratch | Use JWKS/OAuth2 middleware. Never parse JWTs manually. |
-| Tests depend on order | Each test sets up and tears down. No shared state. |
-| No circuit breaker | Every outbound call needs circuit breaker. |
+| Missing tenant isolation in a multi-tenant path | Enforce the project's verified tenant boundary on every tenant-scoped query/write. |
+| Hardcoded environment-specific config | Use the project's configuration mechanism; validate values that can fail at runtime. |
+| Missing idempotency where retries/replays are expected | Add an idempotency strategy at the relevant mutation boundary; do not require it on every POST by default. |
+| Auth from scratch | Use the project's approved auth middleware/library. Never implement token crypto manually. |
+| Tests depend on order | Each test owns/cleans the state it mutates. |
+| Unbounded remote dependency failure | At minimum define timeout/failure behavior; add retry/circuit breaker only when semantics and impact justify it. |
 | Logging sensitive data | Never log passwords, tokens, PII. Redact in middleware. |
 
 ---

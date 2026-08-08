@@ -15,19 +15,19 @@ version: 1.0.0
 ## SOLVE Step 3: DECOMPOSE (Llm Tester Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
-1. AUDIT | Validate system prompts, model temperature overrides, and output schema assertions | Ensure temperature limits (e.g., 1.0 for Gemini) and JSON schema formats are structurally compliant.
+1. AUDIT | Validate prompts, current runtime/model parameters, and output schema assertions | Verify parameters against the active provider/runtime contract and schema against executable validators.
 2. COMPILE | Execute automated unit and integration assertion loops on target prompt interfaces | Verify that model outputs adhere to schema structures and pass semantic safety constraints.
 3. PROFILE | Evaluate token overhead, API execution latency, and session cost metrics | Confirm that token footprints are tracked via `.forgewright/usage/` logs and stay under budget bounds.
 
 ## Common Mistakes Checklist
-- **Temperature & Thought Signature Mismatch**: Overriding temperature configurations away from model-specific bounds (like 1.0 on Gemini) or stripping Thought Signatures, triggering unexpected API 400 errors.
+- **Provider contract mismatch**: Overriding or stripping provider-required request/response fields without verifying the active runtime contract.
 - **Bypassing Output Schema Assertions**: Trusting that the LLM will return perfectly formed JSON structures without implementing rigorous validation gates, causing parsing crashes.
 - **Non-Compliant File Names**: Storing prompt evaluations, benchmark results, or review notes under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `docs/04-testing/LLMTesterResult.md` instead of `docs/04-testing/llm-tester-result.md`).
 - **Context Window Exhaustion**: Feeding full raw API responses or massive trace outputs back into the model context instead of summarizing or utilizing Context Offload mechanisms.
 
 ### Step 1: Ground target model settings and token budget tracking status
 ```bash
-cat .production-grade.yaml | grep -E "(gemini|thinking)" -A 2
+cat .production-grade.yaml
 cat .forgewright/budget.yaml
 ```
 

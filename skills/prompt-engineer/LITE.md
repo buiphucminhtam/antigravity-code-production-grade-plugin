@@ -16,14 +16,14 @@ version: 1.0.0
 Format: `n. ACTION | TARGET | CHECK`
 
 1. AUDIT | Analyze system instructions against prompt injections and secret leak vectors | Ensure strict credential redactors and Middleware ④c rules are defined to filter API keys.
-2. OPTIMIZE | Structure system prompts with explicit few-shot examples and variable inputs | Ensure prompts are optimized under 1200 tokens or set up progressive disclosure to avoid context bloat.
-3. PRESERVE | Enforce Gemini 3.x native configurations (Temperature 1.0, high reasoning budget) | Verify prompt processing does not strip model-generated Thought Signatures, avoiding API 400 bad requests.
+2. OPTIMIZE | Structure prompts with only the examples/context needed for the task | Measure quality/context cost and use progressive disclosure when large context is genuinely required.
+3. PRESERVE | Respect the currently configured provider/runtime contract | Verify adapters preserve provider-required request/response fields without hard-coding parameters for an unverified model family.
 
 ## Common Mistakes Checklist
-- **Stripping Thought Signatures**: Writing custom regex, string trimmers, or JSON parsers on model outputs that accidentally strip thought signatures, causing Gemini API 400 bad requests.
+- **Breaking provider-native payloads**: Applying generic regex/trimmers/parsers that remove fields required by the currently configured provider/runtime.
 - **Hardcoding Secrets in Prompts**: Placing raw API keys, bearer tokens, or connection URIs directly inside system prompts or few-shot examples, risking context leaks.
 - **Ignoring Context Bloat Guidelines**: Feeding extremely large database dumps or raw codebases directly into the prompt context instead of leveraging progressive summaries or minimal signature layouts.
-- **Hardcoding Overridden Temperatures**: Specifying a static, lower temperature (e.g., 0.0 or 0.2) for creative or complex reasoning tasks, violating
+- **Hardcoding provider parameters**: Applying a temperature/thinking setting without verifying that the active model supports or benefits from it.
 - **Non-Compliant File Names**: Storing prompt guides or optimization reports under `docs/` using CamelCase, spaces, or uppercase letters instead of strictly lowercase kebab-case.
 
 ### Step 1: Ground the model configuration rules

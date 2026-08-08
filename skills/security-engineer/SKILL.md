@@ -1,6 +1,5 @@
 ---
 name: security-engineer
-model: opus
 description: >
   [production-grade internal] Audits code for security vulnerabilities —
   OWASP top 10, auth flaws, injection, data exposure, dependency risks,
@@ -290,7 +289,7 @@ app.get('/api/users/:id',
 const hash = crypto.createHash('md5').update(password).digest('hex');
 
 // ❌ VULNERABLE: Hardcoded secret
-const SECRET = 'my-api-key-12345';
+const credentialSource = 'hardcoded-placeholder'; // illustrative only
 
 // ❌ VULNERABLE: Cookies without security flags
 res.cookie('session', token);

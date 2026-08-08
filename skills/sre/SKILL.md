@@ -1,6 +1,5 @@
 ---
 name: sre
-model: opus
 description: >
   [production-grade internal] Makes systems reliable in production —
   SLOs, monitoring, alerting, chaos engineering, incident runbooks,
