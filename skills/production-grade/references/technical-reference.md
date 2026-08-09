@@ -280,79 +280,22 @@ Coverage is diagnostic telemetry. Prefer meaningful branch/behavior coverage ove
 
 ### Continuous Integration Template
 
-```yaml
-# .github/workflows/forgewright.yml
-name: Forgewright Pipeline
+Canonical CI is provider-neutral and local:
 
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
-
-jobs:
-  quality-gate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run linter
-        run: npm run lint
-
-      - name: Run unit tests
-        run: npm run test:unit
-
-      - name: Run integration tests
-        run: npm run test:integration
-
-      - name: Run e2e tests
-        run: npm run test:e2e
-
-      - name: Check coverage
-        run: npm run test:coverage
-
-      - name: Security scan
-        run: npm audit --audit-level=high
-
-  build:
-    needs: quality-gate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build
-        run: npm run build
-
-      - name: Docker build
-        run: docker build -t app:${{ github.sha }} .
-
-  deploy-staging:
-    needs: build
-    if: github.ref == 'refs/heads/develop'
-    runs-on: ubuntu-latest
-    environment: staging
-    steps:
-      - name: Deploy to staging
-        run: ./scripts/deploy.sh staging
-
-  deploy-production:
-    needs: build
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - name: Deploy to production
-        run: ./scripts/deploy.sh production
+```bash
+# scripts/ci/local-ci.sh or equivalent project-owned entrypoint
+set -euo pipefail
+npm ci
+npm run lint
+npm run test:unit
+npm run test:integration
+npm run test:e2e
+npm run test:coverage
+npm audit --omit=dev --audit-level=high
+npm run build
 ```
+
+Attach this command to local git hooks and/or an OS-native scheduler as appropriate. A hosted provider may invoke the same script only when explicitly requested; do not duplicate the gate logic into provider YAML.
 
 ### Deployment Checklist
 

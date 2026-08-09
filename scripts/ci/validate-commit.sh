@@ -31,14 +31,18 @@ log_info() {
     echo -e "${GREEN}✓ $1${NC}" >&2
 }
 
-# Parse command from stdin (Claude Code PreToolUse hook format)
-INPUT=$(cat)
-
-# Extract command - use jq if available, fall back to grep
-if command -v jq >/dev/null 2>&1; then
-    COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
+# Two supported surfaces:
+#   --staged  direct local-CI validation (never reads stdin)
+#   default   Claude Code PreToolUse JSON from stdin
+if [[ "${1:-}" == "--staged" ]]; then
+    COMMAND="git commit"
 else
-    COMMAND=$(echo "$INPUT" | grep -oE '"command"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/"command"[[:space:]]*:[[:space:]]*"//;s/"$//')
+    INPUT=$(cat)
+    if command -v jq >/dev/null 2>&1; then
+        COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
+    else
+        COMMAND=$(echo "$INPUT" | grep -oE '"command"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/"command"[[:space:]]*:[[:space:]]*"//;s/"$//')
+    fi
 fi
 
 # Only process git commit commands

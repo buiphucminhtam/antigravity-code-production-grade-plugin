@@ -103,7 +103,8 @@ ELSE:
    - *.key, *.pem, *.cert
    - credentials/, secrets/
    - prisma/migrations/ (existing migrations, new ones OK)
-   - .github/workflows/ (existing workflows — skills should ADD, not replace)
+   - scripts/ci/ (canonical local automation — extend carefully, do not replace blindly)
+   - hosted-provider CI configs when present (optional adapters — preserve existing project choices)
 5. Write combined list to session context
 6. Log: "✓ Protected [N] path patterns from modification"
 ```

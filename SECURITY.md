@@ -6,7 +6,7 @@ Security fixes are applied to the current `main` branch. Historical snapshots, g
 
 ## Reporting a vulnerability
 
-Please report suspected vulnerabilities through GitHub's **private vulnerability reporting** flow for this repository rather than opening a public issue.
+Please use the repository's configured **private security reporting channel** rather than opening a public issue. A Git host's private vulnerability feature may be used when available, but reporting and remediation do not depend on any specific hosting provider.
 
 Include the smallest useful evidence packet:
 
@@ -26,4 +26,4 @@ Security-sensitive changes should fail closed, use least privilege, and be verif
 
 ## Disclosure
 
-Please keep vulnerability details private until a fix or coordinated disclosure plan is ready. Maintainers may create a GitHub Security Advisory to coordinate remediation and publication.
+Please keep vulnerability details private until a fix or coordinated disclosure plan is ready. Maintainers may use the private advisory mechanism of the current Git host, or another private coordination channel, without changing the local security gate.

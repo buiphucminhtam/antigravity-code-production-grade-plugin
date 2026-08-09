@@ -2,24 +2,27 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
+LOCAL_CI = ROOT / "scripts" / "ci" / "local-ci.py"
+HOOK = ROOT / ".husky" / "pre-commit"
 
 
-def test_ci_workflow_is_pinned_and_runs_required_gates():
-    text = WORKFLOW.read_text(encoding="utf-8")
-    assert "actions/checkout@11d5960a326750d5838078e36cf38b85af677262" in text
-    assert "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020" in text
-    assert "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065" in text
-    assert 'node-version: "24"' in text
-    assert 'node-version: "22"' in text
-    assert "node22-compat:" in text
-    assert "npm --prefix mcp run test" in text
-    assert 'node-version: "20' not in text
-    assert 'python-version: "3.12.11"' in text
-    assert "python -m pip install -r requirements-ci.txt" in text
-    assert "bash scripts/ci/run-required-checks.sh" in text
-    assert (
-        "bash scripts/testing/test-runner.sh --all --contract-only --no-color" in text
-    )
-    assert "bash scripts/lite/test-kernel-tokens.sh" in text
-    assert "python scripts/lite/validate-overlays.py" in text
+def test_ci_is_local_first_and_host_provider_neutral():
+    text = LOCAL_CI.read_text(encoding="utf-8")
+    assert "run-required-checks.sh" in text
+    assert "test-runner.sh" in text
+    assert "validate-overlays.py" in text
+    assert "test-kernel-tokens.sh" in text
+    assert "NODE_MATRIX = (22, 24)" in text
+    assert "detect-changes" in text
+    assert "openapi-contract-check.py" in text
+    assert "verify-wiki-drift.sh" in text
+    assert "--workspaces=false" in text
+    assert not (ROOT / ".github" / "workflows").exists()
+    assert not (ROOT / ".github" / "actions").exists()
+    assert not (ROOT / ".gitlab-ci.yml").exists()
+
+
+def test_precommit_is_only_a_thin_local_ci_adapter():
+    text = HOOK.read_text(encoding="utf-8")
+    assert "scripts/ci/local-ci.mjs precommit" in text
+    assert "github" not in text.lower()

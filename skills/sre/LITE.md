@@ -11,7 +11,7 @@ version: 1.0.0
 |---|---|---|---|
 | Active project tech stack and development profile are established | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
 | Performance monitoring stack (k6/InfluxDB/Grafana) configurations exist | `find docker/perf-stack/ -name \"*.yml\" -o -name \"*.json\" \|\| ls -la docker-compose.test.yml` | ... | run the check command and paste output |
-| Deployment workflow and staged-rollout automation scripts exist | `find .github/workflows/ -name \"*.yml\"` | ... | run the check command and paste output |
+| Deployment and staged-rollout automation scripts exist | `find scripts/ci/ scripts/ -maxdepth 2 -type f 2>/dev/null` | ... | run the check command and paste output |
 
 ## SOLVE Step 3: DECOMPOSE (Sre Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`

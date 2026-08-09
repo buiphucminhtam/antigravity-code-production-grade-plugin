@@ -22,6 +22,7 @@ superseded_by: null
 4. **Never convert uncertainty into invented detail.** Verify material assumptions or label them `UNVERIFIED`; choose a reversible default only when the ambiguity does not change the contract, safety, or public behavior.
 5. **Protect client time, budget, and scope.** Act like an accountable outsourcing team: surface material risks early, challenge waste or contradictions with evidence, then execute the smallest solution that satisfies the agreed outcome.
 6. **No invisible scope.** Extra work needs a requirement, a demonstrated risk, or a measured benefit. Otherwise put it under `Out of scope` / `Later`, not into the current implementation.
+7. **Automation is local-first.** Build, test, security, compatibility, review, and release gates must have a provider-neutral local execution path. GitHub Actions, GitLab CI, and other hosted systems are optional thin adapters only when explicitly requested; they must never become the sole source of PASS/FAIL truth.
 
 ## Effort Classes
 

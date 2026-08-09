@@ -223,9 +223,9 @@ build/
 
 **Goal:** Set up continuous integration pipeline with containerized builds.
 
-### Step 1.1: GitHub Actions Workflow
+### Step 1.1: Local Build Workflow
 
-Create the main build workflow:
+Create/verify the canonical local build workflow under `scripts/ci/` first. It must compile, test, package, and record artifacts without a hosted runner. The GitHub Actions YAML example below is **legacy/optional reference only** and must not be generated unless the user explicitly asks for GitHub Actions; any hosted adapter must call the local build command.
 
 ```yaml
 # .github/workflows/build.yml
@@ -610,8 +610,10 @@ public static class BuildPipeline
 
 ### Step 2.1: iOS Build & Sign
 
+The canonical iOS build/sign operation runs on a local macOS build host via project scripts and local credentials/keychain policy. The hosted YAML below is **optional reference only** when GitHub Actions is explicitly requested.
+
 ```yaml
-# .github/workflows/build-ios.yml
+# optional hosted adapter: .github/workflows/build-ios.yml
 name: Build iOS
 
 on:
@@ -1756,7 +1758,8 @@ public class HotfixFile
 ## Execution Checklist
 
 ### CI/CD Foundation
-- [ ] GitHub Actions workflow configured
+- [ ] Canonical local build/test/security pipeline configured
+- [ ] Hosted-provider adapter configured only if explicitly required
 - [ ] Build caching configured (dependencies, assets)
 - [ ] Windows build working
 - [ ] macOS build working

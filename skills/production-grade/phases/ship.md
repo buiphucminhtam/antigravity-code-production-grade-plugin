@@ -20,7 +20,7 @@ Context:
 - Read .production-grade.yaml for paths and preferences.
 - Read protocols from: skills/_shared/protocols/
 - Generate: Terraform/Pulumi, K8s manifests (if microservices), CI/CD pipelines, monitoring dashboards.
-- Write to project root: infrastructure/, .github/workflows/
+- Write canonical automation to project root: infrastructure/, scripts/ci/, scripts/; hosted-provider adapters only when explicitly requested
 - Write workspace artifacts to: .forgewright/devops/
 - DO NOT define SLOs — add placeholder: "SLO thresholds defined by SRE."
 - DO NOT write runbooks — SRE writes runbooks to docs/runbooks/.

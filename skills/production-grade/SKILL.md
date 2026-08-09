@@ -346,7 +346,7 @@ Read these from the current Forgewright installation/submodule. Copy/link only w
    ```
    find_by_name("package.json"), find_by_name("go.mod"), find_by_name("pyproject.toml"), find_by_name("Cargo.toml"), find_by_name("pom.xml")
    find_by_name("*", "src/"), find_by_name("*", "services/"), find_by_name("*", "frontend/"), find_by_name("*", "tests/"), find_by_name("*", "docs/")
-   find_by_name("Dockerfile*"), find_by_name("*", ".github/workflows/"), find_by_name("*", "infrastructure/"), find_by_name("*", "terraform/")
+   find_by_name("Dockerfile*"), find_by_name("*", "scripts/ci/"), find_by_name("*", ".github/workflows/"), find_by_name("*", "infrastructure/"), find_by_name("*", "terraform/")
    find_by_name(".production-grade.yaml")
    ```
 
@@ -1118,7 +1118,7 @@ When HARDEN skills find Critical/High issues:
 | T5: QA | `services/`, `frontend/`, `api/` | `tests/` | `qa-engineer/` |
 | T6a: Security | All implementation code | — | `security-engineer/` |
 | T6b: Review | All implementation + architecture | — | `code-reviewer/` |
-| T7: DevOps IaC | Architecture, implementation | `infrastructure/`, `.github/workflows/` | `devops/` |
+| T7: DevOps IaC | Architecture, implementation | `infrastructure/`, `scripts/ci/`, `scripts/` | `devops/` |
 | T8: Remediation | HARDEN findings | Fixes in `services/`, `frontend/` | — |
 | T9: SRE | All prior outputs | `docs/runbooks/` | `sre/` |
 | T10: Data Sci | Implementation (LLM usage) | — | `data-scientist/` |

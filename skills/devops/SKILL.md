@@ -35,20 +35,20 @@ If `.forgewright/codebase-context.md` exists and mode is `brownfield`:
 - **READ existing infrastructure first** — check for Dockerfiles, CI configs, Terraform, K8s manifests
 - **EXTEND, don't replace** — add new services to existing docker-compose, add jobs to existing CI
 - **Don't overwrite** existing Dockerfile, workflows, or Terraform state — these contain production-critical configuration that, if lost, can cause deployment failures or infrastructure drift
-- **Match existing patterns** — if they use GitHub Actions, don't create GitLab CI. If they use Pulumi, don't create Terraform
+- **Match existing patterns** — preserve an existing hosted-provider adapter if the project deliberately uses one, but keep canonical build/test/security logic runnable locally. If they use Pulumi, don't create Terraform.
 
 ## Overview
 
-Full DevOps pipeline generator: from infrastructure design to production-ready deployment with monitoring and security. Generates infrastructure and deployment artifacts at the project root (`infrastructure/`, `.github/workflows/`, Dockerfiles) with planning notes in `.forgewright/devops/`.
+Full DevOps pipeline generator: from infrastructure design to production-ready deployment with monitoring and security. Canonical CI/CD automation lives in project-owned local scripts (`scripts/ci/`, `scripts/`) alongside infrastructure and Docker artifacts; planning notes live in `.forgewright/devops/`.
 
-> **Zero-Touch Deployments (Non-Tech Mode):** If running for a non-technical user (Express Mode), bypass heavy infrastructure (Terraform/K8s) immediately. Generate direct Vercel/Railway configurations and GitHub Actions auto-deploy workflows. Let the PaaS handle the heavy lifting.
+> **Local-first rule:** hosted CI providers are adapters, never the source of truth. If a hosted adapter is explicitly requested, it must invoke the same local commands instead of duplicating pipeline logic.
 
 ## Config Paths
 
 Read `.production-grade.yaml` at startup. Use these overrides if defined:
 - `paths.terraform` — default: `infrastructure/terraform/`
 - `paths.kubernetes` — default: `infrastructure/kubernetes/`
-- `paths.ci_cd` — default: `.github/workflows/`
+- `paths.ci_cd` — default: `scripts/ci/`
 - `paths.monitoring` — default: `infrastructure/monitoring/`
 
 ## When to Use
@@ -68,7 +68,7 @@ After Phase 1 (Assessment), Phases 2-4 and Phases 5-6 can run as two parallel gr
 **Group 1 (infrastructure artifacts — independent):**
 ```python
 Execute sequentially: Generate Terraform IaC following Phase 2. Write to infrastructure/terraform/.
-Execute sequentially: Generate CI/CD pipelines following Phase 3. Write to .github/workflows/ and scripts/.
+Execute sequentially: Generate provider-neutral local CI/CD pipelines following Phase 3. Write canonical logic to scripts/ci/ and scripts/; hosted adapters only when explicitly requested.
 Execute sequentially: Generate container orchestration following Phase 4. Write Dockerfiles and K8s manifests.
 ```
 
@@ -176,18 +176,15 @@ Generate provider blocks and modules for each target cloud:
 
 ## Phase 3: CI/CD Pipelines
 
-Generate CI/CD pipelines at `.github/workflows/` (or `paths.ci_cd` from config) and `scripts/`:
+Generate canonical CI/CD automation at `scripts/ci/` (or `paths.ci_cd` from config) plus deployment scripts:
 
 ### Pipeline Templates
 ```
-.github/workflows/
-├── ci.yml              # Build, test, lint, security scan
-├── cd-staging.yml      # Deploy to staging on merge to main
-├── cd-production.yml   # Deploy to prod on release tag
-├── pr-checks.yml       # PR validation (tests, lint, preview)
-└── scheduled.yml       # Nightly builds, dependency updates
-
-.gitlab-ci.yml              # (if requested, at project root)
+scripts/ci/
+├── local-ci.*          # quality/security/compat/review control plane
+├── security.*          # dependency and local automation security gates
+├── contract-check.*    # API/schema compatibility gates
+└── scheduler.*         # optional OS-native periodic execution
 
 scripts/
 ├── build.sh
@@ -195,6 +192,8 @@ scripts/
 ├── rollback.sh
 └── smoke-test.sh
 ```
+
+If the user explicitly requests GitHub Actions, GitLab CI, CircleCI, Jenkins, etc., generate a thin adapter that invokes these local commands. Never maintain a second copy of pipeline logic in provider YAML.
 
 ### CI Pipeline Stages
 1. **Checkout & cache** — Restore dependency caches
@@ -211,7 +210,7 @@ scripts/
 1. **Deploy to staging** — Automatic on main branch merge
 2. **Smoke tests** — Health checks + critical path verification
 3. **Performance tests** — Load testing gate (k6/Artillery)
-4. **Manual approval** — Required for production (GitHub Environments)
+4. **Manual approval** — Required for production via the project/user approval boundary; do not depend on a hosted-provider environment feature.
 5. **Deploy to production** — Blue-green or canary strategy
 6. **Post-deploy verification** — Automated smoke + synthetic monitoring
 7. **Rollback trigger** — Automatic on error rate spike
@@ -224,7 +223,7 @@ Generate configs for the selected strategy:
 
 ### Branch Strategy & Git Workflow
 
-Generate git workflow configuration and documentation to `docs/contributing/` and `.github/`:
+Generate git workflow documentation to `docs/contributing/` and enforce local commit/release checks with project-owned hooks/scripts:
 
 #### Strategy Selection
 Choose based on team size and release cadence:
@@ -232,14 +231,11 @@ Choose based on team size and release cadence:
 | Strategy | Best For | How It Works |
 |----------|----------|-------------|
 | **Trunk-Based** (Recommended) | Teams with CI/CD, continuous delivery | Short-lived feature branches (< 1 day), merge to `main`, deploy from `main` |
-| **GitHub Flow** | Small teams, simple releases | Feature branches from `main`, PR review, merge to `main`, auto-deploy |
+| **Feature-branch flow** | Small teams, simple releases | Feature branches from `main`, optional review, merge to `main`, deploy via local release command |
 | **Gitflow** | Scheduled releases, multiple version support | `develop` → `release/*` → `main`, hotfix branches, version tags |
 
 #### Branch Protection Rules
-Generate `.github/branch-protection.md` and recommend settings:
-- **`main`**: Require PR review (1+ approvals), require CI pass, require up-to-date branch, no force push, no deletion
-- **`develop`** (if Gitflow): Require CI pass, allow merge only via PR
-- **`release/*`**: Require 2+ approvals, require all CI stages (including performance tests)
+Document branch policy in `docs/contributing/branch-policy.md` and enforce what can be enforced locally (no force push, commit format, required local verification receipts). Remote branch-protection settings are optional defense-in-depth when the chosen Git host supports them; never make local release correctness depend on them.
 
 #### Merge Strategy
 - **Squash merge** for feature branches → clean history
@@ -247,18 +243,13 @@ Generate `.github/branch-protection.md` and recommend settings:
 - **Rebase** for keeping feature branches up-to-date with main
 
 #### Conventional Commits Enforcement
-Generate `.github/workflows/commit-lint.yml`:
-```yaml
-# Enforce Conventional Commits format: type(scope): description
-# Types: feat, fix, docs, chore, refactor, test, perf, ci, build, style
-# Example: feat(auth): add OAuth2 login flow
-```
+Enforce Conventional Commits locally through the repository commit-msg hook and the same commitlint configuration used by manual/local CI runs.
 
 #### Release Tagging
 - Semantic versioning: `vMAJOR.MINOR.PATCH`
 - Auto-generate tags from Conventional Commits
-- Auto-generate GitHub Releases with release notes
-- Generate `scripts/release.sh` for manual release process
+- Generate provider-neutral release notes/artifacts locally; publishing to any Git host is a separate optional adapter
+- Generate `scripts/release.sh` for the canonical local release process
 
 ## Phase 4: Container Orchestration
 
@@ -454,12 +445,11 @@ infrastructure/
     ├── compliance/
     └── incident-response/
 
-.github/workflows/
-├── ci.yml
-├── cd-staging.yml
-├── cd-production.yml
-├── pr-checks.yml
-└── scheduled.yml
+scripts/ci/
+├── local-ci.*
+├── security.*
+├── contract-check.*
+└── scheduler.*
 
 scripts/
 ├── build.sh

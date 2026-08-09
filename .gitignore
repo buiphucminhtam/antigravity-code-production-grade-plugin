@@ -68,6 +68,7 @@ _local_tmp_edits/
 .forgewright/escalations/
 .forgewright/metrics/
 .forgewright/reports/
+.forgewright/local-ci-venv/
 .forgewright/cache/
 .forgewright/memory-bank/
 .forgewright/subagent-context/

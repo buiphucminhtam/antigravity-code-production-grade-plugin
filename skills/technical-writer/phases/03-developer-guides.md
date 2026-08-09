@@ -9,7 +9,7 @@ Enable a new developer to go from zero to productive. Write task-oriented guides
 | Input | Path | What to Extract |
 |-------|------|-----------------|
 | DevOps artifacts | `infrastructure/`, `docker-compose.yml` | Docker configs, environment setup |
-| CI/CD pipelines | `.github/workflows/` | Build steps, test commands, deploy process |
+| CI/CD pipelines | `scripts/ci/`, `scripts/` | Canonical local build/test/security/deploy commands; hosted adapters only if present |
 | Source structure | `services/`, `frontend/`, `libs/` | Module layout, build files, package managers |
 | Architecture docs | `docs/architecture/` | ADRs, service map, tech stack |
 | Test artifacts | `tests/`, `.forgewright/qa-engineer/test-plan.md` | Test strategy, coverage requirements |

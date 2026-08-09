@@ -30,7 +30,7 @@ paths:
   terraform: "infrastructure/terraform/"
   kubernetes: "infrastructure/kubernetes/"
   monitoring: "infrastructure/monitoring/"
-  ci_cd: ".github/workflows/"
+  ci_cd: "scripts/ci/"                # canonical local automation; hosted adapters are optional
   docs: "docs/"
   runbooks: "docs/runbooks/"
   workspace: "Claude-Production-Grade-Suite/"
@@ -40,7 +40,7 @@ paths:
 preferences:
   test_framework: "jest"             # jest | vitest | pytest | go-test | junit
   orm: "prisma"                      # prisma | drizzle | typeorm | sqlalchemy | gorm
-  ci_provider: "github-actions"      # github-actions | gitlab-ci | circleci
+  ci_provider: "local"               # local default; hosted providers require explicit opt-in
   package_manager: "npm"             # npm | pnpm | yarn | bun
   linter: "eslint"                   # eslint | biome | ruff | golangci-lint
   formatter: "prettier"              # prettier | biome | black | gofmt

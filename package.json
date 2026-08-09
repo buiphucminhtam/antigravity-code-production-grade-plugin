@@ -19,7 +19,17 @@
     "dev:cli": "cd src/cli && npm run dev",
     "typecheck:cli": "cd src/cli && npx tsc --noEmit",
     "test:golden": "node tests/golden/forge-init-onboard.test.mjs",
-    "verify:product-truth": "python3 scripts/ci/verify-product-truth.py"
+    "verify:product-truth": "python3 scripts/ci/verify-product-truth.py",
+    "ci:bootstrap": "node scripts/ci/local-ci.mjs bootstrap",
+    "ci:local": "node scripts/ci/local-ci.mjs all",
+    "ci:quick": "node scripts/ci/local-ci.mjs quick",
+    "ci:security": "node scripts/ci/local-ci.mjs security",
+    "ci:compat": "node scripts/ci/local-ci.mjs compat",
+    "ci:review": "node scripts/ci/local-ci.mjs review",
+    "ci:deps": "node scripts/ci/local-ci.mjs deps",
+    "ci:wiki": "node scripts/ci/local-ci.mjs wiki",
+    "ci:schedule:install": "node scripts/ci/local-scheduler.mjs install",
+    "ci:schedule:uninstall": "node scripts/ci/local-scheduler.mjs uninstall"
   },
   "devDependencies": {
     "handlebars": "^4.7.8",

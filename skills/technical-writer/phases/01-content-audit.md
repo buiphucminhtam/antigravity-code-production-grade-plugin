@@ -13,7 +13,7 @@ Inventory every existing artifact across the project, identify documentation gap
 | API contracts | `api/openapi/*.yaml`, `api/asyncapi/*.yaml` | Endpoints, schemas, auth methods, webhook events |
 | Source code | `services/`, `frontend/`, `libs/` | Module structure, code comments, config files, env vars |
 | Test artifacts | `tests/`, `.forgewright/qa-engineer/` | Test coverage, integration test descriptions, test strategy |
-| DevOps artifacts | `infrastructure/`, `.github/workflows/` | CI/CD pipelines, deployment configs, environment definitions |
+| DevOps artifacts | `infrastructure/`, `scripts/ci/`, optional hosted-provider configs | Local CI/CD pipelines, deployment configs, environment definitions |
 | SRE artifacts | `docs/runbooks/`, `.forgewright/sre/` | Runbooks, incident procedures, SLO definitions, DR playbooks |
 | Project README | `README.md` | Current onboarding state, accuracy of existing instructions |
 

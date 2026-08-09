@@ -1,4 +1,5 @@
 #!/bin/sh
+# Thin git adapter. Commit policy stays in the local CI control plane.
+set -eu
 
-cd mcp
-npx commitlint --edit ${1}
+exec node scripts/ci/local-ci.mjs commitmsg --message-file "$1"

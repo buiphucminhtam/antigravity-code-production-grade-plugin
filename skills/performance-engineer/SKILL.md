@@ -448,9 +448,12 @@ ci:
     target: temporary-public-storage
 ```
 
-#### GitHub Actions
+#### Local performance gate (default)
+Run Lighthouse/k6 from project-owned scripts or `scripts/ci/` and preserve the local result artifact. Do not require a hosted CI token or runner.
+
+The following GitHub Actions snippet is optional reference only when explicitly requested:
 ```yaml
-# .github/workflows/performance.yml
+# optional hosted adapter: .github/workflows/performance.yml
 name: Performance Tests
 
 on:

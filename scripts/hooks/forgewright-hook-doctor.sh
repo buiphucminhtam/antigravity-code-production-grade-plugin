@@ -36,6 +36,27 @@ NC='\033[0m'
 # Counters
 PASS=0 FAIL=0 WARN=0
 
+resolve_python311() {
+    local candidate resolved
+    if [[ -n "${FORGEWRIGHT_PYTHON_BIN:-}" && -x "${FORGEWRIGHT_PYTHON_BIN}" ]]; then
+        if "${FORGEWRIGHT_PYTHON_BIN}" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' >/dev/null 2>&1; then
+            printf '%s\n' "${FORGEWRIGHT_PYTHON_BIN}"
+            return 0
+        fi
+    fi
+    for candidate in python3.13 python3.12 python3.11 python3 python; do
+        resolved="$(command -v "$candidate" 2>/dev/null || true)"
+        [[ -n "$resolved" ]] || continue
+        if "$resolved" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' >/dev/null 2>&1; then
+            printf '%s\n' "$resolved"
+            return 0
+        fi
+    done
+    return 1
+}
+
+PYTHON_BIN="$(resolve_python311 || true)"
+
 # ─── Logging Functions ────────────────────────────────────────────────────────
 
 log_pass() { echo -e "${GREEN}  ✓${NC} $1"; PASS=$((PASS + 1)); }
@@ -421,7 +442,11 @@ fi
 CODEX_CONFIG="${HOME}/.codex/config.toml"
 if [[ -f "$CODEX_CONFIG" ]]; then
     log_pass "Codex config file exists"
-    codex_schema=$(python3 - "$CODEX_CONFIG" <<'PYEOF'
+    if [[ -z "$PYTHON_BIN" ]]; then
+        codex_schema="false"
+        log_warn "Python >= 3.11 not found; Codex TOML hook validation skipped"
+    else
+        codex_schema=$("$PYTHON_BIN" - "$CODEX_CONFIG" <<'PYEOF'
 import sys
 import tomllib
 
@@ -444,13 +469,17 @@ except (OSError, tomllib.TOMLDecodeError):
 print(str(ok).lower())
 PYEOF
 )
+    fi
     if [[ "$codex_schema" == "true" ]]; then
         log_pass "Codex Stop hook uses the native matcher-group schema"
     else
         log_warn "Codex Stop hook NOT configured correctly"
         if [[ "$AUTO_FIX" == "true" ]]; then
             cp "$CODEX_CONFIG" "${CODEX_CONFIG}.bak.$(date +%Y%m%d%H%M%S)"
-            python3 - "$CODEX_CONFIG" <<'PYEOF'
+            if [[ -z "$PYTHON_BIN" ]]; then
+                log_warn "Python >= 3.11 not found; cannot auto-fix Codex TOML hook"
+            else
+                "$PYTHON_BIN" - "$CODEX_CONFIG" <<'PYEOF'
 import re
 import sys
 from pathlib import Path
@@ -466,6 +495,7 @@ legacy = re.compile(
 )
 path.write_text(legacy.sub("\n", text), encoding="utf-8")
 PYEOF
+            fi
             needs_features=true
             needs_hooks=true
             grep -qF '[features]' "$CODEX_CONFIG" 2>/dev/null && needs_features=false

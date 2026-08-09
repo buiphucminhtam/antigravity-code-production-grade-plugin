@@ -31,6 +31,6 @@ run_required cli-tests npm --prefix src/cli test
 run_required cli-init-onboard-golden npm run test:golden
 run_required release-evidence-policy-tests node --test scripts/ci/release-evidence-policy.test.mjs
 run_required release-supply-chain-policy-tests node --test scripts/ci/release-supply-chain-policy.test.mjs
-run_required supply-chain-policy node scripts/ci/verify-supply-chain-policy.mjs
+run_required local-automation-policy python3 scripts/ci/verify-local-automation-policy.py
 run_required release-evidence node scripts/ci/verify-release-evidence.mjs
 run_required clean-install-evidence node scripts/ci/verify-clean-install.mjs

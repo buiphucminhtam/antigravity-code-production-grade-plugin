@@ -38,8 +38,8 @@ find_by_name("*", "packages/"), find_by_name("*", "modules/")
 
 # Infrastructure detection
 find_by_name("Dockerfile*"), find_by_name("docker-compose*"),
-find_by_name("*", ".github/workflows/"), find_by_name(".gitlab-ci.yml"),
-find_by_name("Jenkinsfile"), find_by_name("*.tf"), find_by_name("vercel.json"),
+find_by_name("*", "scripts/ci/"), find_by_name("*", ".github/workflows/"),
+find_by_name(".gitlab-ci.yml"), find_by_name("Jenkinsfile"), find_by_name("*.tf"), find_by_name("vercel.json"),
 find_by_name("railway.json"), find_by_name("netlify.toml")
 
 # Test detection
@@ -264,7 +264,7 @@ Read 3-5 representative source files to detect coding patterns:
    - Always protect: .env*, *.key, *.pem, credentials/*, secrets/*
    - Detect production configs: production.*, *-prod.*
    - Detect migration files: migrations/, prisma/migrations/
-   - Detect CI/CD: .github/, .gitlab-ci.yml
+   - Detect canonical local CI first: scripts/ci/; hosted-provider configs are optional evidence only
 
 5. Protected branches:
    - Read from git: main, master, production, release/*
@@ -290,7 +290,7 @@ Write `.forgewright/project-profile.json`:
     "architecture": "modular-monolith",
     "test_framework": "vitest",
     "lint_tool": "biome",
-    "ci_system": "github-actions",
+    "ci_system": "local",
     "deployment": "vercel",
     "monorepo": false,
     "services": ["api", "web"],

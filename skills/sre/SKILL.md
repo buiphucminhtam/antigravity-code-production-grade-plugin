@@ -69,7 +69,7 @@ If codebase context indicates `brownfield` mode:
 | Input | Status | Source | What SRE Needs |
 |-------|--------|--------|----------------|
 | `infrastructure/terraform/` | Critical | DevOps | Resource limits, instance types, networking topology |
-| `.github/workflows/` | Critical | DevOps | Deployment strategy, rollback mechanisms, canary configs |
+| `scripts/ci/`, deployment scripts | Critical | DevOps | Local release gates, deployment strategy, rollback mechanisms, canary configs |
 | `infrastructure/kubernetes/` | Critical | DevOps | Pod specs, resource requests/limits, HPA configs, health probes |
 | `infrastructure/monitoring/` | Critical | DevOps | Base alerting rules, dashboard templates, log aggregation |
 | Architecture docs (ADRs, service map) | Degraded | Architect | Service boundaries, dependencies, data flow, consistency |

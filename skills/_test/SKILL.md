@@ -145,7 +145,7 @@ expected:
 Add to your CI pipeline:
 
 ```yaml
-# .github/workflows/self-test.yml
+# Canonical local command (hosted adapters may call this when explicitly requested)
 - name: Run Forgewright Self-Tests
   run: |
     bash scripts/run-self-tests.sh --coverage --junit results.xml

@@ -82,7 +82,9 @@ npx promptfoo redteam run
 
 ## Scaffolding CI/CD Pipelines
 
-Always provide a GitHub Actions workflow template at `.github/workflows/prompt-eval.yml` to automate evaluations:
+Always provide a **local evaluation command/script first** (for example under `scripts/ci/` or `evals/`). A GitHub Actions/GitLab/other hosted workflow is optional and must only be generated when that provider is explicitly requested; the adapter must call the same local evaluation command.
+
+Optional hosted adapter example, only when requested:
 
 ```yaml
 name: 'Prompt Evaluation'

@@ -716,54 +716,51 @@ flowchart TD
     style REPOS fill:#1a5276,stroke:#3498db,color:#fff
 ```
 
-### ForgeNexus Enterprise — GitHub Actions
+### ForgeNexus Enterprise — Local Automation
+
+Forgewright/ForgeNexus chạy local-first; GitHub/GitLab chỉ là nơi lưu source nếu team muốn dùng, không phải nơi quyết định PASS/FAIL.
 
 ```mermaid
 flowchart LR
-    PR["Pull Request"] --> PR_REVIEW["PR Review<br/>Blast Radius"]
-    PR --> CONTRACT["Contract Check<br/>oasdiff"]
-    PR_REVIEW --> COMMENT["PR Comment<br/>Risk Level"]
-    CONTRACT --> COMMENT
+    CHANGE["Working tree / staged change"] --> REVIEW["Local Review<br/>Blast Radius"]
+    CHANGE --> CONTRACT["Local OpenAPI<br/>Contract Check"]
+    REVIEW --> RECEIPT["Local Receipt<br/>Risk + Evidence"]
+    CONTRACT --> RECEIPT
 
-    PUSH["Push to main"] --> REINDEX["Auto Reindex<br/>Incremental"]
-    PUSH --> WIKI["Auto Wiki<br/>LLM Generation"]
+    SCHEDULE["OS Scheduler"] --> REINDEX["Local Reindex"]
+    SCHEDULE --> DEPS["Dependency/Security Check"]
+    REINDEX --> LOCALINDEX["Local GitNexus Index"]
+    DEPS --> RECEIPT
 
-    REINDEX --> ARTIFACT["Index Artifact<br/>Share across CI"]
-    WIKI --> PAGES["GitHub Pages<br/>or Gist"]
-
-    PR_REVIEW --> STATUS["Status Check<br/>Branch Protection"]
-
-    style PR fill:#0f3460,stroke:#e94560,color:#fff
-    style PUSH fill:#0f3460,stroke:#e94560,color:#fff
-    style COMMENT fill:#1e8449,stroke:#2ecc71,color:#fff
+    style CHANGE fill:#0f3460,stroke:#e94560,color:#fff
+    style SCHEDULE fill:#0f3460,stroke:#e94560,color:#fff
+    style RECEIPT fill:#1e8449,stroke:#2ecc71,color:#fff
     style REINDEX fill:#1e8449,stroke:#2ecc71,color:#fff
-    style WIKI fill:#1e8449,stroke:#2ecc71,color:#fff
 ```
 
-#### Cài đặt nhanh — PR Review cho repo của bạn
-
-#### Lệnh CLI (Enterprise)
+#### Lệnh local
 
 | Lệnh | Mô tả |
 |-------|--------|
-| `pr-review <base> [head]` | Phân tích blast radius của PR |
-| `impact <symbol>` | Phân tích ảnh hưởng của symbol |
-| `group contracts <group>` | Xem tất cả contracts trong group |
-| `group status <group>` | Kiểm tra staleness của tất cả repos |
-| `group query <group> <term>` | Tìm kiếm xuyên suốt các repos |
+| `node scripts/ci/local-ci.mjs review` | Phân tích blast radius + contract check |
+| `node scripts/ci/local-ci.mjs reindex` | Cập nhật GitNexus index local |
+| `node scripts/ci/local-ci.mjs wiki` | Reindex + kiểm tra tài liệu local |
+| `node scripts/ci/local-ci.mjs security` | Audit dependency + automation policy |
+| `node scripts/ci/local-ci.mjs compat` | Test matrix runtime được hỗ trợ |
+| `npm run ci:schedule:install` | Cài lịch quick/deps bằng scheduler của OS |
 
 #### Tính năng Enterprise
 
-| Tính năng | CLI | GitHub Actions | Dry Run |
-|------------|-----|---------------|---------|
-| PR Review Blast Radius | ✅ | ✅ | ✅ |
-| Kiểm tra contract OpenAPI (oasdiff) | N/A | ✅ | ✅ |
-| Tạo Wiki tự động | ✅ | ✅ | ✅ |
-| Auto Reindex (tăng dần/đầy đủ) | ✅ | ✅ | ✅ |
-| Quản lý Multi-Repo Groups | ✅ | ✅ | ✅ |
-| Phân tích ảnh hưởng xuyên repos | N/A | ✅ | ✅ |
+| Tính năng | Local CLI | Local Scheduler | Dry Run |
+|------------|-----------|-----------------|---------|
+| Blast Radius Review | ✅ | Có thể lên lịch | ✅ |
+| Kiểm tra contract OpenAPI | ✅ | Có thể lên lịch | ✅ |
+| Wiki/Reindex | ✅ | ✅ | ✅ |
+| Dependency/Security audit | ✅ | ✅ | ✅ |
+| Quản lý Multi-Repo Groups | ✅ | N/A | ✅ |
+| Phân tích ảnh hưởng xuyên repos | ✅ | Có thể lên lịch | ✅ |
 
-**Độ hoàn thiện: 100%** — Tất cả tính năng đều hỗ trợ dry-run mode.
+Hosted CI adapter chỉ được thêm khi người dùng chủ động yêu cầu provider cụ thể và adapter phải gọi lại chính các lệnh local ở trên.
 
 ### Claude Code Hooks — Auto-Reindex
 

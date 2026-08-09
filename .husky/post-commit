@@ -1,28 +1,25 @@
 #!/bin/sh
+# Post-commit must stay lightweight: record maintenance needs, never spawn hidden work.
+set -eu
 
-# ⚡ Tự động đồng bộ MCP Global khi phát hiện thay đổi trong thư mục mcp/
-if git diff-tree --no-commit-id --name-only -r HEAD | grep -q '^mcp/'; then
-  echo "⚡ [Forgewright] Phát hiện thay đổi trong MCP. Đang tự động đồng bộ MCP Global..."
-  if [ -x "./scripts/forgewright-mcp-setup.sh" ]; then
-    bash ./scripts/forgewright-mcp-setup.sh
-  fi
+CACHE_DIR=".forgewright/cache"
+mkdir -p "$CACHE_DIR"
+CHANGED="$(git diff-tree --no-commit-id --name-only -r HEAD)"
+
+if printf '%s\n' "$CHANGED" | grep -q '^mcp/'; then
+  : > "$CACHE_DIR/mcp-sync-needed"
+  echo "[Forgewright] MCP changed; explicit local MCP sync is pending."
 fi
 
-# Kiểm tra xem commit vừa rồi có thay đổi tài liệu không
-if git diff-tree --no-commit-id --name-only -r HEAD | grep -q -E '^(docs/|README\.md|README\.vi\.md|TASKS\.md|\.forgewright/project-profile\.json|\.forgewright/code-conventions\.md)'; then
-  echo "📄 [Forgewright] Phát hiện thay đổi tài liệu. Đang tự động đồng bộ sang llm_wiki..."
-  if [ -x "./scripts/forgewright-wiki-sync.sh" ]; then
-    ./scripts/forgewright-wiki-sync.sh
-  fi
+if printf '%s\n' "$CHANGED" | grep -q -E '^(docs/|README\.md|README\.vi\.md|TASKS\.md|\.forgewright/project-profile\.json|\.forgewright/code-conventions\.md)'; then
+  : > "$CACHE_DIR/wiki-sync-needed"
+  echo "[Forgewright] Documentation changed; local wiki verification is pending."
 fi
 
-# Kiểm tra thay đổi logic files để chạy gitnexus analyze và cập nhật sequence flow
-if git diff-tree --no-commit-id --name-only -r HEAD | grep -E '^(src/|mcp/|scripts/).*\.(ts|py|js|cs|gd|go|rs)$' | grep -v -E '(test|spec)' > /dev/null; then
-  echo "🔍 [Forgewright] Phát hiện thay đổi logic files. Đang chạy phân tích luồng ngầm (background)..."
-  (
-    npx gitnexus analyze > /dev/null 2>&1
-    if [ -f "./scripts/utilities/generate-sequence.ts" ]; then
-      npx tsx ./scripts/utilities/generate-sequence.ts > /dev/null 2>&1
-    fi
-  ) &
+if printf '%s\n' "$CHANGED" | grep -E '^(src/|mcp/|scripts/).*\.(ts|py|js|cs|gd|go|rs)  : > "$CACHE_DIR/reindex-needed"
+  echo "[Forgewright] Logic changed; local GitNexus reindex is pending."
+fi
+ | grep -v -E '(test|spec)' >/dev/null; then
+  : > "$CACHE_DIR/reindex-needed"
+  echo "[Forgewright] Logic changed; local GitNexus reindex is pending."
 fi

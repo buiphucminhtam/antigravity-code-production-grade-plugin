@@ -72,7 +72,7 @@ This skill handles **application-level security**. Distinct from DevOps (infrast
 | **Critical** | `services/`, `frontend/` (implementation code) | STOP — cannot audit what does not exist |
 | **Critical** | `api/` (OpenAPI/gRPC/AsyncAPI specs) | STOP — need API surface to map attack vectors |
 | **Degraded** | `docs/architecture/`, `schemas/` | WARN — proceed with code-only analysis |
-| **Degraded** | `infrastructure/`, `.github/workflows/` | WARN — skip infra review, note in findings |
+| **Degraded** | `infrastructure/`, `scripts/ci/` | WARN — skip infra/local automation review, note in findings |
 | **Optional** | `tests/`, dependency manifests | Continue — note coverage gaps |
 
 ---
@@ -848,9 +848,11 @@ The scanner includes **68+ security rules** across 4 categories:
 
 Copy the workflow to your repository:
 
+Run the project-owned local security gate first:
 ```bash
-cp .forgewright/security/github-action.yml .github/workflows/security-scan.yml
+node scripts/ci/local-ci.mjs security
 ```
+Generate a hosted-provider security adapter only when that provider is explicitly requested; it must invoke the same local gate.
 
 The workflow:
 1. Triggers on PR open, push, and PR update

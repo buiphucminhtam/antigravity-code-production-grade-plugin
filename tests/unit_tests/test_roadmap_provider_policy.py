@@ -30,11 +30,10 @@ def test_provider_adapter_owns_ecosystem_specific_behavior() -> None:
     )
 
 
-def test_repository_limits_hosted_execution_to_deterministic_ci() -> None:
-    workflow_root = ROOT / ".github" / "workflows"
-    workflows = sorted([*workflow_root.rglob("*.yml"), *workflow_root.rglob("*.yaml")])
-    assert workflows == [workflow_root / "ci.yml"]
-
-    workflow = workflows[0].read_text(encoding="utf-8")
-    assert "scripts/parallel-dispatch-runner.py" not in workflow
-    assert "scripts/lite/escalate.sh" not in workflow
+def test_repository_keeps_hosted_execution_out_of_the_canonical_path() -> None:
+    assert not (ROOT / ".github" / "workflows").exists()
+    assert not (ROOT / ".gitlab-ci.yml").exists()
+    local_ci = (ROOT / "scripts" / "ci" / "local-ci.py").read_text(encoding="utf-8")
+    assert "scripts/parallel-dispatch-runner.py" not in local_ci
+    assert "scripts/lite/escalate.sh" not in local_ci
+    assert "forgewright-local-ci/v1" in local_ci

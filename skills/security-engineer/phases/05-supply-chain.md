@@ -14,7 +14,7 @@ Read Phase 4 outputs from `.forgewright/security-engineer/data-security/`. Data 
 - Phase 4 data security -- `.forgewright/security-engineer/data-security/`
 - Dependency manifests -- `package.json`, `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `requirements.txt`, `Pipfile.lock`, `poetry.lock`, `go.mod`, `go.sum`, `Cargo.toml`, `Cargo.lock`, `pom.xml`, `build.gradle`
 - Lockfiles -- verify they exist and are committed to version control
-- CI/CD configs -- `.github/workflows/`, `Jenkinsfile`, `.gitlab-ci.yml` (action versions, plugin versions)
+- CI/CD configs -- canonical local automation under `scripts/ci/`; inspect hosted-provider files only when the project explicitly uses them
 - Dockerfiles -- base image references and pinning strategy
 - Frontend assets -- CDN-loaded scripts, SRI hash usage
 
@@ -78,8 +78,8 @@ Review dependency version management:
 - Are versions pinned exactly (`1.2.3`) or using ranges (`^1.2.3`, `~1.2.3`)?
 - Is there a lockfile for every package manager? Is it committed to version control?
 - Are Docker base images pinned to digest (e.g., `node@sha256:abc...`), not just tag?
-- Are CI/CD GitHub Actions pinned to commit SHA, not just tag?
-- Is there automated dependency update tooling (Dependabot, Renovate)?
+- Are third-party tools used by local automation pinned or lockfile-resolved reproducibly?
+- Is there a local dependency audit/update command with deterministic lockfile review? Hosted bots such as Dependabot/Renovate are optional, never assumed.
 - Is there a process for reviewing and merging dependency updates?
 
 ### Step 5: Audit CI/CD Pipeline Security
@@ -87,7 +87,7 @@ Review dependency version management:
 Review the build pipeline for supply chain attack vectors:
 
 - Are build artifacts signed?
-- Are third-party CI/CD actions/plugins reviewed before adoption?
+- Are third-party local CI tools/plugins reviewed before adoption? If a hosted adapter is explicitly enabled, review its actions/plugins separately.
 - Are build environment secrets scoped to minimum required access?
 - Is there build reproducibility (same source produces same artifact)?
 - Are artifact registries (npm, Docker, Maven) using authentication and access control?
