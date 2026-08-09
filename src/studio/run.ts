@@ -8,7 +8,7 @@
  *   npx ts-node src/studio/run.ts --demo
  *
  * Requires:
- *   - Node.js 18+
+ *   - Node.js 22+
  *   - npm install (for dependencies)
  */
 

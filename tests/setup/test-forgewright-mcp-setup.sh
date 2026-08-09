@@ -199,7 +199,7 @@ $output"
 const [manifestPath, lockPath] = process.argv.slice(2);
 const manifest = require(manifestPath);
 const lock = require(lockPath);
-if (manifest.engines?.node !== '>=20.0.0' ||
+if (manifest.engines?.node !== '>=22.0.0' ||
     lock.packages?.['']?.engines?.node !== manifest.engines.node) process.exit(1);
 for (const name of Object.keys(manifest.dependencies || {})) {
   const entry = lock.packages?.[`node_modules/${name}`];
@@ -1526,18 +1526,18 @@ test_round7_safety_boundaries() {
 
     if bash -c '
         source "$1"
-        node_version_is_supported v20.0.0
-        node_version_is_supported v20.0.1
-        node_version_is_supported v21.0.0
-        ! node_version_is_supported v19.99.99
-        ! node_version_is_supported v20.0
+        node_version_is_supported v22.0.0
+        node_version_is_supported v22.0.1
+        node_version_is_supported v24.0.0
+        ! node_version_is_supported v21.99.99
+        ! node_version_is_supported v22.0
     ' _ "${SCRIPT_DIR}/forgewright-mcp-setup.sh" && bash -c '
         source "$1"
-        node_version_is_supported v20.0.0
-        ! node_version_is_supported v19.99.99
+        node_version_is_supported v22.0.0
+        ! node_version_is_supported v21.99.99
         ! node_version_is_supported invalid
     ' _ "$FORGEWRIGHT_DIR/scripts/bootstrap/forgewright-setup.sh"; then
-        pass "Canonical and bootstrap Node preflights enforce exact >=20.0.0 semantics"
+        pass "Canonical and bootstrap Node preflights enforce exact >=22.0.0 semantics"
     else
         fail "Node minimum-version comparison is inconsistent"
     fi

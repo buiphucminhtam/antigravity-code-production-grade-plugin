@@ -134,10 +134,20 @@ def test_agy_permissions_are_fixture_read_only_plus_exact_write_and_verifier(tmp
 
 def test_harness_fingerprint_is_semantic_and_stable_shape():
     module = _module()
-    assert module.LIVE_HARNESS_SEMANTICS_VERSION == "agy-isolated-least-privilege-v1"
+    assert module.LIVE_HARNESS_SEMANTICS_VERSION == "agy-isolated-least-privilege-v2"
     fingerprint = module._harness_fingerprint()
     assert len(fingerprint) == 64
     assert fingerprint == module._harness_fingerprint()
+
+
+def test_harness_fingerprint_tracks_orchestrator_bytes(monkeypatch, tmp_path):
+    module = _module()
+    orchestrator = tmp_path / "orchestrator.py"
+    orchestrator.write_text("print('one')\n", encoding="utf-8")
+    monkeypatch.setattr(module, "ORCHESTRATOR", orchestrator)
+    first = module._harness_fingerprint()
+    orchestrator.write_text("print('two')\n", encoding="utf-8")
+    assert module._harness_fingerprint() != first
 
 
 def test_suite_fingerprint_includes_fixture_bytes():

@@ -114,7 +114,7 @@ Generate deployment config for the documentation site:
 1. **GitHub Pages** (default) — Generate `.github/workflows/docs-build.yml`:
    - Trigger on push to main (paths: `docs/**`)
    - Trigger on PR to main (paths: `docs/**`) for build verification
-   - Steps: checkout, setup Node 20, `npm ci`, `npm run build`, check for broken links
+   - Steps: checkout, setup Node 24 LTS, `npm ci`, `npm run build`, check for broken links
    - Deploy job: upload pages artifact, deploy to GitHub Pages
    - OpenAPI spec validation step using `swagger-editor-validate`
 

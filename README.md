@@ -116,7 +116,7 @@ Forgewright is designed to run locally alongside your preferred IDE and developm
 
 Please ensure the following dependencies are installed and available in your system path:
 
-- **Node.js**: v20.x or higher for MCP setup; the standalone CLI remains compatible with v18+.
+- **Node.js**: v22.x or higher for supported Forgewright runtime and CLI usage; CI validates Node.js 24 LTS with a Node.js 22 compatibility lane.
 - **Git**: v2.30+ (required for repository management and history tracking).
 - **Python**: v3.8+ (required for the FluxMem SQLite GraphRAG memory layer).
 - **Supported IDE**: Cursor, Claude Desktop, or Codex CLI.

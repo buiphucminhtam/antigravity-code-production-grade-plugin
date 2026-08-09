@@ -16,6 +16,8 @@ run_required() {
 run_required product-truth python3 scripts/ci/verify-product-truth.py
 run_required python-unit-tests python3 -m pytest tests/unit_tests/
 run_required adversarial-weak-model-rails python3 evals/adversarial-weak-model/run-evals.py --self-test
+run_required root-production-audit npm audit --package-lock-only --omit=dev --audit-level=high
+run_required standalone-mcp-production-audit npm --prefix mcp audit --package-lock-only --omit=dev --workspaces=false --audit-level=high
 run_required mcp-lint npm --prefix mcp run lint
 run_required mcp-format npm --prefix mcp run format:check
 run_required mcp-build npm --prefix mcp run build

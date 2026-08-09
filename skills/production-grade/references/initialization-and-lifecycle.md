@@ -44,7 +44,7 @@ Run silently BEFORE any execution (all modes) to ensure project intelligence is 
 
 **Step 0.2 — System Requirements + Power Level Check (required):**
 
-Forgewright requires **Node.js 18+** (GitNexus) and **Python 3** (local memory). Power level determines which tools are needed.
+Forgewright requires **Node.js 22+** (GitNexus/MCP runtime) and **Python 3** (local memory). Power level determines which tools are needed.
 
 **Step 0.2.1 — System Requirements Check:**
 
@@ -64,15 +64,15 @@ settings_check: [ -f .forgewright/settings.md ] && echo "exists" || echo "missin
 | ≥18 | ≥3.8 | ready | ✅ Full Persistent — continue to Step 0.3 |
 | ≥18 | ≥3.8 | setup | ⧖ Memory setup needed — run memory-local.sh |
 | ≥18 | missing | — | ⚠️ Python missing — stop, tell user install Python 3 |
-| <18 | — | — | ⚠️ Node.js <18 — stop, tell user upgrade Node.js |
-| missing | — | — | ⚠️ Node.js missing — stop, tell user install Node.js 18+ |
+| <22 | — | — | ⚠️ Node.js <22 — stop, tell user upgrade Node.js |
+| missing | — | — | ⚠️ Node.js missing — stop, tell user install Node.js 22+ |
 
 **If Node.js or Python missing (blocking):**
 ```
 notify_user:
   "⚠️ Missing required tools for Forgewright:
 
-   Node.js 18+ required for: GitNexus code intelligence, MCP server
+   Node.js 22+ required for: GitNexus code intelligence, MCP server
    Python 3.8+ required for: Local memory (ChromaDB + sentence-transformers)
 
    How to install:
@@ -145,7 +145,7 @@ IF Full Power:
   notify_user:
     "⚡ Full Power selected! You have everything you need:
 
-     MANDATORY (auto-verified): Node.js 18+, Python 3.8+, local memory ✓
+     MANDATORY (auto-verified): Node.js 22+, Python 3.8+, local memory ✓
 
      OPTIONAL — install anytime to unlock more capability:
 

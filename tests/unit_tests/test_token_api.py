@@ -7,6 +7,8 @@ Tests API server logic and cost estimation.
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 # Load token-api-server.py (has hyphen in name, need importlib)
 _test_file = Path(__file__).resolve()
 _project_root = _test_file.parent.parent.parent
@@ -26,6 +28,32 @@ estimate_cost = _token_api.estimate_cost
 CursorDBReader = _token_api.CursorDBReader
 ClaudeTelemetryReader = _token_api.ClaudeTelemetryReader
 UnifiedAggregator = _token_api.UnifiedAggregator
+is_authorized_request = _token_api.is_authorized_request
+is_loopback_host = _token_api.is_loopback_host
+validate_bind_policy = _token_api.validate_bind_policy
+
+
+class TestDashboardBindPolicy:
+    def test_loopback_hosts_are_local(self):
+        assert is_loopback_host("localhost")
+        assert is_loopback_host("127.0.0.1")
+        assert is_loopback_host("127.42.0.9")
+        assert is_loopback_host("::1")
+        assert not is_loopback_host("0.0.0.0")
+        assert not is_loopback_host("192.168.1.20")
+
+    def test_non_loopback_requires_auth_token(self):
+        with pytest.raises(ValueError, match="FORGEWRIGHT_TOKEN_DASHBOARD_AUTH_TOKEN"):
+            validate_bind_policy("0.0.0.0", "")
+        validate_bind_policy("0.0.0.0", "secret")
+        validate_bind_policy("127.0.0.1", "")
+
+    def test_basic_auth_is_exact_and_optional_locally(self):
+        assert is_authorized_request(None, "")
+        assert not is_authorized_request(None, "secret")
+        assert not is_authorized_request("Basic invalid", "secret")
+        expected = _token_api._expected_basic_auth("secret")
+        assert is_authorized_request(expected, "secret")
 
 
 class TestTokenAPI:

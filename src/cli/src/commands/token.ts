@@ -5,6 +5,7 @@ import type { Command } from "commander";
 import pc from "picocolors";
 import { spawn, spawnSync } from "child_process";
 import { existsSync } from "fs";
+import { isIP } from "net";
 import { homedir } from "os";
 import { join } from "path";
 import {
@@ -111,9 +112,14 @@ export function registerTokenCommand(program: Command): void {
   token
     .command("dashboard")
     .description("Start the token usage dashboard server")
+    .option(
+      "--host <host>",
+      "Bind host (non-loopback requires dashboard auth token env)",
+      "127.0.0.1",
+    )
     .option("--port <port>", "Dashboard port", "8080")
     .option("-j, --json", "Output startup information as JSON before launching")
-    .action(async (options: { port: string; json?: boolean }) => {
+    .action(async (options: { host: string; port: string; json?: boolean }) => {
       await handleDashboard(options);
     });
 }
@@ -236,6 +242,7 @@ async function handleReport(options: {
 }
 
 async function handleDashboard(options: {
+  host: string;
   port: string;
   json?: boolean;
 }): Promise<void> {
@@ -243,7 +250,20 @@ async function handleDashboard(options: {
   const useJson = Boolean(options.json) || !process.stdout.isTTY;
   const projectRoot = findProjectRoot();
   const scriptPath = join(projectRoot, "scripts", "token-api-server.py");
+  const host = parseDashboardHost(options.host, useJson);
   const port = parsePort(options.port, useJson);
+  const authRequired = !isLoopbackDashboardHost(host);
+
+  if (
+    authRequired &&
+    !process.env.FORGEWRIGHT_TOKEN_DASHBOARD_AUTH_TOKEN?.trim()
+  ) {
+    fail(
+      "Non-loopback dashboard binding requires FORGEWRIGHT_TOKEN_DASHBOARD_AUTH_TOKEN.",
+      useJson,
+      EXIT_CODES.USAGE_ERROR,
+    );
+  }
 
   if (!existsSync(scriptPath)) {
     fail(
@@ -262,11 +282,14 @@ async function handleDashboard(options: {
     );
   }
 
+  const displayHost = isIP(host) === 6 ? `[${host}]` : host;
   const data = {
     projectRoot,
     scriptPath,
+    host,
     port,
-    url: `http://localhost:${port}/dashboard`,
+    authRequired,
+    url: `http://${displayHost}:${port}/dashboard`,
     python,
   };
 
@@ -277,10 +300,14 @@ async function handleDashboard(options: {
     console.log(pc.dim("Press Ctrl+C to stop."));
   }
 
-  const child = spawn(python, [scriptPath, "--port", String(port)], {
-    stdio: "inherit",
-    shell: process.platform === "win32",
-  });
+  const child = spawn(
+    python,
+    [scriptPath, "--host", host, "--port", String(port)],
+    {
+      stdio: "inherit",
+      shell: process.platform === "win32",
+    },
+  );
 
   child.on("exit", (code) => {
     process.exit(code ?? EXIT_CODES.OK);
@@ -320,6 +347,25 @@ function parseUsd(value: string, label: string, useJson: boolean): number {
     );
   }
   return parsed;
+}
+
+function parseDashboardHost(value: string, useJson: boolean): string {
+  const host = value.trim();
+  if (host === "localhost" || isIP(host) > 0) {
+    return host;
+  }
+  fail(
+    `Invalid dashboard host: ${value}. Use localhost or an IP address.`,
+    useJson,
+    EXIT_CODES.USAGE_ERROR,
+  );
+}
+
+function isLoopbackDashboardHost(host: string): boolean {
+  if (host === "localhost" || host === "::1") {
+    return true;
+  }
+  return isIP(host) === 4 && host.split(".")[0] === "127";
 }
 
 function parsePort(value: string, useJson: boolean): number {

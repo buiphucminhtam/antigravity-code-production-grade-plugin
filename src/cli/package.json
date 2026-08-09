@@ -40,7 +40,7 @@
     "vitest": "^2.1.0"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.0.0"
   },
   "keywords": [
     "cli",

@@ -188,7 +188,7 @@ create_manifest() {
   },
   "platform": ["darwin", "linux"],
   "requirements": {
-    "nodejs": ">=18"
+    "nodejs": ">=22"
   }
 }
 EOF
@@ -259,7 +259,7 @@ ForgeWright is an adaptive AI orchestrator with 56 skills covering:
 
 ## Requirements
 
-- Node.js 18+
+- Node.js 22+
 - macOS or Linux
 - Claude Desktop
 

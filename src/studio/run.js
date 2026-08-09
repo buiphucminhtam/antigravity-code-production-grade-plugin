@@ -11,7 +11,7 @@
  *   node src/studio/run.js --demo       # Send demo events
  *
  * Requires:
- *   - Node.js 18+
+ *   - Node.js 22+
  *   - npm install (ws is included as dependency)
  */
 

@@ -19,7 +19,7 @@ set -euo pipefail
 VERSION="1.0.0"
 GITHUB_REPO="https://github.com/buiphucminhtam/forgewright.git"
 FORGEWRIGHT_DEFAULT="${HOME}/Documents/GitHub/forgewright"
-MIN_NODE_VERSION="20.0.0"
+MIN_NODE_VERSION="22.0.0"
 
 # Colors
 RED='\033[0;31m'
@@ -234,7 +234,7 @@ check_node() {
 
     Install Node.js:
       macOS:  brew install node
-      Linux:  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
+      Linux:  install Node.js 22+ via your distro/package manager or https://nodejs.org
       Windows: https://nodejs.org
 
 EOF
@@ -259,7 +259,7 @@ node_version_is_supported() {
     patch="${patch%%[^0-9]*}"
     [[ "$major" =~ ^[0-9]+$ ]] && [[ "$minor" =~ ^[0-9]+$ ]] && \
         [[ "$patch" =~ ^[0-9]+$ ]] || return 1
-    ((major >= 20))
+    ((major >= 22))
 }
 
 check_prerequisites() {

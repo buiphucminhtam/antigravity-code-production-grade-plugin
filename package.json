@@ -3,6 +3,9 @@
   "version": "8.7.0",
   "description": "Adaptive AI Orchestrator — 83 skills, 24 modes. SaaS, game dev, XR, AI/ML, data engineering. Pipeline: INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN",
   "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "workspaces": [
     "mcp",
     "src/cli"
@@ -32,7 +35,7 @@
   },
   "overrides": {
     "@hono/node-server": "2.0.12",
-    "fast-uri": "3.1.4"
+    "fast-uri": "3.1.5"
   },
   "lint-staged": {
     "mcp/src/**/*.ts": [

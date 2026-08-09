@@ -113,7 +113,7 @@ flowchart LR
         L2A["🔍 Thêm gì"]
         L2B["• Hỏi 'thay đổi này ảnh hưởng gì?' → trả lời ngay"]
         L2C["• Phân tích blast radius tự động"]
-        L2D["• Cần: Node.js 20+ cho MCP"]
+        L2D["• Cần: Node.js 22+ cho runtime/CLI"]
     end
 
     subgraph L3["⚡⚡⚡ Level 3 — Memory"]
@@ -996,7 +996,7 @@ git submodule update --init --recursive
 
 ### Cách 2: Nâng cấp lên Level 2 (Smart)
 
-Cần: **Node.js 20+ cho MCP** (CLI độc lập vẫn hỗ trợ Node.js 18+)
+Cần: **Node.js 22+ cho runtime và CLI** (CI chính chạy Node.js 24 LTS và có lane tương thích Node.js 22).
 
 ```bash
 # Kiểm tra

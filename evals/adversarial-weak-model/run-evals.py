@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import hashlib
+import inspect
 import json
 import os
 import re
@@ -27,7 +28,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 REPORT_SCHEMA_VERSION = 2
-LIVE_HARNESS_SEMANTICS_VERSION = "agy-isolated-least-privilege-v1"
+LIVE_HARNESS_SEMANTICS_VERSION = "agy-isolated-least-privilege-v2"
 SUITE_FILE = Path(__file__).with_name("suite.json")
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ORCHESTRATOR = REPO_ROOT / "scripts" / "runtime" / "forgewright-orchestrator.py"
@@ -68,11 +69,30 @@ def _contract_fingerprint() -> str:
 
 
 def _harness_fingerprint() -> str:
-    """Fingerprint execution semantics, not reporting/comparison implementation details."""
+    """Fingerprint executable semantics used by live adapters and policy gates."""
     policy = hashlib.sha256(EXECUTION_POLICY.read_bytes()).hexdigest()
+    orchestrator = (
+        hashlib.sha256(ORCHESTRATOR.read_bytes()).hexdigest()
+        if ORCHESTRATOR.is_file()
+        else "missing"
+    )
+    adapter_source = "\n\n".join(
+        inspect.getsource(function)
+        for function in (
+            _run,
+            _run_argv,
+            _agy_permission_rules,
+            _prepare_agy_home,
+            _agy_argv,
+            _select_live_adapter,
+            _run_live,
+        )
+    )
     semantics = {
         "version": LIVE_HARNESS_SEMANTICS_VERSION,
         "executionPolicy": policy,
+        "orchestratorSource": orchestrator,
+        "adapterSource": hashlib.sha256(adapter_source.encode("utf-8")).hexdigest(),
         "agy": {
             "isolatedHome": True,
             "fixtureReads": "exact-files-excluding-git",

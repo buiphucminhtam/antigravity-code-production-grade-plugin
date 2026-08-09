@@ -30,7 +30,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: "20.20.2"
+          node-version: "24"
           cache: npm
 
       - name: Set up Python
@@ -60,3 +60,29 @@ jobs:
 
       - name: Reject generated drift
         run: git diff --exit-code
+
+  node22-compat:
+    name: node22-compat
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      HUSKY: "0"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Node.js 22 LTS
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Verify Node 22 compatibility
+        run: |
+          npm --prefix mcp run build
+          npm --prefix mcp run test
+          npm run typecheck:cli
+          npm run build:cli

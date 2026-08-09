@@ -5,29 +5,31 @@ Token Usage API Server for ForgeWright Dashboard
 Serves token usage data via REST API for the dashboard.
 
 Usage:
-    python3 scripts/token-api-server.py [--port 8080]
+    python3 scripts/token-api-server.py [--host 127.0.0.1] [--port 8080]
 
-Then open: http://localhost:8080/dashboard
+Then open: http://127.0.0.1:8080/dashboard
 """
 
+import argparse
+import base64
+import ipaddress
 import json
 import os
+import secrets
 import sqlite3
+from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from collections import defaultdict
-import argparse
 
 # Try Flask, fallback to http.server
 try:
-    from flask import Flask, jsonify, request, send_file, Response
-    from flask_cors import CORS
+    from flask import Flask, Response, jsonify, request, send_file
 
     HAS_FLASK = True
 except ImportError:
     HAS_FLASK = False
     print("⚠️  Flask not installed. Using basic http.server.")
-    print("   Install with: pip install flask flask-cors")
+    print("   Install with: pip install flask")
     print("   Or run dashboard directly as HTML file.\n")
 
 # Provider pricing (USD per 1M tokens)
@@ -124,6 +126,41 @@ PRICING = {
         },
     },
 }
+
+# Model name normalization patterns
+DASHBOARD_AUTH_ENV = "FORGEWRIGHT_TOKEN_DASHBOARD_AUTH_TOKEN"
+DASHBOARD_AUTH_USER = "forgewright"
+
+
+def is_loopback_host(host: str) -> bool:
+    normalized = host.strip().lower()
+    if normalized == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(normalized).is_loopback
+    except ValueError:
+        return False
+
+
+def validate_bind_policy(host: str, auth_token: str) -> None:
+    if not host.strip():
+        raise ValueError("dashboard bind host cannot be empty")
+    if not is_loopback_host(host) and not auth_token:
+        raise ValueError(
+            f"non-loopback dashboard binding requires {DASHBOARD_AUTH_ENV}"
+        )
+
+
+def _expected_basic_auth(auth_token: str) -> str:
+    payload = f"{DASHBOARD_AUTH_USER}:{auth_token}".encode("utf-8")
+    return "Basic " + base64.b64encode(payload).decode("ascii")
+
+
+def is_authorized_request(authorization: str | None, auth_token: str) -> bool:
+    if not auth_token:
+        return True
+    return secrets.compare_digest(authorization or "", _expected_basic_auth(auth_token))
+
 
 # Model name normalization patterns
 MODEL_ALIASES = {
@@ -1063,12 +1100,23 @@ class TokenAPI:
         }
 
 
-def create_app():
+def create_app(auth_token: str = ""):
     api = TokenAPI()
 
     if HAS_FLASK:
         app = Flask(__name__)
-        CORS(app)
+
+        if auth_token:
+
+            @app.before_request
+            def require_dashboard_auth():
+                if is_authorized_request(request.headers.get("Authorization"), auth_token):
+                    return None
+                return Response(
+                    "Authentication required",
+                    status=401,
+                    headers={"WWW-Authenticate": 'Basic realm="Forgewright Token Dashboard"'},
+                )
 
         @app.route("/")
         def index():
@@ -1189,8 +1237,8 @@ def create_app():
         return None
 
 
-def run_basic_server(port: int):
-    """Fallback to basic http.server"""
+def run_basic_server(host: str, port: int, auth_token: str = ""):
+    """Fallback to basic http.server."""
     import http.server
     import socketserver
 
@@ -1198,7 +1246,20 @@ def run_basic_server(port: int):
     claude_reader = ClaudeTelemetryReader()
 
     class Handler(http.server.SimpleHTTPRequestHandler):
+        def _authorized(self) -> bool:
+            if is_authorized_request(self.headers.get("Authorization"), auth_token):
+                return True
+            self.send_response(401)
+            self.send_header(
+                "WWW-Authenticate", 'Basic realm="Forgewright Token Dashboard"'
+            )
+            self.end_headers()
+            self.wfile.write(b"Authentication required")
+            return False
+
         def do_GET(self):
+            if not self._authorized():
+                return
             if self.path == "/api/projects":
                 self.send_response(200)
                 self.send_header("Content-type", "application/json")
@@ -1323,10 +1384,11 @@ def run_basic_server(port: int):
 
     api = TokenAPI()
 
-    with socketserver.TCPServer(("", port), Handler) as httpd:
+    with socketserver.TCPServer((host, port), Handler) as httpd:
+        display_host = f"[{host}]" if ":" in host else host
         print("\n🚀 Token Usage API Server")
-        print(f"   Dashboard: http://localhost:{port}/dashboard")
-        print(f"   API:       http://localhost:{port}/api/usage")
+        print(f"   Dashboard: http://{display_host}:{port}/dashboard")
+        print(f"   API:       http://{display_host}:{port}/api/usage")
         print(f"   Projects:  {len(api.list_projects())} tracked")
         print(
             f"   Cursor:   {'Available' if cursor_reader.is_available() else 'Not found'}"
@@ -1340,16 +1402,28 @@ def run_basic_server(port: int):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Token Usage API Server")
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Bind host (default: 127.0.0.1; non-loopback requires auth token env)",
+    )
     parser.add_argument("--port", "-p", type=int, default=8080, help="Port to run on")
     args = parser.parse_args()
+    auth_token = os.environ.get(DASHBOARD_AUTH_ENV, "").strip()
+    try:
+        validate_bind_policy(args.host, auth_token)
+    except ValueError as error:
+        parser.error(str(error))
 
+    display_host = f"[{args.host}]" if ":" in args.host else args.host
     if HAS_FLASK:
-        app = create_app()
+        app = create_app(auth_token=auth_token)
         print("\n🚀 Token Usage API Server (Flask)")
-        print(f"   Dashboard: http://localhost:{args.port}/dashboard")
-        print(f"   API:       http://localhost:{args.port}/api/usage")
+        print(f"   Dashboard: http://{display_host}:{args.port}/dashboard")
+        print(f"   API:       http://{display_host}:{args.port}/api/usage")
         print(f"   Projects:  {len(TokenAPI().list_projects())} tracked")
+        print(f"   Auth:      {'Basic auth enabled' if auth_token else 'loopback-only'}")
         print("\n   Press Ctrl+C to stop\n")
-        app.run(host="0.0.0.0", port=args.port, debug=False)
+        app.run(host=args.host, port=args.port, debug=False)
     else:
-        run_basic_server(args.port)
+        run_basic_server(args.host, args.port, auth_token)

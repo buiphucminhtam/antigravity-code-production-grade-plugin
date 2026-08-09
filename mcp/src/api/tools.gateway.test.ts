@@ -16,6 +16,7 @@ describe('registerTools gateway traversal', () => {
       server as never,
       new ToolExecutionGateway({
         telemetry: (event) => telemetry.push(event),
+        policyEvaluator: { evaluate: async () => ({ action: 'allow' }) },
         middleware: { tool_sandbox: { enabled: true, enable_audit: false } },
       }),
     );

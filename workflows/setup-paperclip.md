@@ -6,7 +6,7 @@ description: Set up Paperclip multi-agent orchestration alongside Forgewright
 
 Paperclip is an **optional** business orchestration layer that manages multiple AI agents as a company. Forgewright provides the engineering skills; Paperclip provides the management layer.
 
-**Prerequisites:** Node.js 20+, pnpm 9.15+
+**Prerequisites:** Node.js 22+, pnpm 9.15+
 
 ## Steps
 

@@ -10,5 +10,5 @@ export default defineConfig({
   treeshake: true,
   minify: false,
   platform: 'node',
-  target: 'node18',
+  target: 'node22',
 });

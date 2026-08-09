@@ -83,14 +83,14 @@ describe('FileSystemStateRepository', () => {
 
   it('times out on a fresh cross-process lock and recovers a stale lock', async () => {
     const root = workspace();
-    const repo = repository(root, { lockTimeoutMs: 30, lockStaleMs: 100, lockRetryMs: 5 });
+    const repo = repository(root, { lockTimeoutMs: 40, lockStaleMs: 10_000, lockRetryMs: 5 });
     const lockFile = `${stateFile(root)}.lock`;
     fs.mkdirSync(path.dirname(lockFile), { recursive: true });
     fs.writeFileSync(lockFile, 'held', 'utf-8');
 
     await expect(repo.save(DEFAULT_STATE)).rejects.toThrow('Timed out acquiring state lock');
 
-    const stale = new Date(Date.now() - 1_000);
+    const stale = new Date(Date.now() - 20_000);
     fs.utimesSync(lockFile, stale, stale);
     await repo.save(DEFAULT_STATE);
     expect(fs.existsSync(lockFile)).toBe(false);
