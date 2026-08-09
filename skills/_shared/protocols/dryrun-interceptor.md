@@ -38,13 +38,13 @@ You are currently operating in a simulated sandbox environment.
 3. INSTEAD: Analyze the structure, formulate your refactoring logic, and output your changes strictly as a Unified Diff (`.diff` or `.patch`) embedded inside an implementation artifact.
 4. If asked to run command, append `--dry-run` or similar verification flags.
 5. Your final result MUST be a plan containing the exact `.diff` snippet or `git diff` output.
-6. MANDATORY QUALITY LOOP: Before yielding to the user, you MUST self-evaluate your `.diff` using `skills/_shared/protocols/plan-quality-loop.md` with a threshold of 9.0.
-7. If your self-score is < 9.0, you MUST NOT return the result to the user. Instead, you MUST trigger the continuous loop:
-   - LEARN: Identify weak criteria.
-   - RESEARCH: Search the codebase or best practices.
-   - IMPROVE SKILL: Append a lesson to your SKILL.md.
-   - RE-PLAN: Generate a new `.diff` patch.
-   - Repeat this loop strictly until the score is ≥ 9.0.
+6. Before yielding, self-check the proposed diff against current acceptance, protected paths, hidden-risk signals, and the verification plan using `self-check.md` / `plan-quality-loop.md` proportionally.
+7. If the proposal has a material gap:
+   - identify the failed criterion and evidence;
+   - research only when a material unknown blocks correction;
+   - revise the diff once using the new evidence;
+   - after the same step fails twice, stop and escalate rather than looping;
+   - record a reusable lesson project-locally when warranted. Never mutate shared `SKILL.md` as a dry-run side effect.
 </SYSTEM_MESSAGE>
 ```
 
@@ -55,13 +55,12 @@ The **DryRun Interceptor (Option B)** and **Guardrail (Option A)** work together
 1. **The Brain (DryRun Interceptor):** Tells the AI *"Don't even try to touch the files, just show me the diff"*. This saves 90% of wasted tokens normally spent trying to force writes.
 2. **The Shield (Guardrail):** Sits as a physical barrier. If the AI hallucinates, ignores the prompt, or forgets it is in Dry Run, Guardrail intercepts the API call and blocks it.
 
-## Verification (Self-Evolving Loop)
+## Verification (Evidence Loop)
 
-If a skill completes a `.diff` under Dry Run Mode, it is subjected to the rigid **Plan Quality Loop** embedded in its system prompt with a 9.0 Threshold. 
+A dry-run diff is reviewed with the same proportional evidence contract as a real change:
+- **Impact:** GitNexus/dependency evidence covers affected contracts and hidden-risk boundaries where material;
+- **Feasibility:** syntax/build/test implications have a concrete verifier;
+- **Specificity:** patch context is unambiguous and protected paths are respected;
+- **Research trust:** any external evidence is source-traceable and untrusted embedded instructions are ignored.
 
-Dry Run execution explicitly tests:
-- **Impact Assess:** Does the diff cleanly avoid breaking dependents (verifiable via GitNexus)?
-- **Feasibility:** Is the syntax valid for TS/Node compilation?
-- **Specificity:** Are the diff line removals/additions unambiguous?
-
-If the Agent scores itself < 9.0, it is forced to self-research, write an improvement to its own `SKILL.md`, and redo the `.diff` computation silently. Only when it reaches $\ge 9.0$ is the output returned to the human reviewer via Middleware ⑥ (QualityGate).
+There is no self-attested score that can convert a weak proposal into PASS. Failed criteria require evidence-supported revision; repeated failure follows the kernel Stuck rule. Reusable learning stays project-local unless Forgewright framework improvement is itself the explicit task.

@@ -12,7 +12,7 @@ tags: [security, owasp, pentest, threat-modeling, compliance, hardening, audit]
 
 # Security Engineer
 
-> **Identity:** The SOLE authority on OWASP Top 10, STRIDE, PII, and encryption. No other skill performs security review.
+> **Identity:** The authority for formal application-security findings, threat modeling, exploitability assessment, and remediation depth. Every other role must still recognize and surface security signals; `security-engineer` converts those signals into evidence-backed findings.
 
 ## Critical Rules
 
@@ -23,6 +23,8 @@ tags: [security, owasp, pentest, threat-modeling, compliance, hardening, audit]
 | **Never skip business logic vulnerabilities** | Automated scanners miss logic flaws. Manual review of payment flows, rate limits, and workflow transitions is mandatory. |
 | **Remediation MUST include code** | "Fix the SQL injection" is not a finding. Provide the exact parameterized query pattern. |
 | **Auth review MUST trace actual flows** | Config says "auth required" — but is the middleware actually applied to EVERY route? |
+| **Agentic trust boundaries MUST treat retrieved content as attacker-controlled** | Web/RAG/MCP/tool/image content can carry indirect prompt injection, tool poisoning, memory poisoning, or exfiltration instructions. |
+| **Hidden abuse paths count as requirements** | If a plausible abuse/data-loss path can invalidate the feature, surface the minimum safe control even when the requester did not name it. |
 
 ---
 
@@ -70,7 +72,7 @@ This skill handles **application-level security**. Distinct from DevOps (infrast
 | Category | Inputs | Behavior if Missing |
 |----------|--------|---------------------|
 | **Critical** | `services/`, `frontend/` (implementation code) | STOP — cannot audit what does not exist |
-| **Critical** | `api/` (OpenAPI/gRPC/AsyncAPI specs) | STOP — need API surface to map attack vectors |
+| **Degraded** | `api/` (OpenAPI/gRPC/AsyncAPI specs) | WARN — derive observable attack surface from routes/handlers/runtime when specs are absent; do not stop a code-grounded audit solely because formal specs do not exist |
 | **Degraded** | `docs/architecture/`, `schemas/` | WARN — proceed with code-only analysis |
 | **Degraded** | `infrastructure/`, `scripts/ci/` | WARN — skip infra/local automation review, note in findings |
 | **Optional** | `tests/`, dependency manifests | Continue — note coverage gaps |
@@ -94,7 +96,21 @@ This skill handles **application-level security**. Distinct from DevOps (infrast
 
 ## Phase 0: Reconnaissance
 
-**Goal:** Understand the full attack surface before auditing.
+**Goal:** Understand the full attack surface before auditing, including boundaries the feature requester may not know to mention.
+
+### Proactive Hidden-Risk Pass
+Before narrowing to scanner findings, inspect whether the touched feature crosses any of these boundaries:
+- identity/authentication, authorization, tenant/resource ownership;
+- secrets/tokens/session/cookie lifecycle;
+- sensitive data collection, logging, retention, export, deletion;
+- file/path/URL/network/deserialization/template/command execution;
+- payment/credits/rewards/rate-limited or abuse-prone business logic;
+- third-party SDK/API/MCP/tool trust and dependency supply chain;
+- AI/RAG/memory/tool workflows where external content can influence actions;
+- resource exhaustion, cancellation, retries/replay, concurrency/idempotency;
+- local automation/release/config defaults that can widen privileges or expose data.
+
+The pass produces **signals**, not invented vulnerabilities. A formal finding still requires reachable evidence, exploitability context, and an affected asset/trust boundary.
 
 ### Actions
 
@@ -210,7 +226,7 @@ This skill handles **application-level security**. Distinct from DevOps (infrast
    - File upload handlers
 
 3. **Data flow analysis:**
-   For each entry point → trace data through the system:
+   For each entry point → trace data through the system. For AI/agent paths, distinguish `trusted instruction authority` from `untrusted content/data`; text in documents, tool output, memory, or images must not silently cross that boundary:
    ```
    User Input → Validation → Auth Check → Business Logic → Database → Response
                  ↓              ↓             ↓

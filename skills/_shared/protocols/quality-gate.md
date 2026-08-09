@@ -3,11 +3,11 @@ id: quality-gate
 title: Universal Quality Gate Protocol
 summary: Proportional deterministic verification for changed behavior, phase boundaries, merges, and releases.
 status: active
-version: 2.0.0
+version: 2.1.0
 owners: [core]
 triggers: []
 used_by: [all]
-related: [plan-quality-loop, verification, senior-execution-contract, research-gate]
+related: [plan-quality-loop, verification, senior-execution-contract, research-gate, consulting-risk-radar, visual-grounding]
 supersedes: []
 superseded_by: null
 ---
@@ -105,10 +105,11 @@ Never “improve quality” by expanding scope unrelated to the failed acceptanc
 
 ## UI / Visual Verification
 
-Structural/DOM/snapshot checks can prove layout rules, presence, accessibility, and regressions, but subjective visual quality needs visual evidence. For material UI/art changes:
-- inspect a rendered screenshot/preview/device output when available;
-- use user approval only when subjective preference, an approval gate, or release acceptance genuinely requires it;
-- otherwise report what was structurally/visually verified and any remaining subjective uncertainty without inventing a confidence percentage.
+Follow `visual-grounding.md`. Material visual work uses a **two-layer gate**:
+1. deterministic/structural checks for the properties tooling can prove (tokens, states, layout, accessibility, dimensions, alpha/frame bounds, engine/import constraints, VRT where stable);
+2. rendered reference-conformance review for hierarchy/style/readability/art quality against an inspected design system/reference contract.
+
+The gate must not approve a visual solely from a model’s aggregate aesthetic score or a generic style heuristic. A concrete reference mismatch beats a high score. Existing brand/design-system choices override generic “AI aesthetic” rules. Use human approval only for genuine preference/brand decisions or explicit approval gates; otherwise report residual visual uncertainty as `UNVERIFIED`, never as a fabricated confidence percentage.
 
 ## Metrics Storage
 

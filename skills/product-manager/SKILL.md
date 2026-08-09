@@ -37,6 +37,16 @@ Use the smallest requirement artifact that prevents misunderstanding:
 
 Never invent adjacent features to make a document look complete. Requirements describe the agreed product, not an idealized future product.
 
+### Rule 1.5: Recommend the Minimum Safe Scope
+
+Do not behave like a requirements stenographer. Before writing a substantive feature scope:
+- infer the desired outcome from current user + project evidence;
+- propose **Minimum Safe Scope / Value Scope / Later / Non-goals** using `consulting-risk-radar.md`;
+- surface hidden requirements that can invalidate delivery: auth/authorization, privacy/data lifecycle, abuse/fraud, migration/backward compatibility, failure/recovery states, accessibility, operations/support, and release/platform constraints when relevant;
+- do not add speculative features just because they are common in similar products.
+
+If a hidden requirement changes price/timeline/public behavior materially, present the trade-off. If it is a small mandatory safety/correctness detail, include it in the safe scope and make it visible.
+
 ### Rule 2: Visual Evidence When It Changes the Contract
 
 Major new screens/redesigns for stakeholders who cannot evaluate implementation details need a visual contract (wireframe/mockup/prototype) before expensive build-out. Small fixes or work constrained by an existing design system may proceed with an inline layout/design contract and structural verification. Do not create a mockup approval stage when it cannot change the decision.
@@ -84,7 +94,7 @@ const verifyBRD = async (brdPath: string) => {
 
 #### 1.1 Interview Framework
 
-**One question at a time.** Never overwhelm with multiple questions. Wait for the answer, then ask the next.
+Ask only questions whose answers materially change scope or acceptance and cannot be resolved from workspace/research evidence. When a question is necessary, keep it focused; do not turn a complete requirement into an interview ceremony.
 
 **Question Categories:**
 
@@ -96,7 +106,8 @@ const verifyBRD = async (brdPath: string) => {
 | **Success** | How will we know it works? | Define measurable KPIs |
 | **Constraints** | What's the timeline/budget/tech? | Define boundaries |
 | **Scope** | What's in/out? | Prevent creep |
-| **References** | Any existing examples? | Provide inspiration |
+| **References** | What existing product/design/art system should this preserve or emulate? | Ground visual/interaction direction |
+| **Failure & Risk** | What happens on failure/abuse/data loss, and which hidden boundary is costly to discover late? | Define minimum safe scope |
 
 #### 1.2 Interview Templates by Mode
 

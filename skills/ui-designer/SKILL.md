@@ -23,20 +23,26 @@ tags: [ui-design, interface-design, ux-design, game-ui, web-ui, interaction-desi
 !`cat skills/_shared/protocols/quality-gate.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/task-validator.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/design-mindset-and-rules.md 2>/dev/null || true`
+!`cat skills/_shared/protocols/visual-grounding.md 2>/dev/null || true`
+!`cat skills/_shared/protocols/research-gate.md 2>/dev/null || true`
 !`cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"`
 
 **Fallback:** Work continuously. Print progress constantly.
 
-## UI Design Gate (MANDATORY)
-Before any UI implementation, you MUST generate a design contract containing:
+## UI Design Gate — Reference-Grounded and Proportional
+Before material UI implementation, follow `visual-grounding.md` and build the smallest design contract that prevents drift:
 - User goal and primary action
+- **Source of truth:** approved reference / existing design system / shipped baseline / researched platform-reference basis
+- **Reference roles:** STYLE / TARGET-LAYOUT / MOTION / PLATFORM as applicable
 - Content hierarchy and layout rationale
-- Existing design-system audit
-- Tokens: color, typography, spacing, radius, elevation, motion
-- Component states: default, hover, focus, disabled, loading, empty, error
-- Responsive behavior matrix for narrow, medium, and wide viewports
+- **Extracted** tokens: color, typography, spacing, radius, elevation/material, motion — never invented and described as existing truth
+- Relevant component states: default, hover/pressed, focus, disabled, loading, empty, error as reachable
+- Responsive/safe-area behavior for the actual target viewports
 - Accessibility and reduced-motion requirements
-- Wireframe, mockup, or written layout specification
+- **MUST MATCH / MAY VARY / PROHIBITED DRIFT**
+- Wireframe/mockup/written layout spec only at the detail needed for the decision
+
+For a small local UI fix, inspect the existing component/reference and affected states only. Do not require a full design-system ceremony.
 
 ## Identity
 
@@ -72,12 +78,9 @@ You are the **UI Designer** — an interface design specialist who creates polis
 
 ## Typography System
 
-### Font Loading
+### Typography Source
 
-```html
-<!-- In index.html <head>: -->
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-```
+Use the project’s existing font stack/design tokens first. If typography is undefined and materially affects a new visual direction, research a platform/design-system/reference-appropriate family and record its source/licensing/performance implications before adding it. **Never introduce a remote font or make `Outfit`, `Inter`, or any other family a Forgewright default.**
 
 ### Typography Scale
 
@@ -100,18 +103,14 @@ You are the **UI Designer** — an interface design specialist who creates polis
 | **Use letter-spacing on labels** | `letter-spacing: 3px` for ALL CAPS; tighten letter-spacing slightly for headings, never for small text |
 | **Line height scaling** | Use 1.4x-1.5x for body (e.g. 16px font = 24px height). As font size goes up, multiplier goes down (1.3x for subheadings, 1.1x-1.2x for display headings) to prevent text lines from floating apart. |
 | **Line length rhythm** | Keep body text between 45 and 75 characters per line (sweet spot 60-65 chars, ~600-700px wide for 16px font) so the reader's eyes scan comfortably. |
-| **Sans-serif for Action** | Use clean sans-serif (e.g. Outfit) in fast-paced combat/chaos HUDs for immediate legibility. |
+| **Typography for Action** | Use the approved/project type system with strong legibility at the actual HUD scale; choose a new face only from reference/platform research when the project has no typography basis. |
 | **Use bold sparingly** | Only for emphasis, not decoration. |
 
 ### Color System
 
-### The 60-30-10 Rule
+### Reference-Grounded Color Distribution
 
-| Percentage | Layer | Examples & Rules |
-|------------|-------|------------------|
-| **60%** | Background | Deep navy, off-white (neutral base to ground the UI) |
-| **30%** | Secondary elements | Cards, panels, sections (creates structural contrast) |
-| **10%** | Accent/emphasis | Buttons, highlights, CTAs (using a single consistent "Hot-Action" accent color across all screens to guide focus) |
+Do not impose a universal 60/30/10 split. Extract semantic color roles and emphasis ratios from the approved design system/reference and preserve them consistently. When no system exists, use researched platform/product references to propose a semantic palette (`surface`, `text`, `action`, `status`, etc.) and validate contrast/accessibility before adoption.
 
 ### Accessibility & Color Independence
 > **MANDATORY:** Never convey core information (errors, success, hazards) using color alone. Sighted colorblind players will miss the cue.
@@ -119,15 +118,16 @@ You are the **UI Designer** — an interface design specialist who creates polis
 > - **Success state**: Green highlight + Success icon (e.g., `✓`) + explanatory text.
 > - **Map markers**: Different shapes/symbols, not just colored dots.
 
-### Anti-Generic AI Aesthetic (The "Anti-Purple" Rule)
-> **[MANDATORY VISUAL CONSTRAINT]**
-> You must strictly avoid the generic AI default aesthetic (the "AI Purple Problem").
-> - **BAN LIST:** No gradients on text, buttons, or surfaces. No violet, indigo, purple, or neon magenta.
-> - **BACKGROUNDS:** Must be solid clean colors, typically white (`#FFFFFF`) or light slate (`#F8FAFC`).
-> - **TEXT:** Primary text must be dark charcoal (`#0F172A`).
-> - **ACCENTS:** Only use a solid, single-color structural accent (e.g., deep emerald green `#059669` or classic navy `#1E40AF`) for interactive tokens.
+### Anti-Generic AI Drift — Reference Fidelity Rule
+> **MANDATORY:** Never replace the project’s coherent visual language with a generic “AI-clean” preset.
+> - Purple, gradients, glass, neon, dark UI, maximalism, minimalism, or any other style are **allowed when the approved brand/reference uses them intentionally**.
+> - Flag a visual trope only when it is unsupported by the project reference, weakens hierarchy/readability, or appears as unexplained style drift.
+> - Existing project tokens and approved references outrank Forgewright examples.
+> - If no visual basis exists, research comparable successful products/design systems and propose a direction; label it exploratory until accepted.
 
 ### Color Palette Structure
+
+The following interfaces/examples illustrate semantic roles only; their sample values elsewhere in this skill are **not project defaults**. Populate them from the active design system/reference contract.
 
 ```typescript
 export interface ColorPalette {
@@ -1220,7 +1220,7 @@ export function createAccessibleIcon(
 
 ### Visual Quality
 - [ ] Typography follows scale (max 3 sizes per screen)
-- [ ] Color palette consistent (60-30-10 rule)
+- [ ] Color roles/emphasis match the approved design system/reference (no universal palette ratio)
 - [ ] Contrast ratios meet WCAG AA (4.5:1 text, 3:1 UI)
 - [ ] Consistent spacing (8px grid)
 - [ ] Visual hierarchy clear
@@ -1274,7 +1274,7 @@ export function createAccessibleIcon(
 ## Execution Checklist
 
 ### Design Foundation
-- [ ] Typography system defined (Outfit, scale, weights)
+- [ ] Typography system extracted/approved (family, scale, weights, fallbacks)
 - [ ] Color palette created (backgrounds, primary, semantic)
 - [ ] Spacing system (8px grid)
 - [ ] Design tokens exported

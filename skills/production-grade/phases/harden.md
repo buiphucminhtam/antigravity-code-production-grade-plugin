@@ -66,8 +66,8 @@ Update task.md: T6a status → in_progress
 
 Read skills/security-engineer/SKILL.md and follow its instructions.
 Context:
-- SOLE authority on OWASP, STRIDE, PII, encryption.
-- No other skill performs security review. This is YOUR exclusive domain.
+- Security Engineer is the authority for formal OWASP/STRIDE/PII/encryption findings and remediation depth.
+- Other roles still surface security signals and trust-boundary evidence; they must not ignore a material risk merely because specialist analysis belongs here. This is YOUR exclusive domain.
 - Read all implementation code: services/, frontend/, infrastructure/
 - Read protocols from: skills/_shared/protocols/
 - Perform STRIDE threat modeling + OWASP Top 10 audit + dependency scan.

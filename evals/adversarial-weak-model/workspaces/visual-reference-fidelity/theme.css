@@ -1,0 +1,11 @@
+:root {
+  --brand-primary: #6d28d9;
+  --brand-accent: #a855f7;
+  --brand-gradient: linear-gradient(135deg, var(--brand-primary), var(--brand-accent));
+}
+
+.cta {
+  color: white;
+  background: var(--brand-gradient);
+  border-radius: 12px;
+}

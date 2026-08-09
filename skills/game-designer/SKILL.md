@@ -585,9 +585,9 @@ When designing game interfaces, apply Fagerholt & Lorentzon's 4-part taxonomy:
 ### Platform Ergonomics
 *   **Mobile UX (The Glass Screen)**:
     - **Safe Areas**: Anchor all UI relative to edges and respect Apple/Google notch/rounded corner safe zones.
-    - **Thumb Zones**: Place primary interactive triggers in the bottom corners. Keep in mind that thumbs obstruct up to 33% of the screen.
-    - **Touch Targets**: Minimum size of 44x44 pixels (or 10-15mm) with extra touch buffer around icons to prevent misclicks.
-    - **Landscape 2-Handed Grip**: Design for landscape layout. Two-handed grip improves thumb motor performance by 9%, accuracy by 4%, and dampens device movement by 36-63%.
+    - **Thumb / Reach Zones**: Place primary interactions according to the actual orientation, grip, device class, safe areas, and playtest evidence rather than a universal screen-obstruction percentage.
+    - **Touch Targets**: Follow the current target platform/accessibility guidance and verify hit areas on representative devices; do not turn a remembered pixel/mm value into a universal rule without source evidence.
+    - **Landscape Grip**: Design for the intended one/two-handed play posture and validate it in representative device playtests. Any external ergonomics percentage must be source-traceable/current before becoming an acceptance criterion.
 *   **Console UX (The 10-Foot Experience)**:
     - **Readability**: Sitting 10 feet away requires massive iconography and high color contrast.
     - **Navigation**: Restrict to linear menus, tabbed layouts, or radial menus.

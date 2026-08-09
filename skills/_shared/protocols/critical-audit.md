@@ -89,18 +89,21 @@ superseded_by: null
 
 ---
 
-## Integration with ASIP
+## Project Learning Loop
 
-When AUDIT discovers gaps:
-1. Log to `.forgewright/execution-lessons.md` with the pattern:
+When AUDIT discovers a reusable gap, improve the **project’s future execution** without silently rewriting the framework:
+1. Fix the current deliverable and re-run the failed evidence.
+2. If the pattern has reuse value, record it in project-local `.forgewright/execution-lessons.md` (or the established project decision/lesson store):
    ```markdown
    ### [Date] — Audit Gap: [Brief Description]
-   - **Problem:** [What was missing or contradictory]
-   - **Root Cause:** [Why it was missed — e.g., "updated rule but not example"]
-   - **Fix Applied:** [What was corrected]
-   - **Prevention:** [What to check next time]
+   - **Problem / Context:** [What was missing or contradictory]
+   - **Evidence / Root Cause:** [What proved why it happened]
+   - **Correction:** [What worked]
+   - **Applicability Boundary:** [When this lesson applies and when it does not]
+   - **Verifier / Source:** [Command, test, or authoritative source]
    ```
-2. If the same gap pattern recurs across sessions, the lesson migrator promotes it to the relevant `SKILL.md` under **Execution Learnings**.
+3. On later similar work, retrieve and test the lesson against current workspace evidence before reuse; stale project lessons are hints, not authority.
+4. Do **not** auto-promote a session lesson into shared `SKILL.md`. Shared-framework promotion is allowed only in an explicit Forgewright-development task (such as this repository’s own skill improvement) with regression tests, contradiction/cross-entry audit, and review.
 
 ---
 
