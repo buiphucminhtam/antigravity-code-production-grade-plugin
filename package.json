@@ -11,7 +11,7 @@
     "src/cli"
   ],
   "scripts": {
-    "prepare": "husky install",
+    "prepare": "git config core.hooksPath .husky",
     "build": "cd mcp && npm run build",
     "test": "cd mcp && npm run test",
     "lint": "cd mcp && npm run lint",

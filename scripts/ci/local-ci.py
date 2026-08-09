@@ -425,6 +425,7 @@ class LocalCI:
             ],
             timeout=900,
         )
+        self.run("local-git-hooks", ["git", "config", "core.hooksPath", ".husky"])
 
     def _require_node_dependencies(self) -> None:
         if self.dry_run:
@@ -479,12 +480,18 @@ class LocalCI:
             for name in ("reindex-needed", "wiki-sync-needed", "mcp-sync-needed")
             if (cache / name).exists()
         ]
-        ready = all((mcp_ready, cli_ready, python_ready))
+        try:
+            hook_path = self.capture(["git", "config", "--get", "core.hooksPath"])
+        except GateFailure:
+            hook_path = ""
+        hooks_ready = hook_path == ".husky"
+        ready = all((mcp_ready, cli_ready, python_ready, hooks_ready))
         print(
             "[local-ci] tooling: "
             f"mcp={'ready' if mcp_ready else 'missing'} "
             f"cli={'ready' if cli_ready else 'missing'} "
-            f"python={'ready' if python_ready else 'missing'}"
+            f"python={'ready' if python_ready else 'missing'} "
+            f"hooks={'ready' if hooks_ready else 'misconfigured'}"
         )
         print(f"[local-ci] bootstrap_required={'no' if ready else 'yes'}")
         print(
@@ -712,7 +719,10 @@ class LocalCI:
             self.reindex(force=False)
         sequence = ROOT / "scripts" / "utilities" / "generate-sequence.ts"
         if sequence.is_file():
-            self.run("sequence-docs", [self.npx, "--no-install", "tsx", str(sequence)])
+            tsx = self._node_bin("mcp", "tsx")
+            if not tsx:
+                raise GateFailure("tsx is missing; run `npm run ci:bootstrap` first")
+            self.run("sequence-docs", [tsx, str(sequence)])
         if generate:
             provider = os.environ.get("FORGEWRIGHT_WIKI_PROVIDER", "").strip()
             model = os.environ.get("FORGEWRIGHT_WIKI_MODEL", "").strip()
@@ -873,7 +883,14 @@ class LocalCI:
         commitlint = self._node_bin("mcp", "commitlint")
         if not commitlint:
             raise GateFailure("commitlint is missing; run `npm run ci:bootstrap` first")
-        self.run("commit-message", [commitlint, "--edit", message_file])
+        message_path = Path(message_file)
+        if not message_path.is_absolute():
+            message_path = (ROOT / message_path).resolve()
+        self.run(
+            "commit-message",
+            [commitlint, "--edit", message_path],
+            cwd=ROOT / "mcp",
+        )
 
     def all(self) -> None:
         self.full()

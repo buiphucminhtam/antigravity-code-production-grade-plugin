@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 
@@ -26,3 +27,5 @@ def test_precommit_is_only_a_thin_local_ci_adapter():
     text = HOOK.read_text(encoding="utf-8")
     assert "scripts/ci/local-ci.mjs precommit" in text
     assert "github" not in text.lower()
+    package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
+    assert package["scripts"]["prepare"] == "git config core.hooksPath .husky"
