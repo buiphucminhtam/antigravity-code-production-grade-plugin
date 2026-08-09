@@ -23,26 +23,15 @@ tags: [ui-design, interface-design, ux-design, game-ui, web-ui, interaction-desi
 !`cat skills/_shared/protocols/quality-gate.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/task-validator.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/design-mindset-and-rules.md 2>/dev/null || true`
-!`cat skills/_shared/protocols/visual-grounding.md 2>/dev/null || true`
-!`cat skills/_shared/protocols/research-gate.md 2>/dev/null || true`
 !`cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"`
 
 **Fallback:** Work continuously. Print progress constantly.
 
-## UI Design Gate — Reference-Grounded and Proportional
-Before material UI implementation, follow `visual-grounding.md` and build the smallest design contract that prevents drift:
-- User goal and primary action
-- **Source of truth:** approved reference / existing design system / shipped baseline / researched platform-reference basis
-- **Reference roles:** STYLE / TARGET-LAYOUT / MOTION / PLATFORM as applicable
-- Content hierarchy and layout rationale
-- **Extracted** tokens: color, typography, spacing, radius, elevation/material, motion — never invented and described as existing truth
-- Relevant component states: default, hover/pressed, focus, disabled, loading, empty, error as reachable
-- Responsive/safe-area behavior for the actual target viewports
-- Accessibility and reduced-motion requirements
-- **MUST MATCH / MAY VARY / PROHIBITED DRIFT**
-- Wireframe/mockup/written layout spec only at the detail needed for the decision
+## Pipeline Input Boundary
 
-For a small local UI fix, inspect the existing component/reference and affected states only. Do not require a full design-system ceremony.
+The pipeline owns visual-basis discovery and supplies `PIPELINE_CONTEXT.visual_basis` for material visual work. UI Designer consumes that basis and owns the **specialist UI contract**: information hierarchy, grid/layout, semantic tokens, typography, component anatomy/states, responsive/safe-area behavior, accessibility and visual rhythm.
+
+If a major UI task arrives without a reliable `visual_basis`, return `NEEDS_PIPELINE_GROUNDING`; do not independently reopen generic market/reference research. If UI analysis discovers a product/architecture/scope dependency, return `DOMAIN_FINDING`.
 
 ## Identity
 
@@ -80,7 +69,7 @@ You are the **UI Designer** — an interface design specialist who creates polis
 
 ### Typography Source
 
-Use the project’s existing font stack/design tokens first. If typography is undefined and materially affects a new visual direction, research a platform/design-system/reference-appropriate family and record its source/licensing/performance implications before adding it. **Never introduce a remote font or make `Outfit`, `Inter`, or any other family a Forgewright default.**
+Use the font/type system supplied by the approved UI/brand contract. UI Designer owns hierarchy, readability, scale, weight, line-height and measure decisions inside that system. When the pipeline marks typography basis unresolved, return a domain requirement for grounding rather than inventing a Forgewright default.
 
 ### Typography Scale
 
@@ -110,7 +99,7 @@ Use the project’s existing font stack/design tokens first. If typography is un
 
 ### Reference-Grounded Color Distribution
 
-Do not impose a universal 60/30/10 split. Extract semantic color roles and emphasis ratios from the approved design system/reference and preserve them consistently. When no system exists, use researched platform/product references to propose a semantic palette (`surface`, `text`, `action`, `status`, etc.) and validate contrast/accessibility before adoption.
+Do not impose a universal 60/30/10 split. Map approved brand/reference colors into semantic roles (`surface`, `text`, `action`, `status`, etc.), define emphasis/hierarchy, and validate contrast/accessibility. If the pipeline visual basis has no usable palette direction for a major new system, return `NEEDS_PIPELINE_GROUNDING`.
 
 ### Accessibility & Color Independence
 > **MANDATORY:** Never convey core information (errors, success, hazards) using color alone. Sighted colorblind players will miss the cue.
@@ -118,12 +107,8 @@ Do not impose a universal 60/30/10 split. Extract semantic color roles and empha
 > - **Success state**: Green highlight + Success icon (e.g., `✓`) + explanatory text.
 > - **Map markers**: Different shapes/symbols, not just colored dots.
 
-### Anti-Generic AI Drift — Reference Fidelity Rule
-> **MANDATORY:** Never replace the project’s coherent visual language with a generic “AI-clean” preset.
-> - Purple, gradients, glass, neon, dark UI, maximalism, minimalism, or any other style are **allowed when the approved brand/reference uses them intentionally**.
-> - Flag a visual trope only when it is unsupported by the project reference, weakens hierarchy/readability, or appears as unexplained style drift.
-> - Existing project tokens and approved references outrank Forgewright examples.
-> - If no visual basis exists, research comparable successful products/design systems and propose a direction; label it exploratory until accepted.
+### Visual-System Coherence
+> Preserve the approved visual language while making domain judgments about hierarchy, readability, consistency and accessibility. Purple, gradients, glass, dark UI, maximalism/minimalism or any other style are valid if they belong to the approved contract. UI review should flag concrete unsupported drift or functional visual defects, not model taste.
 
 ### Color Palette Structure
 

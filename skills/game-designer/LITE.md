@@ -1,67 +1,51 @@
 ---
 name: game-designer
-description: "Orchestrates game design documents (GDD), gameplay core loops, game system mechanics, progression curves, and balance parameters. Use when the user requests a new game concept, core loop formulation, mechanics definitions, balance sheets, or game design specification generation."
-version: 1.0.0
+description: "Senior game-design specialist for player promise, core/secondary loops, MDA/system dynamics, progression/economy, balance/tunables, onboarding/difficulty, reward structures, game feel specifications and evidence-driven playtest hypotheses. Routed via the production-grade orchestrator."
+version: 3.0.0
 ---
 
 # Game Designer (LITE)
 
+## Domain Authority
+Own **player-facing game-system design**: why play, what the player repeatedly does/decides, how systems interact over time, progression/economy/balance and what should be learned from playtests. Consume `PIPELINE_CONTEXT`; do not own engine architecture, art direction or generic cross-domain preflight. Return technical/art/security/monetization-policy dependencies as `DOMAIN_FINDING`.
+
 ## SOLVE Step 2: GROUND (Game Designer Domain Slots)
-| Assumption | Check command / file read | Result | Script-produced evidence |
+| Specialist input | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Target game development framework and visual stacks are defined | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
-| Existing game design documents (GDD) or features are indexed | `find docs/01-product/ -name "*gdd*" -o -name "*mechanics*"` | ... | run the check command and paste output |
+| Player promise / target experience | Read concept, GDD, reference games, audience/session context | ... | concise emotional/decision promise + target player/session |
+| Existing core loop / state model | Inspect prototype/GDD/gameplay configs | ... | action → feedback → state change → new decision/reward loop |
+| Progression / economy | Inspect currencies, sources/sinks, unlocks, upgrade curves, reward cadence | ... | resource flow + progression gates/tunables |
+| Balance / difficulty variables | Inspect tables/configs/current telemetry/playtest notes | ... | tunable parameters + current values/baselines/unknowns |
+| Onboarding / learning sequence | Inspect early levels/tutorial/UI prompts | ... | mechanic introduction, mastery check and failure/recovery path |
+| Game-feel feedback contract | Inspect input timing, animation/VFX/audio/haptic events | ... | action→feedback timing/proportionality/distinctiveness |
+| Playtest evidence | Read real playtest/session/retention/funnel data if available | ... | observed friction/mastery/engagement signal; no invented player data |
 
 ## SOLVE Step 3: DECOMPOSE (Game Designer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
-1. DEFINE | Design foundational gameplay loops (core, secondary, tertiary) | Verify mechanics are aligned with engine limitations (e.g., draw call limits in WebGL vs heavy physics in Unity).
-2. DOCUMENT | Write structural game specifications under `docs/01-product/` matching templates | Ensure file names strictly use lowercase letters and kebab-case with no space characters (e.g., `combat-mechanics.md`).
-3. SEQUENCE | Map mechanics requirements directly to downstream engineering roles | Enforce the strict sequence: `BA/Design (BDD) -> QA (Stubs) -> Build -> Test` for high-complexity features.
+1. PLAYER PROMISE | Design pillars | Check every major mechanic/system supports the intended player experience rather than existing as feature inventory.
+2. CORE LOOP | Moment-to-moment actions/decisions/feedback | Map 3–30 second loop and failure/recovery; verify meaningful player choice and readable consequence.
+3. SYSTEM DYNAMICS | Mechanics → dynamics → experience | Trace interactions, dominant strategies, degenerate loops and positive/negative feedback effects.
+4. PROGRESSION | Unlock/mastery/difficulty arc | Define what changes in capability, challenge and decision space; verify progression is more than numeric inflation.
+5. ECONOMY | Sources/sinks/stock/flow | Check faucet/sink balance, scarcity, pacing, hoarding/inflation/dead-resource risks and monetization interaction where applicable.
+6. BALANCE | Tunables/curves | Externalize parameters, derive expected relationships/ranges and identify telemetry/playtest evidence needed before claiming balance.
+7. ONBOARD | Learn → practice → prove → combine | Sequence mechanic introduction and mastery without unnecessary text/forced interruption.
+8. GAME FEEL | Input/action feedback | Specify snap/anticipation/impact/recovery, VFX/audio/haptic/camera timing and intensity proportional to gameplay significance.
+9. PLAYTEST | Design hypotheses | Define task/cohort/scenario, observable behavior, success/failure signal and exact design decision the test can change.
+
+## Domain Failure Modes
+- **Feature pile instead of loop:** many systems exist but no repeated player decision/reward loop binds them.
+- **Content as progression:** levels/numbers increase while capability, strategy and mastery do not evolve.
+- **Runaway economy:** faucets compound faster than sinks or required resources become irrelevant/blocked.
+- **Single dominant strategy:** one option wins across contexts because counters/opportunity costs are absent.
+- **Difficulty = HP inflation:** challenge grows numerically without introducing new patterns, pressure or decisions.
+- **Onboarding lecture:** tutorial explains before the player has context to act, practice or receive feedback.
+- **Juice without information:** shake/VFX/audio intensity obscures state/readability or every action receives the same emphasis.
+- **Balance by intuition:** exact values/retention/session targets are declared successful without simulation, telemetry or real playtest evidence.
 
 ## Game Studio Control Plane
 
-For milestone or cross-discipline work, follow
-`../_shared/protocols/game-studio-pipeline.md`. The Game Designer owns the
-design-ready handoff: player pillar, mechanic flow/state, tunable data,
-cross-domain implications, measurable acceptance criteria, out-of-scope, and
-unresolved decisions. Engineering must not begin from an idea-only brief.
+For milestone/cross-discipline game work, the **pipeline** remains authoritative via `skills/_shared/protocols/game-studio-pipeline.md`; Game Designer does not become the control plane. This skill owns the **design-ready handoff** consumed by art/audio/level/engine/QA lanes and returns cross-domain changes upward as `DOMAIN_FINDING`.
 
-Record approved design changes in the owning GDD and notify the control-plane
-lane so affected ADRs, stories, assets, tests, and release notes are propagated.
-Apply role lenses locally unless the user explicitly requests delegation.
-
-## Common Mistakes Checklist
-- **Non-compliant document names**: Creating GDD files or specification assets under `docs/` that use camelCase, uppercase, or spaces (e.g., `docs/01-product/GameDesignDoc.md` instead of `docs/01-product/game-design-doc.md`).
-- **Feature creep prior to core loop validation**: Specifying high-level secondary systems (e.g., unlockable cosmetics, leaderboard UI) before verifying and solidifying the basic 3-second and 30-second core gameplay loop.
-- **Hardcoded game balance variables**: Outlining progression curves, enemy health pool, or damage coefficients directly within code logic instead of offloading config profiles to external datasets (JSON, YAML, CSV).
-- **Ignoring hardware performance budgets**: Formulating high-overhead mechanics (e.g., thousand-entity collision sweeps) without validating mesh instancing or collision optimization rules.
-
-### Step 1: Ground the target game stack and baseline settings
-```bash
-cat .forgewright/project-profile.json
-```
-
-### Step 2: Create a standard, lowercase kebab-case mechanics document `docs/01-product/combat-loop-mechanics.md`
-```bash
-cat << 'EOF' > docs/01-product/combat-loop-mechanics.md
-# Feature: Melee Combat Core Mechanics
-
-## 1. Executive Summary
-Provide a responsive, physics-aligned melee sword swing loop with adaptive screen shake.
-
-## 2. Core Game Loop
-1. Input Event: Player presses "Space" key (re-mappable).
-2. Swing Animation: Core engine triggers visual arc renderer.
-3. Box Intersection: Execute collision check against active targets in range.
-4. Visual Feedback: Trigger hit-spark particles, sound effect, and 150ms camera shake.
-
-## 3. Acceptance Criteria (BDD)
-Scenario: Successful strike triggers visual feedback
-  Given a player stands within 1.5 units of an active enemy
-  When the player triggers the swing action (combat-melee-strike)
-  Then detect bounding box collision overlap
-  And invoke the fire-burst VFX emitter
-  And deduct 10 hit points from the enemy health array
-EOF
-```
+## Domain Handoff
+Provide the design-ready handoff: player promise/pillars, loop/state diagrams, system rules, progression/economy model, tunable tables, onboarding sequence, game-feel event specs, acceptance and playtest hypotheses. Engineering/art/audio receive explicit implications; cross-domain discoveries return as `DOMAIN_FINDING`.

@@ -7,7 +7,7 @@ version: 2.0.0
 owners: [core]
 triggers: []
 used_by: [all]
-related: [senior-execution-contract, plan-quality-loop, model-tier]
+related: [senior-execution-contract, plan-quality-loop, model-tier, pipeline-operating-contract, skill-specialization-contract]
 supersedes: []
 superseded_by: null
 ---
@@ -19,6 +19,16 @@ superseded_by: null
 **Pipeline:** `INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN`
 
 The six phases describe delivery capabilities, **not six mandatory work packages for every request**. Apply only the phases needed to satisfy the current acceptance criteria and risk profile. `QUICK` work may compress several phases into one short execution loop; review/status/question work may have no BUILD or SHIP phase at all.
+
+## Pipeline-Owned Operating Contract
+
+`skills/_shared/protocols/pipeline-operating-contract.md` is the canonical owner of the elite-team behavior applied across **every route**, whether or not a specialist skill is loaded:
+- outcome-first consulting and safe scope;
+- hidden/cross-domain risk anticipation and specialist routing;
+- adversarial research, instruction-boundary safety, verification/audit/learning;
+- reference-grounded visual basis and conformance when visual acceptance is material.
+
+Before specialist dispatch, the pipeline prepares the compact `PIPELINE_CONTEXT` envelope. Skills consume that envelope and apply domain expertise under `skill-specialization-contract.md`; they do not each recreate the generic operating loop.
 
 ## Truth & Authority
 
@@ -35,10 +45,10 @@ The current user request is authoritative for objective, constraints, and accept
 
 | Phase | Purpose | Exit condition |
 |---|---|---|
-| **INTERPRET** | Restate objective, load relevant context, classify mode, separate verified facts from assumptions | Goal and material ambiguity are clear enough to act |
-| **DEFINE** | Set acceptance/non-goals, choose `QUICK`/`STANDARD`/`DEEP`, plan only needed work | Plan is proportional and each action has a check |
-| **BUILD** | Make the smallest compatible implementation/change | Requested behavior exists without invented scope |
-| **HARDEN** | Verify correctness, regression risk, security/reliability where applicable | Evidence matches risk and material findings are resolved |
+| **INTERPRET** | Resolve desired outcome, authority/truth, constraints and instruction boundary | Goal and material ambiguity are clear enough to act |
+| **DEFINE** | Build `PIPELINE_CONTEXT`: acceptance/non-goals, safe scope, cross-domain risk owners, material research, visual basis when applicable; choose effort/plan | Context envelope is decision-ready and plan is proportional |
+| **BUILD** | Dispatch specialists with the envelope; make the smallest compatible implementation/change | Specialist output exists without silent scope/authority drift |
+| **HARDEN** | Domain verification plus pipeline acceptance/risk/visual/audit closure | Evidence matches risk and material findings/signals are resolved |
 | **SHIP** | Package/deploy/release only when requested or required by acceptance | Release gate/rollback/compatibility obligations pass |
 | **SUSTAIN** | Operate, monitor, iterate only when ongoing operation is in scope | Operational objective or monitoring contract is satisfied |
 
@@ -52,7 +62,9 @@ The current user request is authoritative for objective, constraints, and accept
 
 ## Role Standard
 
-Every domain role operates at **senior level** regardless of model/routing tier. Senior means evidence-backed judgment, ownership, trade-off awareness, and the ability to challenge waste or contradictions — not extra documents or verbosity.
+Every domain role operates at **senior level** regardless of model/routing tier. Senior means evidence-backed domain judgment, ownership, trade-off awareness, and the ability to challenge contradictions inside its authority — not extra documents or verbosity.
+
+Skills follow `skill-specialization-contract.md`: domain authority, specialist inputs/heuristics/artifacts/failure modes/verifiers/handoff. Cross-domain operating behavior remains owned by the pipeline. A specialist returns `DOMAIN_FINDING` for newly discovered scope/risk dependencies instead of silently becoming the orchestrator.
 
 `scout` / `builder` / `expert` represent routing capability and cost, not competence. Use the model-tier protocol for objective escalation. Independent reviewers receive requirements, diff, and raw evidence rather than the author's reasoning.
 

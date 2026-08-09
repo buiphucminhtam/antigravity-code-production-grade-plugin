@@ -6,12 +6,14 @@ status: active
 version: 3.0.0
 owners: [core]
 triggers: []
-used_by: [all]
-related: [plan-quality-loop, senior-execution-contract, evidence-first, consulting-risk-radar]
+used_by: [pipeline, production-grade, recovery-research, research-specialists]
+related: [pipeline-operating-contract, plan-quality-loop, senior-execution-contract, evidence-first, consulting-risk-radar]
 supersedes: []
 superseded_by: null
 ---
 # Research Gate Protocol
+
+**Ownership:** generic research triggering, source authority, instruction isolation and cross-domain decision grounding are pipeline responsibilities. Research-specialist skills may use deeper domain methods (hypothesis design, triangulation, literature/data synthesis) without becoming the control plane.
 
 Research closes a **material knowledge or evidence gap**. It is not a ceremony, a link dump, or a way to decorate an already-supported plan.
 

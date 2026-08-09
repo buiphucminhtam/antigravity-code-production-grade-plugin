@@ -26,6 +26,7 @@ User Request
 │                                                      │
 │  ① SessionData     Load profile, session state       │
 │  ② ContextLoader   Load memory, conventions, KIs     │
+│  ②b OperatingPreflight  Build PIPELINE_CONTEXT       │
 │  ③b DryRunContext  System Prompt injection (if mock) │
 │  ③ SkillRegistry   Progressive skill discovery       │
 │  ④ Guardrail       Pre-tool authorization            │
@@ -37,7 +38,8 @@ User Request
 │                                                     │
 │ MIDDLEWARE CHAIN — Post-Skill (bottom to top)        │
 │                                                     │
-│  ⑥ QualityGate     Post-skill validation (4 levels) │
+│  ⑥ QualityGate     Domain/acceptance validation      │
+│  ⑥b OperatingAudit Risk/visual/audit/learning close │
 │  ⑦ BrownfieldSafety Regression + protected paths   │
 │  ⑧ TaskTracking    Update todos, emit events        │
 │  ⑨ Memory          Durable context when useful       │
@@ -62,6 +64,7 @@ Result / Next Skill
 |---|-----------|----------------|------|---------|
 | ① | **SessionData** | session-lifecycle.md §Steps 1-3 | `before_skill()` | Load project-profile.json, session-log.json, detect manual changes |
 | ② | **ContextLoader** | session-lifecycle.md §Step 4 + memory-manager | `before_skill()` | Search local_memory with task keywords, load code-conventions.md |
+| ②b| **OperatingPreflight** | pipeline-operating-contract.md | `before_skill()` | Build/refresh `PIPELINE_CONTEXT`: outcome/safe scope, cross-domain risk owners, research evidence, visual basis when applicable |
 | ③b| **DryRunContext** | dryrun-interceptor.md | `before_skill()` | Inject global system prompt instructing AI it is in test mode (Option B) |
 | ③ | **SkillRegistry** | skills-config.json | `before_skill()` | Filter available skills by classified mode (progressive loading) |
 | ④ | **Guardrail** | guardrail.md | `before_tool()` | Authorize each tool call against allow/blocklist rules (Option A integration) |
@@ -71,7 +74,8 @@ Result / Next Skill
 
 | # | Middleware | Source Protocol | Hook | Purpose |
 |---|-----------|----------------|------|---------|
-| ⑥ | **QualityGate** | quality-gate.md | `after_skill()` | Run verification proportional to `QUICK` / `STANDARD` / `DEEP`; score only when useful telemetry |
+| ⑥ | **QualityGate** | quality-gate.md | `after_skill()` | Run specialist/domain verification and acceptance checks proportional to risk |
+| ⑥b| **OperatingAudit** | pipeline-operating-contract.md + critical-audit.md | `after_skill()` | Close cross-domain risk signals, visual conformance, requirement/cross-entry audit and project-local learning before completion |
 | ⑦ | **BrownfieldSafety** | brownfield-safety.md | `after_skill()` | Regression check, protected path enforcement, change manifest |
 | ⑧ | **TaskTracking** | session-lifecycle.md §Hooks | `after_skill()` | Emit SKILL_COMPLETED event, update task.md |
 | ⑨ | **Memory** | memory-manager.md + middleware/09-memory.md | `after_skill()` / `turn_close()` when useful | Persist verified durable decisions/progress/blockers for substantial work; memory is optional support, not project truth |
@@ -99,6 +103,7 @@ Pre-Skill (①-⑤):
   IF middleware fails:
     - ① SessionData: WARN and continue with empty profile (new project)
     - ② ContextLoader: WARN and continue without memory
+    - ②b OperatingPreflight: if a material outcome/scope/safety/visual basis cannot be established, do not dispatch the affected specialist; return `NEEDS_PIPELINE_GROUNDING`
     - ③b DryRunContext: WARN and continue without prompt injection
     - ③ SkillRegistry: inspect manifest/index and load the smallest safe candidate set; do not blindly load the whole registry
     - ④ Guardrail: BLOCK — do not proceed to skill (security-critical)
@@ -139,10 +144,12 @@ IF Guardrail returns ALLOW:
 Per-Skill hooks (run once per skill invocation):
   ① SessionData.before_skill()
   ② ContextLoader.before_skill()
+  ②b OperatingPreflight.before_skill()
   ③b DryRunContext.before_skill()
   ③ SkillRegistry.before_skill()
   ⑤ Summarization.before_skill()
   ⑥ QualityGate.after_skill()
+  ⑥b OperatingAudit.after_skill()
   ⑦ BrownfieldSafety.after_skill()
   ⑧ TaskTracking.after_skill()
   ⑨ Memory.after_skill() / Memory.turn_close() when durable state exists

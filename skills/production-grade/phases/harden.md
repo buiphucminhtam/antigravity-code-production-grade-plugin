@@ -2,6 +2,10 @@
 
 This phase manages tasks T5 (QA), T6a (Security), T6b (Code Review). Supports both **parallel** and **sequential** execution with strict authority boundaries.
 
+## Pipeline HARDEN Contract
+
+HARDEN consumes the same `PIPELINE_CONTEXT` used during DEFINE/BUILD. The control plane owns acceptance coverage, cross-domain risk closure, adversarial audit, and visual conformance; QA/Security/Code Review each provide deep domain evidence inside their authority.
+
 ## Authority Boundaries — CRITICAL
 
 Enforce these boundaries strictly:
@@ -49,7 +53,7 @@ Update task.md: T5 status → in_progress
 Read skills/qa-engineer/SKILL.md and follow its instructions.
 Context:
 - Read implementation: services/, frontend/ (if exists), api/
-- Read protocols from: skills/_shared/protocols/
+- Consume `PIPELINE_CONTEXT` acceptance, regression surfaces and owned risk signals.
 - Read .production-grade.yaml for paths.tests and paths.services.
 - Write tests to project root: tests/
 - Write workspace artifacts to: .forgewright/qa-engineer/
@@ -66,11 +70,10 @@ Update task.md: T6a status → in_progress
 
 Read skills/security-engineer/SKILL.md and follow its instructions.
 Context:
-- Security Engineer is the authority for formal OWASP/STRIDE/PII/encryption findings and remediation depth.
-- Other roles still surface security signals and trust-boundary evidence; they must not ignore a material risk merely because specialist analysis belongs here. This is YOUR exclusive domain.
+- Security Engineer is the authority for formal OWASP/STRIDE/PII/encryption/agentic-security findings, exploitability assessment and remediation depth.
+- Consume security `risk_signals` and affected trust boundaries from `PIPELINE_CONTEXT`; discover additional security threats using the security skill's own reconnaissance/threat-model methods.
 - Read all implementation code: services/, frontend/, infrastructure/
-- Read protocols from: skills/_shared/protocols/
-- Perform STRIDE threat modeling + OWASP Top 10 audit + dependency scan.
+- Perform STRIDE threat modeling + OWASP Top 10 audit + business-logic/agentic trust-boundary analysis + applicable dependency scan.
 - Write findings to: .forgewright/security-engineer/
 - Auto-fix Critical/High issues with regression tests.
 - Document Medium/Low for remediation plan.
@@ -90,7 +93,7 @@ Context:
 - Cross-reference: "See security-engineer findings for security context."
 - Read architecture: docs/architecture/, api/
 - Read implementation: services/, frontend/
-- Read protocols from: skills/_shared/protocols/
+- Consume `PIPELINE_CONTEXT` for acceptance/non-goals and affected architecture boundaries.
 - Review: SOLID/DRY/KISS, performance, N+1 queries, resource leaks, test quality.
 - Write findings to: .forgewright/code-reviewer/
 - READ-ONLY: produce findings only, do NOT modify source code.
@@ -110,15 +113,16 @@ After EACH harden task (T5, T6a, T6b), run the Universal Quality Gate Protocol (
 
 After all HARDEN tasks complete:
 1. Collect all findings from T5, T6a, T6b workspace folders
-2. Deduplicate by file:line — keep highest severity rating
-3. Filter Critical/High severity findings
-4. If any Critical/High exist → T8 (Remediation in SHIP phase) receives the findings list
-5. Medium/Low → documented but do not block pipeline
-6. **Run aggregate quality scoring** — compute HARDEN phase quality score
-7. **Call session lifecycle hook** — `PHASE_COMPLETE("HARDEN", summary)`
+2. Run pipeline OperatingAudit: reconcile findings against `PIPELINE_CONTEXT.risk_signals`, visual conformance (when applicable), acceptance coverage, contradictions and cross-entry consistency; newly discovered cross-domain issues must have an owner
+3. Deduplicate by file:line — keep highest severity rating
+4. Filter Critical/High severity findings
+5. If any Critical/High exist → T8 (Remediation in SHIP phase) receives the findings list
+6. Medium/Low → documented according to project risk policy; unresolved blocking pipeline risk signals still block regardless of aggregate score
+7. **Run aggregate quality scoring** — compute HARDEN phase quality score
+8. **Call session lifecycle hook** — `PHASE_COMPLETE("HARDEN", summary)`
    - **Memory save:** `python3 scripts/mem0-cli.py add "HARDEN complete: [N] tests, [M] security findings ([X] auto-fixed). Quality: [score]/100" --category tasks`
-8. **Update quality metrics** — write to `.forgewright/quality-metrics.json`
-9. Print HARDEN summary:
+9. **Update quality metrics** — write to `.forgewright/quality-metrics.json`
+10. Print HARDEN summary:
 ```
 ━━━ HARDEN Summary ━━━━━━━━━━━━━━━━━━━━━━
 ✓ QA: [N] tests passed, [M] findings
@@ -129,7 +133,7 @@ Quality Score: [XX]/100 (Grade [A-F])
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-10. **Brownfield merge readiness check** (if brownfield project):
+11. **Brownfield merge readiness check** (if brownfield project):
     - Read `skills/_shared/protocols/brownfield-safety.md` → merge readiness assessment
     - Verify full regression suite passes
     - Verify all protected paths intact

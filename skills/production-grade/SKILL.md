@@ -39,20 +39,22 @@ Keep the canonical orchestrator provider-neutral. Use `skills/_shared/protocols/
 Every skill invocation is wrapped by an ordered middleware chain. Implementation details are in `skills/production-grade/middleware/`:
 
 ```
-Pre-Skill:  ① SessionData → ② ContextLoader → ③b DryRunContext → ③ SkillRegistry → ④ Guardrail → ⑤ Summarization
-            ═══ SKILL EXECUTION ═══
-Post-Skill: ⑥ QualityGate → ⑦ BrownfieldSafety → ⑧ TaskTracking → ⑨ Memory → ⑩ GracefulFailure → ⑪ RecoveryResearch → ⑫ CircuitBreaker → ⑬ Bulkhead → ⑭ Verification
+Pre-Skill:  ① SessionData → ② ContextLoader → ②b OperatingPreflight → ③b DryRunContext → ③ SkillRegistry → ④ Guardrail → ⑤ Summarization
+            ═══ SPECIALIST SKILL EXECUTION ═══
+Post-Skill: ⑥ QualityGate → ⑥b OperatingAudit → ⑦ BrownfieldSafety → ⑧ TaskTracking → ⑨ Memory → ⑩ GracefulFailure → ⑪ RecoveryResearch → ⑫ CircuitBreaker → ⑬ Bulkhead → ⑭ Verification
 ```
 
 | # | Middleware | File | Hook | Purpose |
 |---|-----------|------|------|---------|
 | ① | SessionData | `middleware/01-session-data.md` | before_skill | Load profile, session state |
 | ② | ContextLoader | `middleware/02-context-loader.md` | before_skill | Load memory, conventions |
+| ②b| OperatingPreflight | `skills/_shared/protocols/pipeline-operating-contract.md` | before_skill | Build/refresh PIPELINE_CONTEXT: outcome, safe scope, risk ownership, research/visual basis |
 | ③b| DryRunContext | `skills/_shared/protocols/dryrun-interceptor.md` | before_skill | Dry-run mode system prompt injection |
 | ③ | SkillRegistry | `middleware/03-skill-registry.md` | before_skill | Progressive skill loading |
 | ④ | Guardrail | `middleware/04-guardrail.md` | before_tool | Pre-tool authorization |
 | ⑤ | Summarization | `middleware/05-summarization.md` | before_skill | Context compression |
-| ⑥ | QualityGate | `middleware/06-quality-gate.md` | after_skill | Post-skill validation |
+| ⑥ | QualityGate | `middleware/06-quality-gate.md` | after_skill | Specialist/domain + acceptance validation |
+| ⑥b| OperatingAudit | `skills/_shared/protocols/pipeline-operating-contract.md` | after_skill | Close cross-domain risks, visual conformance, critical audit, project-local learning |
 | ⑦ | BrownfieldSafety | `middleware/07-brownfield-safety.md` | after_skill | Regression + protected paths |
 | ⑧ | TaskTracking | `middleware/08-task-tracking.md` | after_skill | Update todos, emit events |
 | ⑨ | Memory | `middleware/09-memory.md` | after_skill + turn_close | Persistent fact extraction |
@@ -530,13 +532,18 @@ When **Parallel** is selected, the BUILD and HARDEN phases use the parallel-disp
    - **Memory load:** Run `python3 scripts/mem0-v2.py search "<project-name> <user-request-keywords>" --limit 5` to retrieve relevant project context. Inject results into your context for this session.
    - If no results or memory is empty, verify setup with `python3 scripts/mem0-v2.py stats`.
 
-7. **Polymath pre-flight check:**
+6.5. **Build the pipeline operating envelope before specialist routing:**
+   - Read `skills/_shared/protocols/pipeline-operating-contract.md`.
+   - Resolve desired outcome, observable acceptance, constraints/non-goals, `Minimum Safe Scope`, credible cross-domain `risk_signals` with owners, and only decision-changing unknowns.
+   - If visual acceptance is material, establish `visual_basis` before UI/art implementation; if no reliable basis exists, resolve it at pipeline level rather than asking each visual skill to research independently.
+   - Keep this as task state for bounded work; persist `.forgewright/pipeline-context.md` only when multi-role/session handoff benefits from it.
+   - Every specialist receives `PIPELINE_CONTEXT` and returns `DOMAIN_FINDING` for newly discovered cross-domain/scope-changing facts.
+
+7. **Polymath specialist check (only when research/decision synthesis itself is needed):**
    - If `.forgewright/polymath/handoff/context-package.md` exists → read it, pass to PM as pre-loaded context. Log: `✓ Polymath context loaded — skipping redundant discovery`
-   - If no polymath context, assess the user's request for knowledge gaps:
-     - **Vague scope** (no specific problem domain), **no constraints** (scale, budget, team), **complex domain with no domain language**, **contradictory signals**
-     - If gaps detected → read `skills/polymath/SKILL.md` and follow its instructions for pre-flight consultation before proceeding. The polymath will research, clarify with the user, and write a context package when ready.
-     - If no gaps → proceed directly. Log: `✓ Request is clear — proceeding to BA/PM`
-   - If user explicitly requests to skip polymath ("just build it", clear detailed spec) → proceed immediately.
+   - Generic scope clarification, hidden-risk scanning, source trust, and instruction-boundary safety are already owned by OperatingPreflight; do **not** invoke Polymath merely to replay those steps.
+   - Route to Polymath when the unresolved work genuinely needs deep cross-source analysis, alternative-hypothesis comparison, unfamiliar-domain synthesis, or decision memo quality beyond the control plane.
+   - If no such specialist need exists → proceed directly. Log: `✓ Pipeline context ready — no Polymath specialist required`.
 
 7.5. **BA pre-flight check (after Polymath, before PM):**
 
@@ -562,7 +569,7 @@ When **Parallel** is selected, the BUILD and HARDEN phases use the parallel-disp
      - `risk.known_cves > 0` (Critical/High) → warn and suggest Security audit
      - `risk.tech_debt_score > 7` → suggest addressing tech debt before new features
 
-8. **Research the domain only when needed** — use the Research Gate for a material current/niche/technical knowledge gap. Do not browse merely because Full Build mode exists, and do not browse to avoid asking a genuinely preference-based client question.
+8. **Close pipeline-owned material unknowns before dependent dispatch** — use the Research Gate only for current/niche/technical facts that can change the decision. Domain specialists may conduct additional research only when research is intrinsic to their specialty; they must not duplicate the generic source-trust/instruction-boundary loop.
 
 9. **Create task tracking when useful:**
 

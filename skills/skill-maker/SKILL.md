@@ -23,6 +23,7 @@ tags: [skill-creation, skill-improvement, skill-audit, prompt-engineering]
 | **Generalize, don't overfit** | Skills tested only on one prompt fail on others. Write for the pattern, not the example. |
 | **Description is the trigger** | The description determines when the skill activates. Make it specific but inclusive. |
 | **Under 500 lines** | Large skills dilute important instructions. Move detail to references/. |
+| **Specialist, not mini-orchestrator** | Cross-cutting consulting/risk/research/audit/visual operating behavior belongs to `pipeline-operating-contract.md`; a skill must add domain authority, heuristics, artifacts, failure modes and verifiers. |
 
 ---
 
@@ -68,6 +69,12 @@ Created Skill → Installed → Used by agents
 | One-time edit to existing skill | Just edit the file (not a Skill Maker task) |
 
 ---
+
+## Skill Specialization Boundary
+
+Read `skills/_shared/protocols/skill-specialization-contract.md` before creating or upgrading a skill. Assume the pipeline supplies `PIPELINE_CONTEXT`; do not paste the generic pipeline operating loop into every skill.
+
+A production-grade skill must make its **Domain Authority**, **Specialist Inputs**, **Specialist Heuristics**, **Domain Artifacts**, **Domain Failure Modes**, **Domain Verifiers**, and **Handoff Contract** concrete. If most of the draft could be copied unchanged into an unrelated specialty, move that content to shared pipeline protocols and deepen the domain layer.
 
 ## Skill Anatomy
 
@@ -190,14 +197,20 @@ description: >
 ```markdown
 # Skill Name
 
-## Identity
-One sentence explaining who this skill makes the agent become.
+## Identity / Domain Authority
+Who this specialist becomes, which decisions it owns, and which adjacent authority it must not override.
 
-## Critical Rules
-Table of rules with rationale. These are the non-negotiables.
+## Specialist Inputs
+Domain artifacts/evidence required in addition to PIPELINE_CONTEXT.
+
+## Specialist Heuristics
+Theories, frameworks, trade-offs and decision rules a generalist would likely miss.
+
+## Domain Artifacts
+Concrete outputs produced by this specialty.
 
 ## When to Use
-Bullet list of triggering situations and symptoms.
+Triggering situations and symptoms.
 
 ## Process Flow
 Small inline flowchart for non-obvious decisions.
@@ -211,11 +224,17 @@ Goal of this phase.
 ## Phase 2: [Phase Name]
 ...
 
-## Common Mistakes
-Table of mistake → fix pairs with explanations.
+## Domain Failure Modes
+Mistake → evidence/sign → specialist correction.
+
+## Domain Verifiers
+Tests, measurements, simulations, inspections or review evidence proving domain quality.
+
+## Handoff Contract
+What downstream roles receive, plus cross-domain findings returned to the pipeline as `DOMAIN_FINDING`.
 
 ## Execution Checklist
-Checkbox list of required steps.
+Only specialist-required steps; generic pipeline closeout remains outside the skill.
 ```
 
 ### Progressive Disclosure
@@ -238,6 +257,8 @@ Keep SKILL.md under 500 lines using three-level loading:
 | Use active voice, verb-first naming | Clarity and directness |
 | Include keywords for discoverability | Error messages, symptoms, tool names |
 | Every rule should have "because..." | Rationale enables generalization |
+| Most instructions must be domain-specific | Generic operating policy belongs to pipeline/shared protocols |
+| Define artifacts + verifiers together | A specialist output without a domain proof contract is hard to trust |
 
 ---
 

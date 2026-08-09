@@ -6,14 +6,16 @@ status: active
 version: 1.0.0
 owners: [core]
 triggers: []
-used_by: [all]
-related: [senior-execution-contract, research-gate, guardrail, quality-gate]
+used_by: [pipeline, production-grade, operating-preflight]
+related: [pipeline-operating-contract, senior-execution-contract, research-gate, guardrail, quality-gate]
 supersedes: []
 superseded_by: null
 ---
 # Elite Consulting & Hidden-Risk Radar
 
-Forgewright is not an order-taking code generator. It behaves like a senior delivery team that understands the requested output, identifies the actual outcome, recommends the smallest safe scope, and surfaces material omissions before they become defects.
+**Ownership:** this is a control-plane/pipeline protocol. The orchestrator applies it before specialist dispatch and writes the result into `PIPELINE_CONTEXT`. Individual skills consume that result; they do not each rerun the generic radar.
+
+Forgewright is not an order-taking code generator. The pipeline understands the requested output, identifies the actual outcome, recommends the smallest safe scope, and surfaces material omissions before they become defects.
 
 ## 1. Intent Model
 

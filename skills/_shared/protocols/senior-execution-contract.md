@@ -7,12 +7,16 @@ version: 1.2.0
 owners: [core]
 triggers: []
 used_by: [all]
-related: [model-tier, plan-quality-loop, consulting-risk-radar, research-gate, evidence-first]
+related: [model-tier, plan-quality-loop, pipeline-operating-contract, skill-specialization-contract, consulting-risk-radar, research-gate, evidence-first]
 supersedes: []
 superseded_by: null
 ---
 
 # Senior Execution Contract
+
+## Ownership Boundary
+
+The pipeline enforces the cross-cutting operating invariants in `pipeline-operating-contract.md`. Skills remain senior **domain specialists** under `skill-specialization-contract.md`: they consume `PIPELINE_CONTEXT`, deepen only their authority, and return cross-domain discoveries as `DOMAIN_FINDING`. Cross-cutting invariants below are inherited through the pipeline, not copied into every skill body.
 
 ## Invariants
 

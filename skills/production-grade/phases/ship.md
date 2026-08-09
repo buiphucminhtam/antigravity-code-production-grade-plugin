@@ -2,6 +2,8 @@
 
 This phase manages tasks T7 (DevOps IaC), T8 (Remediation), T9 (SRE), T10 (Data Scientist). Sequential execution with authority boundaries.
 
+SHIP consumes `PIPELINE_CONTEXT` and the HARDEN OperatingAudit. Release cannot bypass unresolved blocking risk signals, compatibility/rollback obligations, or material visual/release acceptance just because an individual specialist reports PASS.
+
 ## Authority Boundaries
 
 - **devops** owns infrastructure provisioning, CI/CD, monitoring setup — does NOT define SLOs
@@ -17,8 +19,8 @@ Read skills/devops/SKILL.md and follow its instructions.
 Context:
 - Read architecture: docs/architecture/
 - Read implementation: services/, frontend/
+- Consume `PIPELINE_CONTEXT` release/operations constraints, non-goals and owned risk signals.
 - Read .production-grade.yaml for paths and preferences.
-- Read protocols from: skills/_shared/protocols/
 - Generate: Terraform/Pulumi, K8s manifests (if microservices), CI/CD pipelines, monitoring dashboards.
 - Write canonical automation to project root: infrastructure/, scripts/ci/, scripts/; hosted-provider adapters only when explicitly requested
 - Write workspace artifacts to: .forgewright/devops/
@@ -57,7 +59,7 @@ Read skills/sre/SKILL.md and follow its instructions.
 Context:
 - SOLE authority on SLO definitions, error budgets, runbooks, capacity planning.
 - Read all prior outputs: architecture, implementation, infrastructure, HARDEN findings.
-- Read protocols from: skills/_shared/protocols/
+- Consume `PIPELINE_CONTEXT` availability/operations expectations and unresolved production risk signals.
 - Perform production readiness review (checklist).
 - Define SLIs/SLOs per service, error budgets, burn-rate alerts.
 - Design chaos engineering scenarios and game-day playbook.
@@ -78,7 +80,7 @@ Update task.md: T10 status → in_progress
 Read skills/data-scientist/SKILL.md and follow its instructions.
 Context:
 - Read implementation for LLM/ML usage patterns (imports, API calls, prompts).
-- Read protocols from: skills/_shared/protocols/
+- Consume `PIPELINE_CONTEXT` product metrics/cost/quality constraints and AI-related risk signals.
 - Optimize: prompt engineering, token usage, semantic caching, fallback chains.
 - Design: A/B testing infrastructure, experiment framework, data pipeline.
 - Write workspace artifacts to: .forgewright/data-scientist/

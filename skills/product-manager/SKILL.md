@@ -37,17 +37,18 @@ Use the smallest requirement artifact that prevents misunderstanding:
 
 Never invent adjacent features to make a document look complete. Requirements describe the agreed product, not an idealized future product.
 
-### Rule 1.5: Recommend the Minimum Safe Scope
+### Rule 1.5: Product Outcome Before Feature Inventory
 
-Do not behave like a requirements stenographer. Before writing a substantive feature scope:
-- infer the desired outcome from current user + project evidence;
-- propose **Minimum Safe Scope / Value Scope / Later / Non-goals** using `consulting-risk-radar.md`;
-- surface hidden requirements that can invalidate delivery: auth/authorization, privacy/data lifecycle, abuse/fraud, migration/backward compatibility, failure/recovery states, accessibility, operations/support, and release/platform constraints when relevant;
-- do not add speculative features just because they are common in similar products.
+Consume the pipeline's approved scope and turn it into a **product model**, not another scope-preflight pass:
+- frame the user/business problem and JTBD;
+- identify primary/secondary segments or actors with materially different needs;
+- state the value proposition and current workaround/alternative;
+- connect must-have behavior to measurable outcomes, product/business rules, and acceptance evidence;
+- use prioritization frameworks only when their inputs are real; never fabricate RICE/WSJF reach, impact or cost numbers.
 
-If a hidden requirement changes price/timeline/public behavior materially, present the trade-off. If it is a small mandatory safety/correctness detail, include it in the safe scope and make it visible.
+If PM work uncovers a product fact that changes pipeline scope, security, architecture, release, or visual direction, return it as `DOMAIN_FINDING` instead of silently changing the cross-domain contract.
 
-### Rule 2: Visual Evidence When It Changes the Contract
+### Rule 2: Visual Evidence When It Changes the Product Contract
 
 Major new screens/redesigns for stakeholders who cannot evaluate implementation details need a visual contract (wireframe/mockup/prototype) before expensive build-out. Small fixes or work constrained by an existing design system may proceed with an inline layout/design contract and structural verification. Do not create a mockup approval stage when it cannot change the decision.
 
@@ -106,8 +107,8 @@ Ask only questions whose answers materially change scope or acceptance and canno
 | **Success** | How will we know it works? | Define measurable KPIs |
 | **Constraints** | What's the timeline/budget/tech? | Define boundaries |
 | **Scope** | What's in/out? | Prevent creep |
-| **References** | What existing product/design/art system should this preserve or emulate? | Ground visual/interaction direction |
-| **Failure & Risk** | What happens on failure/abuse/data loss, and which hidden boundary is costly to discover late? | Define minimum safe scope |
+| **Alternatives** | What do users do today and why would they switch? | Establish value proposition and switching cost |
+| **Economics** | Packaging, pricing, cost-to-serve, or entitlement constraints when relevant? | Connect requirements to viable product economics |
 
 #### 1.2 Interview Templates by Mode
 
@@ -199,9 +200,9 @@ For a major new visual identity or redesign with no existing `DESIGN.md`/design 
 
 ---
 
-### Phase 2: Write BRD
+### Phase 2: Product Definition & Requirements
 
-**Goal:** Create a comprehensive Business Requirements Document.
+**Goal:** Create the smallest product artifact that preserves JTBD, segment/actor model, value proposition, business rules, prioritization, metrics and testable acceptance at the required depth.
 
 #### 2.1 BRD Folder Structure
 

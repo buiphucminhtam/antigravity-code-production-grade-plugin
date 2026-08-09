@@ -4,6 +4,8 @@ This phase manages tasks T3a (Backend), T3b (Frontend), T3c (Mobile, conditional
 
 ## Pre-Flight
 
+Every BUILD lane receives the approved `PIPELINE_CONTEXT` plus its upstream specialist artifacts. BUILD skills implement inside those contracts; they do not recreate generic consulting, hidden-risk, research, or visual-basis gates. Newly discovered cross-domain facts return as `DOMAIN_FINDING` to the control plane.
+
 Read `.production-grade.yaml` to determine:
 - `features.frontend` → if false, skip T3b
 - `features.mobile` → if false, skip T3c (also skip if BRD has no mobile requirements)
@@ -50,7 +52,7 @@ Update task.md: T3a status → in_progress
 Read skills/software-engineer/SKILL.md and follow its instructions.
 Context:
 - Read architecture from: api/, schemas/, docs/architecture/
-- Read protocols from: skills/_shared/protocols/
+- Consume `PIPELINE_CONTEXT` for accepted scope, constraints/non-goals, risk ownership and verified facts.
 - Read .production-grade.yaml for paths and preferences.
 - Write services to project root: services/, libs/shared/
 - Write workspace artifacts to: .forgewright/software-engineer/
@@ -72,7 +74,8 @@ Context:
 - Read BRD user stories from: .forgewright/product-manager/BRD/
 - Read design specs from: .forgewright/ui-designer/ (if T1.5 ran)
 - Read design tokens from: docs/design/design-tokens.json (if T1.5 ran)
-- Read protocols from: skills/_shared/protocols/
+- Consume `PIPELINE_CONTEXT`, especially `visual_basis`, constraints/non-goals and owned risk signals.
+- Frontend implements the approved UI contract; it does not invent or rerun the visual direction gate.
 - Read .production-grade.yaml for framework and styling preferences.
 - Write frontend to project root: frontend/
 - Write workspace artifacts to: .forgewright/frontend-engineer/
@@ -98,7 +101,7 @@ Context:
 - Read BRD user stories from: .forgewright/product-manager/BRD/
 - Read design specs from: .forgewright/ui-designer/ (if T1.5 ran)
 - Read design tokens from: docs/design/design-tokens.json (if T1.5 ran)
-- Read protocols from: skills/_shared/protocols/
+- Consume `PIPELINE_CONTEXT`, especially target platform, visual basis, constraints/non-goals and owned risk signals.
 - Read .production-grade.yaml for mobile framework and preferences.
 - Write mobile to project root: mobile/
 - Write workspace artifacts to: .forgewright/mobile-engineer/
@@ -117,6 +120,7 @@ Read skills/devops/SKILL.md and follow its instructions.
 Context:
 - Read services from: services/
 - Read architecture from: docs/architecture/
+- Consume `PIPELINE_CONTEXT` for release/operations constraints and assigned risk signals.
 - Read .production-grade.yaml for paths and preferences.
 - Write Dockerfiles per service, docker-compose.yml at project root.
 - Write workspace artifacts to: .forgewright/devops/containers/
@@ -127,7 +131,7 @@ Update task.md: T4 status → completed
 
 ## Quality Gate & Regression Checks
 
-After EACH build task (T3a, T3b, T3c, T4), run the Universal Quality Gate Protocol (`skills/_shared/protocols/quality-gate.md`):
+After EACH build task (T3a, T3b, T3c, T4), run domain verification then the pipeline-owned Universal Quality Gate + OperatingAudit (`quality-gate.md`, `pipeline-operating-contract.md`):
 
 1. **Per-skill quality gate** — verify build, regression, standards, traceability
 2. **Brownfield regression check** — if brownfield project:

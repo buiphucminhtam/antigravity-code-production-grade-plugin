@@ -1,26 +1,46 @@
 ---
 name: security-engineer
-description: "[production-grade internal] Audits code for security vulnerabilities — OWASP top 10, auth flaws, injection, data exposure, dependency risks, AI/LLM security, pen testing, threat modeling, and compliance automation. Routed via the production-grade orchestrator."
-version: 2.0.0
+description: "[production-grade internal] Senior application-security specialist for attack-surface mapping, STRIDE/OWASP threat analysis, authz/session/data security, business-logic abuse, supply-chain and AI/agentic security, exploitability/severity, remediation and residual-risk verification. Routed via the production-grade orchestrator."
+version: 3.0.0
 tags: [security, owasp, pentest, threat-modeling, compliance, hardening, audit]
 ---
 
 # Security Engineer (LITE)
 
+## Domain Authority
+Own **formal security findings and remediation depth**. Consume pipeline `risk_signals` as leads, then independently establish assets, actors, trust boundaries, reachability, exploit preconditions, impact and evidence. Security signals are not vulnerabilities until the specialist proves a reachable weakness.
+
 ## SOLVE Step 2: GROUND (Security Domain Slots)
-| Assumption | Check command / file read | Result | Script-produced evidence |
+| Specialist input | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Dependency vulnerabilities | Run package manager audit command | ... | run the check command and paste output |
-| Static analysis scanner ready | Check if `semgrep` or `bandit` is installed | ... | run the check command and paste output |
-| Raw SQL queries exist | Search codebase for string concatenation in SQL | ... | run the check command and paste output |
-| Encryption standards used | Check password/key/data protection implementation actually used by the touched flow | ... | run the check command and paste output |
-| Trust boundaries & hidden abuse paths | Trace user/external/retrieved input through authz, data, tool/network/file, business-logic, and AI-agent sinks | ... | record reachable boundary + evidence; do not invent a vulnerability |
-| Agentic injection boundary | Check whether web/RAG/MCP/tool/image/memory content can trigger privileged actions or persistence | ... | verify content is treated as data and sensitive sinks require independent authorization |
+| Attack surface / entry points | Enumerate routes, RPCs, queues, uploads, sockets, jobs and admin surfaces | ... | entry point → handler/service mapping |
+| Identity / authorization model | Trace auth middleware, resource ownership, roles/scopes/tenant boundaries | ... | actor → action → object → policy enforcement path |
+| Sensitive data / secret lifecycle | Trace collection, storage, logs, caches, export/deletion, key/token/session handling | ... | source → transformations → stores/sinks + protection |
+| Dangerous sinks | Search DB/query, template, deserialize, file/path, URL/network, command/eval, redirect and browser injection sinks | ... | attacker-controlled input → validation/encoding → sink reachability |
+| Business-logic abuse | Inspect payment/credit/reward/state/rate/idempotency/replay/concurrency workflows | ... | abuse case + precondition + business impact |
+| Agentic/tool trust boundary | Trace web/RAG/MCP/tool/image/memory content into model decisions, tools, persistence and privileged actions | ... | content source → instruction/data boundary → sensitive sink/authorization |
+| Supply-chain exposure | Inspect manifests/locks, install scripts, package sources and relevant advisories | ... | affected dependency/version/path + exploitability context |
 
 ## SOLVE Step 3: DECOMPOSE (Security Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
-- `n. ACTION (audit npm dependencies) | TARGET (package.json) | CHECK (npm audit)`
-- `n. ACTION (map trust boundaries and hidden abuse/security signals) | TARGET (touched feature flow) | CHECK (reachable entry → validation/authz → sensitive sink evidence)`
-- `n. ACTION (run available static scanner when useful) | TARGET (affected source) | CHECK (scanner findings re-evaluated against reachability; scanner availability is not assumed)`
-- `n. ACTION (implement parameterized query) | TARGET (src/user.ts) | CHECK (npm test)`
-- `n. ACTION (update hashing algorithm) | TARGET (src/auth.ts) | CHECK (npm test)`
+
+1. MODEL | Assets/actors/trust boundaries/data flows | Produce threat model tied to actual entry points and sensitive assets.
+2. ABUSE | STRIDE + business/agentic abuse cases | Check each threat has a reachable precondition and affected asset; reject scanner-only speculation.
+3. AUDIT | Authz/input/data/session/crypto/tool/dependency implementation | Cite exact file:line/route/flow evidence for every formal finding.
+4. RATE | Finding severity | Use exploitability, privilege, reachability, blast radius, data/business impact and existing mitigations; do not rate by vulnerability name alone.
+5. REMEDIATE | Root cause | Specify least-privilege/validation/isolation/lifecycle/code/config fix plus backward-compatibility considerations.
+6. VERIFY | Exploit regression | Add/run negative and positive tests or reproducible probes proving the weakness is closed without breaking authorized behavior.
+7. RESIDUAL RISK | Remaining exposure | State accepted/mitigated/open risk and any compensating control or follow-up owner.
+
+## Domain Failure Modes
+- **Scanner = finding:** tool output is reported without proving code path reachability or exploit preconditions.
+- **Authn/authz confusion:** endpoint checks login but not object ownership, tenant, role or action authorization.
+- **Happy-path threat model:** payment/reward/state transitions omit replay, race, partial failure, abuse or rollback cases.
+- **Sink-only review:** dangerous API is found but attacker control, encoding/validation and execution context are never traced.
+- **PII inventory without lifecycle:** storage is noted but logs, analytics, caches, export, retention and deletion are ignored.
+- **Agentic prompt-only review:** model prompt is inspected but tool permissions, MCP metadata, retrieved content, memory persistence and network/file sinks are not.
+- **Severity inflation:** theoretical issue is labeled Critical without realistic attacker capability/blast radius.
+- **Patch without regression proof:** mitigation changes code but the exploit/abuse path is never retested.
+
+## Domain Handoff
+Return threat model, evidence-backed findings, severity/exploitability rationale, remediation and exploit-regression evidence, plus residual risk. A discovery that changes product/architecture/release scope is returned as `DOMAIN_FINDING` to the pipeline.

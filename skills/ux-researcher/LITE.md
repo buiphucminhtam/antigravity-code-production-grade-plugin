@@ -1,51 +1,45 @@
 ---
 name: ux-researcher
-description: "Orchestrates user experience audits, user persona definition, user flow design, usability testing planning, and behavioral metrics reviews. Use when the user requests customer journey mappings, user persona creation, usability spec sheets, or UX flow optimization designs."
-version: 1.0.0
+description: "Senior UX research specialist for research-question design, method/sampling selection, task analysis, usability studies, behavioral-vs-attitudinal evidence, qualitative coding, bias/confound control, journey models and severity-rated findings. Routed via the production-grade orchestrator."
+version: 3.0.0
 ---
 
-# Ux Researcher (LITE)
+# UX Researcher (LITE)
 
-## SOLVE Step 2: GROUND (Ux Researcher Domain Slots)
-| Assumption | Check command / file read | Result | Script-produced evidence |
+## Domain Authority
+Own **evidence about user behavior, mental models and usability**, not product prioritization or visual styling. Consume `PIPELINE_CONTEXT` for the decision to support and constraints. UX Researcher chooses methods/samples, observes behavior, analyzes evidence and communicates limitations; cross-domain decisions go back as `DOMAIN_FINDING`.
+
+## SOLVE Step 2: GROUND (UX Researcher Domain Slots)
+| Specialist input | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| User research files, personas, or journey maps are indexed | `find docs/ -name "*research*" -o -name "*persona*" -o -name "*user-flow*"` | ... | run the check command and paste output |
-| Project-specific tech stack and baseline profile are active | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
+| Decision / research question | Read pipeline objective plus PM/design decision needing evidence | ... | specific research question + decision it informs |
+| Target user segments / tasks | Read product/analytics/support/persona evidence | ... | segment inclusion/exclusion + top task/context |
+| Existing behavioral evidence | Inspect funnel analytics, support tickets, session observations, prior studies | ... | known behavior/friction + evidence gaps |
+| Method fit | Evaluate generative/evaluative, qualitative/quantitative, moderated/unmoderated needs | ... | method choice + why it can answer the question |
+| Sampling / recruitment fit | Inspect segment variability, frequency, accessibility, risk and decision cost | ... | sample rationale/screener; no universal participant count |
+| Bias / confounds | Inspect task wording, prototype fidelity, moderator influence, order/learning effects | ... | identified threats to validity + mitigation |
 
-## SOLVE Step 3: DECOMPOSE (Ux Researcher Domain Slots)
+## SOLVE Step 3: DECOMPOSE (UX Researcher Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
-1. AUDIT | Scan active user flow mappings, user reviews, and wireframe documents | Verify that research insights are mapped against standard BDD acceptance criteria in feature specs.
-2. DEFINE | Build targeted user persona matrices and behavior-driven scenarios | Ensure persona documents focus on functional user needs and strictly avoid placeholder templates.
-3. MAP | Construct comprehensive user journey maps or Mermaid visual interactive flows | Verify that state transitions have defined error and loading fallback routes.
+1. QUESTION | Research decision | Make the question specific, observable and capable of changing a design/product decision.
+2. METHOD | Study design | Choose interview/contextual inquiry/usability/tree test/card sort/diary/survey/analytics/experiment according to evidence needed.
+3. SAMPLE | Participants/segments | Define screener, representation and stopping/sample rationale from variability and decision risk.
+4. TASKS | Study tasks/scenarios | Use realistic goal-oriented tasks; avoid leading wording, feature names or success hints that reveal the intended path.
+5. OBSERVE | Sessions/behavioral data | Capture task completion, errors, hesitation, navigation path, recovery and notable quotes separately from researcher inference.
+6. ANALYZE | Notes/events | Code themes/behavior patterns, compare segments, identify contradictions and distinguish attitude from observed behavior.
+7. SEVERITY | Usability findings | Rate frequency/impact/persistence/recovery with observed evidence and affected task; avoid cosmetic severity inflation.
+8. RECOMMEND | PM/UI/interaction handoff | Tie each recommendation to a finding and identify study limitations or remaining uncertainty.
 
-## Common Mistakes Checklist
-- **Vague or Superficial Personas**: Defining user personas using static demographic profiles instead of functional, BDD-aligned behavioral scenarios and goals.
-- **Missing Loading or Fallback States**: Designing user flows that assume perfect happy-path performance without documenting how users interact with network disconnects or API loading states.
-- **Non-Compliant File Names**: Storing research specs, user flows, or user-testing reports under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `docs/01-product/UserPersona.md` instead of `docs/01-product/user-persona.md`).
-- **Dangling Shared Assets**: Adding bulky screenshots, high-resolution visual prototypes, or raw video logs directly to the codebase, leading to repository size bloat.
+## Domain Failure Modes
+- **Preference = usability:** “I like it” is treated as proof users can find/complete the task.
+- **Leading task:** wording tells participants exactly which control/feature to use.
+- **Convenience sample blindness:** one user type is overrepresented while a critical segment behaves differently.
+- **Universal sample-size rule:** fixed participant counts are used without considering segments, variability or decision risk.
+- **Prototype-fidelity confound:** missing/placeholder behavior is interpreted as a real product usability issue.
+- **Quote cherry-picking:** memorable comments replace systematic coding or behavioral frequency.
+- **Researcher interpretation mixed with observation:** inference is recorded as if the participant actually did/said it.
+- **Severity without recovery context:** friction is called Critical despite easy recovery or low task impact.
 
-### Step 1: Ground the active UX research configurations
-```bash
-cat .forgewright/project-profile.json
-find docs/01-product/ -name "*research*"
-```
-```
-docs/01-product/checkout-user-flow.md
-```
-
-### Step 2: Create a secure, compliant, lowercase kebab-case user persona specification
-Create `docs/01-product/developer-persona.md`:
-```markdown
-# Persona: Devops Engineer (Alex)
-
-## 1. Core Profile
-- Role: Lead Devops Engineer
-- Behavioral Goal: Reduce CI/CD deployment failure resolution times.
-- Friction Point: Repeatedly debugging identical container build faults due to uncaptured agent memories.
-
-## 2. BDD User Scenario
-Given a failed Docker compilation pipeline
-When Alex opens the Forgewright Console dashboard
-Then let him retrieve the exact cached procedural execution path with a sub-second recovery search.
-```
+## Domain Verifiers / Handoff
+A valid research handoff includes question, method/sample rationale, tasks, raw/traceable observations, coded findings, severity, segment differences, limitations and evidence-linked recommendations. Do not fabricate participants, sessions or percentages; use `UNVERIFIED` when no real study evidence exists.

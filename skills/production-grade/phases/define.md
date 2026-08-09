@@ -4,6 +4,8 @@ This phase manages tasks T1 (Product Manager), T1.5 (UI Designer, conditional), 
 
 ## Pre-Flight
 
+The pipeline must already have a decision-ready `PIPELINE_CONTEXT` per `skills/_shared/protocols/pipeline-operating-contract.md`. DEFINE specialists consume it; they do not recreate generic scope/risk/research/visual preflight. If a required envelope field is materially missing, return `NEEDS_PIPELINE_GROUNDING` before specialist work.
+
 Read `.production-grade.yaml` for path overrides:
 - `paths.brd` → BRD output location (default: `.forgewright/product-manager/BRD/`)
 - `paths.api_contracts` → API contract location (default: `api/openapi/*.yaml`)
@@ -48,15 +50,19 @@ Mark task in progress and execute the product-manager skill (needs user interact
 
 ```
 Update task.md: T1 status → in_progress
-Read skills/product-manager/SKILL.md and follow its instructions.
+Read skills/product-manager/SKILL.md and follow its specialist instructions.
+Context:
+- Consume `PIPELINE_CONTEXT` for objective, acceptance, constraints/non-goals, safe scope, verified facts, risk ownership, and research already resolved by the pipeline.
+- PM owns product requirements, prioritization, metrics/experiments/economics and acceptance traceability; it does not rerun the generic pipeline preflight.
 ```
 
 The product-manager skill will:
-1. **Check for BA package** — if `.forgewright/business-analyst/handoff/ba-package.md` exists, use it to reduce CEO interview
-2. Research domain via search_web (skip if BA or Polymath already researched)
-3. Conduct CEO interview (depth reduced if BA package covers gaps)
-4. Write BRD to `.forgewright/product-manager/BRD/`
-5. Outputs: `brd.md`, `research-notes.md`, `constraints.md`
+1. **Check for BA package** — if `.forgewright/business-analyst/handoff/ba-package.md` exists, use it to reduce stakeholder elicitation
+2. Frame product problem/JTBD, target segments, value proposition and product constraints from `PIPELINE_CONTEXT` + BA/user evidence
+3. Define prioritization, metrics tree/experiments and business/product rules at the depth warranted by the product
+4. Write BRD/feature requirements to `.forgewright/product-manager/BRD/`
+5. Outputs: `brd.md`, product decision/metrics notes as warranted, `constraints.md`
+6. Return any scope-changing discovery as `DOMAIN_FINDING` to the control plane rather than silently editing safe scope
 
 **On completion:**
 ```
@@ -82,10 +88,10 @@ If user selects "Show BRD details" → display BRD, re-present Gate 1.
 ```
 Update task.md: T1.5 status → in_progress
 
-Read skills/ui-designer/SKILL.md and follow its instructions.
+Read skills/ui-designer/SKILL.md and follow its specialist instructions.
 Context:
+- Consume `PIPELINE_CONTEXT.visual_basis`; if material visual direction lacks a reliable basis, return `NEEDS_PIPELINE_GROUNDING` rather than independently reopening generic research.
 - Read BRD from: .forgewright/product-manager/BRD/
-- Read protocols from: skills/_shared/protocols/
 - Write design specs to: .forgewright/ui-designer/
 - Write design tokens to: docs/design/design-tokens.json
 - Outputs: design-brief.md, wireframes/, design-tokens.md, component-inventory.md, interaction-patterns.md
@@ -99,7 +105,8 @@ The UI Designer provides design specifications that the Frontend Engineer and Mo
 
 ```
 Update task.md: T2 status → in_progress
-Read skills/solution-architect/SKILL.md and follow its instructions.
+Read skills/solution-architect/SKILL.md and follow its specialist instructions.
+Consume `PIPELINE_CONTEXT` plus approved product/design artifacts; return cross-domain or scope-changing discoveries as `DOMAIN_FINDING`.
 ```
 
 The solution-architect skill will:

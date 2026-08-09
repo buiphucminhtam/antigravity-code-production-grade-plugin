@@ -4,14 +4,16 @@ title: Reference-Grounded Visual Design & Review
 summary: Evidence-first visual design using existing systems, researched references, deterministic checks, and reference-conformance review instead of aesthetic self-attestation.
 status: active
 version: 1.0.0
-owners: [design]
+owners: [core, design]
 triggers: [ui, visual, art, layout, ux, animation, vfx]
-used_by: [ui-designer, art-director, ux-researcher, frontend-engineer, technical-artist]
-related: [quality-gate, verification, research-gate, evidence-first]
+used_by: [pipeline, production-grade, operating-preflight, operating-audit, quality-gate]
+related: [pipeline-operating-contract, quality-gate, verification, research-gate, evidence-first]
 supersedes: []
 superseded_by: null
 ---
 # Reference-Grounded Visual Design & Review
+
+**Ownership:** the pipeline establishes the cross-cutting visual basis before specialist dispatch and verifies conformance after specialist execution. UI/Art/Technical specialists consume the basis and apply their own domain heuristics; they do not own the generic reference-discovery gate.
 
 Visual quality cannot be proven by a model saying that its own output “looks premium.” Material visual work must be grounded in an observable design basis and reviewed against that basis.
 
