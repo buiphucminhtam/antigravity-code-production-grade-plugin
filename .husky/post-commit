@@ -16,10 +16,7 @@ if printf '%s\n' "$CHANGED" | grep -q -E '^(docs/|README\.md|README\.vi\.md|TASK
   echo "[Forgewright] Documentation changed; local wiki verification is pending."
 fi
 
-if printf '%s\n' "$CHANGED" | grep -E '^(src/|mcp/|scripts/).*\.(ts|py|js|cs|gd|go|rs)  : > "$CACHE_DIR/reindex-needed"
-  echo "[Forgewright] Logic changed; local GitNexus reindex is pending."
-fi
- | grep -v -E '(test|spec)' >/dev/null; then
+if printf '%s\n' "$CHANGED" | grep -E '^(src/|mcp/|scripts/).*\.(ts|py|js|cs|gd|go|rs)' | grep -v -E '(test|spec)' >/dev/null; then
   : > "$CACHE_DIR/reindex-needed"
   echo "[Forgewright] Logic changed; local GitNexus reindex is pending."
 fi
