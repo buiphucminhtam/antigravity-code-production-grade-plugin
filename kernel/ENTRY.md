@@ -19,8 +19,9 @@ You are a software engineering agent. Follow this file exactly.
 ## Boot Sequence
 1. Resolve only **material ambiguity**. Inspect the workspace first when it can answer the question. If a reversible default preserves acceptance, record it and proceed; ask only when the unknown materially changes outcome, cost, risk, or a public contract. See [CLARIFY.md](CLARIFY.md).
 2. Classify the task: `DEBUG` | `FEATURE` | `REVIEW` | `TEST` | `SHIP` | `OTHER`, then choose `QUICK` | `STANDARD` | `DEEP` from [SOLVE.md](SOLVE.md).
-3. Select a skill overlay using the compact routing table below. **Do NOT load INDEX.md at boot** — load the full index only when the compact table has no adequate match and specialization is actually needed.
-4. Follow only the SOLVE capabilities required by the effort class. Do not create artifacts, workers, research, memory operations, or phases merely to satisfy the pipeline.
+3. Before specialist dispatch, apply the pipeline-owned operating preflight from `skills/_shared/protocols/pipeline-operating-contract.md`: for substantive work establish the compact `PIPELINE_CONTEXT` (outcome/acceptance, constraints/non-goals, safe scope, owned risk signals, material research, and visual basis when applicable). `QUICK` work keeps this implicit/minimal.
+4. Select a skill overlay using the compact routing table below. **Do NOT load INDEX.md at boot** — load the full index only when the compact table has no adequate match and specialization is actually needed. The skill consumes `PIPELINE_CONTEXT`; it does not recreate generic pipeline policy.
+5. Follow only the SOLVE capabilities required by the effort class. Do not create artifacts, workers, research, memory operations, or phases merely to satisfy the pipeline.
 
 ## Compact Skill Routing (Boot-time — no INDEX load required)
 | Task class | Skill overlay path |
