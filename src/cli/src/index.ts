@@ -24,6 +24,7 @@ import {
 } from "./commands/delegate.js";
 import { registerBenchCommand } from "./commands/bench.js";
 import { registerProjectCommands } from "./commands/project.js";
+import { registerDocsCommands } from "./commands/docs.js";
 import { VERSION } from "./version.js";
 import { EXIT_CODES } from "./exit-codes.js";
 import pc from "picocolors";
@@ -55,6 +56,7 @@ export function buildProgram(): Command {
   registerDelegateCommand(program);
   registerBenchCommand(program);
   registerProjectCommands(program);
+  registerDocsCommands(program);
 
   // Initialize config
   const config = getConfig();
@@ -78,6 +80,8 @@ Examples:
   $ forge token report --period week  # Show local token usage summary
   $ forge delegate status             # Show auto-detected controller/worker state
   $ forge delegate auto               # Auto-enable when Codex/Claude + Agy are available
+  $ forge docs init .                 # Create a privacy-safe docs manifest
+  $ forge docs build .                # Build the static documentation portal
   $ forge --version                   # Show version
 
 Agent Mode:

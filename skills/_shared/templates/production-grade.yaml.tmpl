@@ -70,3 +70,20 @@ phases:
   # Set false to skip individual skills within phases:
   # data_scientist: false
   # skill_maker: false
+
+# Native Codex subagent routing. Unsupported preferences are omitted instead
+# of being silently substituted.
+subagents:
+  codex:
+    default:
+      model: "gpt-5.6-luna"
+      reasoning_effort: "high"
+    tiers: {}
+    # Examples (uncomment to configure):
+    # scout: { model: "gpt-5.6-luna", reasoning_effort: "medium" }
+    # builder: { model: "gpt-5.6-terra", reasoning_effort: "high" }
+    # expert: { model: "gpt-5.6-sol", reasoning_effort: "xhigh" }
+    agent_types: {}
+    # Examples (uncomment to configure):
+    # explorer: { model: "gpt-5.6-luna", reasoning_effort: "high" }
+    # worker: { model: "gpt-5.6-terra", reasoning_effort: "high" }

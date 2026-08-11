@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from pathlib import PurePosixPath
 from typing import Any
 
 
@@ -15,6 +16,18 @@ STOP_CONDITIONS = [
     "advisory_token_budget",
     "deadline_cap",
 ]
+PACKET_FIELDS = (
+    "mode",
+    "skill_name",
+    "skill_path",
+    "input_artifacts",
+    "output_artifacts",
+    "handoff_type",
+    "acceptance_checks",
+)
+PACKET_LIST_FIELDS = {"input_artifacts", "output_artifacts", "acceptance_checks"}
+MAX_PACKET_LIST_ITEMS = 32
+MAX_PACKET_STRING_CHARS = 512
 
 
 class PolicyError(ValueError):
@@ -31,6 +44,85 @@ def _nonnegative_int(value: Any, name: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         raise PolicyError(f"{name} must be a non-negative integer")
     return value
+
+
+def validate_dispatch_packet(
+    packet: Any, *, context: str = "packet"
+) -> dict[str, Any] | None:
+    """Validate and copy an optional immutable skill-aware dispatch packet."""
+    if packet is None:
+        return None
+    if not isinstance(packet, dict):
+        raise PolicyError(f"{context} must be an object")
+
+    unknown = sorted(set(packet) - set(PACKET_FIELDS))
+    if unknown:
+        names = ", ".join(unknown)
+        raise PolicyError(
+            f"{context} has unknown packet field/type(s): {names}; "
+            f"allowed fields are {', '.join(PACKET_FIELDS)}"
+        )
+
+    has_skill_name = "skill_name" in packet
+    has_skill_path = "skill_path" in packet
+    if has_skill_name != has_skill_path:
+        raise PolicyError(f"{context} skill_name and skill_path must appear together")
+
+    normalized: dict[str, Any] = {}
+    for field in PACKET_FIELDS:
+        if field not in packet:
+            continue
+        value = packet[field]
+        if field in PACKET_LIST_FIELDS:
+            if (
+                not isinstance(value, list)
+                or len(value) > MAX_PACKET_LIST_ITEMS
+                or not all(
+                    isinstance(item, str)
+                    and bool(item)
+                    and len(item) <= MAX_PACKET_STRING_CHARS
+                    for item in value
+                )
+            ):
+                raise PolicyError(
+                    f"{context}.{field} must be a bounded list of non-empty strings"
+                )
+        elif (
+            not isinstance(value, str)
+            or not value
+            or len(value) > MAX_PACKET_STRING_CHARS
+        ):
+            raise PolicyError(
+                f"{context}.{field} must be a non-empty string of at most "
+                f"{MAX_PACKET_STRING_CHARS} characters"
+            )
+        normalized[field] = deepcopy(value)
+
+    if has_skill_name:
+        skill_name = packet["skill_name"]
+        skill_path = packet["skill_path"]
+        if "/" in skill_name or "\\" in skill_name or skill_name in {".", ".."}:
+            raise PolicyError(
+                f"{context}.skill_name must be a single safe skill directory"
+            )
+        if "\\" in skill_path:
+            raise PolicyError(
+                f"{context}.skill_path must use repository-relative POSIX paths"
+            )
+        path = PurePosixPath(skill_path)
+        expected_parent = PurePosixPath("skills") / skill_name
+        if (
+            path.is_absolute()
+            or ".." in path.parts
+            or path.parent != expected_parent
+            or path.name not in {"SKILL.md", "LITE.md"}
+            or str(path) != skill_path
+        ):
+            raise PolicyError(
+                f"{context}.skill_path must be skills/{skill_name}/SKILL.md or LITE.md"
+            )
+
+    return normalized
 
 
 def _scopes(request: dict[str, Any]) -> list[dict[str, Any]]:
@@ -56,6 +148,10 @@ def _scopes(request: dict[str, Any]) -> list[dict[str, Any]]:
             isinstance(signal, str) for signal in risks
         ):
             raise PolicyError(f"scope {scope_id} risk_signals must be strings")
+        if "packet" in scope:
+            scope["packet"] = validate_dispatch_packet(
+                scope["packet"], context=f"scope {scope_id}.packet"
+            )
         seen.add(scope_id)
     return scopes
 
@@ -122,8 +218,9 @@ def decide_orchestration(request: dict[str, Any]) -> dict[str, Any]:
         elif independent:
             reason = "parallel_minimum_not_met"
 
-    workers = [
-        {
+    workers = []
+    for index, scope in enumerate(selected):
+        worker = {
             "id": f"worker-{index + 1}",
             "scope_id": scope["id"],
             "paths": list(scope["paths"]),
@@ -133,8 +230,9 @@ def decide_orchestration(request: dict[str, Any]) -> dict[str, Any]:
             "deadline_ms": deadline_ms,
             "recursive_spawn": False,
         }
-        for index, scope in enumerate(selected)
-    ]
+        if scope.get("packet") is not None:
+            worker["packet"] = deepcopy(scope["packet"])
+        workers.append(worker)
 
     reviewer = None
     if reviewer_requested:

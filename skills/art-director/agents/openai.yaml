@@ -1,0 +1,4 @@
+interface:
+  display_name: "Art Director"
+  short_description: "Lock and govern a production visual system"
+  default_prompt: "Use $art-director to turn the selected concept into Style DNA, direction gates, family rules, and production-ready visual review."

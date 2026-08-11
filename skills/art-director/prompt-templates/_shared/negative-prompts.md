@@ -1,108 +1,45 @@
-# Negative Prompts — AI Tells to Avoid
+# Evidence-Bound Negative Constraints
 
-This is the **master list** of AI clichés that must NEVER appear in generated assets.
-Attach this to EVERY generation prompt.
+This is a fill-in contract, not a universal denylist. Attach only constraints
+that are supported by the approved direction, assigned reference roles, and the
+target production context.
 
-## Critical (Auto-Reject if detected)
+## Direction inputs
 
-### UI/UX
-- [ ] **Purple/blue neon glow** — The universal AI aesthetic
-- [ ] **Three equal columns of cards** — The default AI layout
-- [ ] **Centered hero section** — Overused AI pattern
-- [ ] **Gradient text on headings** — Trying too hard to look premium
-- [ ] **Outer glow box-shadow** — Cheap pasted-on look
-- [ ] **Pure black #000000** — Harsh, not natural
-- [ ] **Generic Inter font** — Default AI font
-- [ ] **Circular spinner loading** — Lazy AI loading pattern
-- [ ] **Broken Unsplash URLs** — Unsplash random URLs 404 frequently
+- **Approved Style DNA:** [APPROVED_STYLE_DNA]
+- **Reference-role map:** [REFERENCE_ROLE_MAP]
+- **Asset family:** [ASSET_FAMILY]
+- **Real-scale context:** [REAL_SCALE_CONTEXT]
+- **Platform and production constraints:** [PLATFORM_AND_PRODUCTION_CONSTRAINTS]
+- **Observed or credible drift:** [OBSERVED_OR_CREDIBLE_DRIFT]
 
-### Game Art
-- [ ] **5-finger hands** — AI over-renders (should be max 4)
-- [ ] **Same face syndrome** — All NPCs look related
-- [ ] **Anatomy errors** — Extra fingers, broken joints, asymmetric faces
-- [ ] **Perfect symmetry** — Everything has mathematical symmetry
-- [ ] **Over-detailed skin** — Photorealistic skin in stylized game
-- [ ] **Uniform placement** — Trees, rocks, clouds in grid patterns
-- [ ] **Plastic-perfect materials** — No wear, no grime
-- [ ] **All-ambient lighting** — Flat, no depth
-- [ ] **Perfect grass/stone texture** — No variation, mathematical tiling
+## Constraint record
 
-## High Severity
+For each negative constraint, record the evidence and the response. Do not add a
+constraint merely because it is common in generated work.
 
-### UI/UX
-- [ ] **Fake round numbers** — 99.99%, 50%, $9.99 look obviously AI
-- [ ] **Generic company names** — Acme, Nexus, SmartFlow, TechCorp
-- [ ] **AI buzzwords in copy** — Elevate, Seamless, Unleash, Next-Gen, Transform
-- [ ] **Default shadcn/ui** — Template feel, not project feel
-- [ ] **Generic placeholder names** — John Doe, Jane Smith, Sarah Chen
-- [ ] **Generic tech illustrations** — Floating circles with connecting lines
+| Scope | Prohibited drift | Evidence / confidence | Corrective mechanism | Review context |
+|---|---|---|---|---|
+| [DRIFT_SCOPE] | [PROHIBITED_DRIFT] | [DRIFT_EVIDENCE] | [CORRECTIVE_MECHANISM] | [DRIFT_REVIEW_CONTEXT] |
 
-### Game Art
-- [ ] **Purple glow on UI elements** — Universal AI aesthetic
-- [ ] **Over-saturated accent colors** — 100% saturation looks fake
-- [ ] **AI-generated textures** — Same face texture repeated
-- [ ] **Uniform cloud/haze density** — Should be gradient fog
-- [ ] **Perfect snow/grass coverage** — No variation
-- [ ] **Character faces on same template** — No individuality
+Apply the record only to the named asset family, state, scale, camera, platform,
+and production path. A review finding may change the record; it does not create a
+global aesthetic rule for unrelated assets.
 
-## Medium Severity
+## Optional evidence examples
 
-### UI/UX
-- [ ] **Gradient backgrounds** — Solid or subtle texture preferred
-- [ ] **Excessive border-radius** — Bubbly look
-- [ ] **Too many shadows** — Over-shadowing
-- [ ] **Generic stock photo style** — Obvious stock imagery
-- [ ] **Startup-era design clichés** — Dark mode with neon accents
+These are **non-default examples**. Keep one only when the project's evidence
+supports it, and replace it with the observed mechanism and scope:
 
-### Game Art
-- [ ] **Perfect edge lighting** — Rim light on everything
-- [ ] **Over-bright highlights** — Bloom on all light sources
-- [ ] **No color variation in materials** — Same stone looks same everywhere
-- [ ] **AI face generation issues** — Uncanny valley, dead eyes
+- Example: repeated placement in a background family is prohibited when a family
+  review shows visible tiling at the gameplay camera.
+- Example: a typeface or color treatment is prohibited when the approved Style
+  DNA or a legibility test shows it conflicts with the product state hierarchy.
+- Example: a construction artifact is prohibited when it fails the target export,
+  animation, localization, or engine-import check.
 
-## Quick Reference
+## Review handoff
 
-Print this and check each asset:
-
-```
-🔴 CRITICAL (auto-reject):
-   Purple/blue neon glow
-   3 equal columns
-   Centered hero
-   Gradient text headers
-   Outer glow shadows
-   Pure black #000000
-   Inter font
-   Circular spinner
-   5-finger hands
-   Same face syndrome
-   Anatomy errors
-
-🟠 HIGH:
-   Fake round numbers
-   Generic company names
-   AI buzzwords
-   Default shadcn
-   Perfect symmetry
-   Over-detailed skin
-   Uniform placement
-
-🟡 MEDIUM:
-   Gradient backgrounds
-   Excessive roundedness
-   Generic stock photos
-   Over-saturation
-   Perfect textures
-```
-
-## Enforcement
-
-Every generated asset must be checked against this list.
-Vision review scores AI Tells dimension from 1-10:
-- 9-10: Zero AI tells
-- 7-8: 1-2 subtle tells
-- 5-6: 3-4 tells
-- 3-4: 5+ tells
-- 1-2: Overwhelming AI aesthetic
-
-**Any CRITICAL tell = automatic REJECT regardless of total score.**
+- **Acceptance artifact:** [NEGATIVE_CONSTRAINT_REVIEW_ARTIFACT]
+- **Owner:** [NEGATIVE_CONSTRAINT_OWNER]
+- **Next validation:** [NEGATIVE_CONSTRAINT_NEXT_TEST]

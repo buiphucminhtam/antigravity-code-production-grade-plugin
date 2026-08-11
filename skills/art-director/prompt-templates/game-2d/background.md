@@ -1,104 +1,74 @@
 # Game 2D Background Prompt Template
 
-## Context
+## Contract inputs
+
+- **Approved Style DNA:** [APPROVED_STYLE_DNA]
+- **Reference-role map:** [REFERENCE_ROLE_MAP]
+- **Observed or credible drift:** [OBSERVED_OR_CREDIBLE_DRIFT]
+- **Asset family:** [ASSET_FAMILY]
+- **Real-scale context:** [REAL_SCALE_CONTEXT]
+- **Platform and production constraints:** [PLATFORM_AND_PRODUCTION_CONSTRAINTS]
 - **Asset type:** 2D Game Background / Environment
-- **Project style:** READ FROM .forgewright/art-direction/game-art-contract.json
-- **Game type:** [Side-scroller / Top-down / Isometric / Puzzle]
-- **Art style:** [Pixel art / Hand-drawn / Vector / Painted]
-- **Layer:** [Background / Midground / Foreground]
+- **Game type:** [GAME_TYPE]
+- **Art style:** [ART_STYLE]
+- **Layer:** [BACKGROUND_MIDGROUND_FOREGROUND]
 
-## Style Constraints
+## Style and technical bindings
 
-- **Camera angle:** [CAMERA_ANGLE]
-- **Tile size:** [TILE_SIZE]px
-- **Color palette:** STRICT — READ FROM .forgewright/art-direction/game-art-contract.json
-- **Lighting:** [LIGHTING_DIR]
+- **Camera angle / projection:** [CAMERA_ANGLE]
+- **Tile size and repeat behavior:** [TILE_SIZE_AND_REPEAT_RULE]
+- **Color roles and state progression:** [COLOR_ROLES_AND_PROGRESSION]
+- **Lighting and atmosphere:** [LIGHTING_AND_ATMOSPHERE_RULES]
+- **Shape, material, and detail density:** [SHAPE_MATERIAL_DETAIL_RULES]
+- **Parallax and depth contract:** [PARALLAX_DEPTH_CONTRACT]
+- **Required negative constraints:** [PROHIBITED_DRIFT]
 
-## Generation Prompt
+These rules are valid only for the named family and real presentation context.
+Do not infer palette size, temperature, symmetry, density, or texture treatment
+from this template. Review `[PROHIBITED_DRIFT]` as evidence-backed prohibited
+drift, not as a universal aesthetic rule.
 
-Generate a 2D game background/environment matching these constraints.
+## Generation prompt
 
-**⚠️ CRITICAL RULES:**
+Generate a 2D game background/environment that preserves the approved Style DNA
+and reference roles for `[ASSET_FAMILY]`. Prioritize the first read at
+`[REAL_SCALE_CONTEXT]`, then detail and material behavior at
+`[SECONDARY_REVIEW_SCALE]`. Match `[CAMERA_ANGLE]`, the horizon/depth placement,
+and `[PARALLAX_DEPTH_CONTRACT]`; keep the result compatible with
+`[PLATFORM_AND_PRODUCTION_CONSTRAINTS]`.
 
-**Perspective consistency:**
-- Match the game's camera angle exactly
-- Horizon line at correct height
-- Depth layers must align (parallax layers)
+### Composition and depth
 
-**Color palette — STRICT:**
-```
-Primary:     [PRIMARY_HEX]
-Secondary:   [ACCENT_HEX]
-Background:  [BG_HEX]
-Mid-tone:    [MUTED_HEX]
-Shadow:      [CALCULATED]
-Highlight:   [CALCULATED]
-```
+- **Background layer:** [BACKGROUND_LAYER_RULES]
+- **Midground layer:** [MIDGROUND_LAYER_RULES]
+- **Foreground layer:** [FOREGROUND_LAYER_RULES]
+- **Interactive/readability separation:** [INTERACTIVE_SEPARATION_RULES]
+- **Cropping, negative space, and focal order:** [COMPOSITION_RULES]
 
-**AI tells to AVOID:**
-- Perfect uniform placement of trees/rocks/clouds
-- Mathematical grid patterns in organic elements
-- All-warm or all-cool color temperature
-- Over-detailed at distance (LOD awareness)
-- Too-perfect symmetry in architecture
+### Environment binding
 
-## Layer Specifications
+For `[ENVIRONMENT_TYPE]`, use the approved family lineage and variation axes:
 
-**Background Layer (far, parallax 0.1-0.3):**
-- Sky: Gradient or solid, atmospheric
-- Distant mountains/buildings: Silhouette only, 1-2 colors
-- Depth: Atmospheric haze, desaturated
+- **Landmarks / silhouettes:** [LANDMARK_AND_SILHOUETTE_RULES]
+- **Organic or architectural distribution:** [DISTRIBUTION_RULES]
+- **Weather, season, or atmosphere state:** [ATMOSPHERE_STATE]
+- **Material and texture frequency:** [MATERIAL_TEXTURE_FREQUENCY]
 
-**Midground Layer (medium, parallax 0.5):**
-- Main environment: Trees, buildings, terrain
-- Some detail, but simplified
-- Main color palette
+### Tile and export checks
 
-**Foreground Layer (near, parallax 0.8-1.0):**
-- Interactive elements, platforms, details
-- Full detail and color
-- May have slight motion (grass, particles)
+- **Seam rule:** [TILE_SEAM_RULE]
+- **Repeat test:** [TILE_REPEAT_TEST]
+- **Format and transparency:** [OUTPUT_FORMAT_AND_TRANSPARENCY]
+- **Naming:** [NAMING_CONVENTION]
+- **Atlas/LOD/compression/import:** [ATLAS_LOD_COMPRESSION_IMPORT]
 
-## Environment Type
+Non-default examples: a 3×3 repeat test, parallax values such as 0.1/0.5/0.9,
+or a warm-near/cool-far grade are useful starting examples only. Keep them only
+when the approved camera, color script, and production tests support them.
 
-**For [ENV_TYPE], generate:**
-- **Forest:** Varied tree heights, organic spacing, depth through layering
-- **Urban:** Architectural consistency, perspective grid, varied building styles
-- **Dungeon:** Stone texture patterns, torch lighting, limited color palette
-- **Abstract:** Geometric shapes, strong color blocks, no realistic detail
-- **Natural:** Terrain variation, organic curves, weather/season feel
+## Acceptance evidence
 
-## Parallax Specifications
-
-```
-Layer 1 (far):   Parallax 0.1-0.3 — Mountains/sky
-Layer 2 (mid):   Parallax 0.4-0.6 — Main environment
-Layer 3 (near):  Parallax 0.7-0.9 — Details/foreground
-Layer 4 (top):   Parallax 1.0    — Interactive elements
-```
-
-**Tile seam rules:**
-- All tiles must wrap seamlessly (toroidal)
-- Edge must match adjacent tile edges
-- Test: Place 3×3 grid and verify no visible seams
-
-## Color grading
-
-**Atmospheric perspective:**
-- Far: More desaturated, bluer, lower contrast
-- Near: More saturated, warmer, higher contrast
-- Apply color temperature gradient (warm near, cool far)
-
-## Metadata
-- **Format:** PNG with transparency
-- **Naming:** `bg-[env-type]-[layer]-[W]x[H].png`
-- **Example:** `bg-forest-midground-512x512.png`
-
-## Acceptance Checklist
-- [ ] Consistent perspective/camera angle
-- [ ] All colors from palette
-- [ ] No AI uniform placement
-- [ ] Seamless tile edges
-- [ ] Correct parallax layer depth
-- [ ] Atmospheric perspective applied
-- [ ] Works in 3×3 grid (if tileable)
+- **Style-frame or family comparison:** [STYLE_FRAME_OR_FAMILY_ARTIFACT]
+- **Real-scale read:** [REAL_SCALE_REVIEW_RESULT]
+- **Drift review:** [DRIFT_REVIEW_RESULT]
+- **Owner and next test:** [REVIEW_OWNER_AND_NEXT_TEST]

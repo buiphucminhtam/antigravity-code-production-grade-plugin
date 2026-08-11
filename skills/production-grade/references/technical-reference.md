@@ -105,6 +105,21 @@ pipeline:
   execution: "parallel"    # sequential|parallel
   max_workers: 4
 
+# Native Codex subagent model preferences. Apply a value only when the active
+# spawn_agent schema advertises it for the selected model.
+subagents:
+  codex:
+    default:
+      model: "gpt-5.6-luna"
+      reasoning_effort: "high"
+    tiers: {  # tiers: {} when no overrides are configured
+      # Examples (uncomment to configure):
+      # expert: { model: "gpt-5.6-sol", reasoning_effort: "xhigh" }
+    }
+    agent_types: {}
+    # Examples (uncomment to configure):
+    # explorer: { model: "gpt-5.6-luna", reasoning_effort: "high" }
+
 # Review settings
 review:
   mode: "lean"           # full|lean|solo

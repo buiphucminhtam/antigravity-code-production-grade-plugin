@@ -13,7 +13,7 @@
    Review mode   → 1 skill  (~3KB)
    Feature mode → 5 skills (~15KB)
    Full Build   → 10 skills (~30KB)
-   Fallback     → load all skills (classification failure)
+   Fallback     → ordinary local fallback; no mode skill injection (classification failure)
 
 3. Reject skills not in the mode's approved list
 ```

@@ -22,7 +22,9 @@ still preserve the phase's inputs, evidence, and handoff contract.
    file ownership. Agent count never determines topology by itself.
 5. **Codex-native roles** — studio roles are role lenses applied by the current
    agent. Do not claim that named subagents exist. Use actual subagents only when
-   the user explicitly requests delegation or parallel agent work.
+   the user explicitly requests delegation or parallel agent work. The host owns
+   the native `spawn_agent` tool; this repository owns only the routing contract
+   and dispatch packet.
 6. **Bounded autonomy** — implementation within an approved design can proceed
    end to end. Major creative direction, architecture, scope, monetization, and
    release-risk decisions remain user decisions.
@@ -128,7 +130,7 @@ Use the smallest set of role lenses that covers the work:
 | Lane | Forgewright skills | Owns | Must not decide alone |
 |---|---|---|---|
 | Control plane | `production-grade`, `project-manager` | Phase, milestone, dependency graph, scope, risk, change propagation | Creative or technical domain decisions |
-| Creative direction | `game-designer`, `art-director`, `level-designer`, `narrative-designer`, `game-audio-engineer` | Player promise, mechanics, content, presentation, feel | Architecture, release acceptance |
+| Creative direction | `game-designer`, `concept-artist`, `art-director`, `level-designer`, `narrative-designer`, `game-audio-engineer` | Player promise, mechanics, concept exploration, content, presentation, feel | Architecture, release acceptance |
 | Technical direction | `solution-architect`, `game-engineer`, engine-specific skills, `technical-artist` | Architecture, engine integration, runtime budgets, tools | Product scope or player-facing design intent |
 | Quality | `qa-engineer`, `game-accessibility-engineer`, `performance-engineer`, `security-engineer` | Test strategy, evidence, regression, performance, accessibility, abuse cases | Waiving release risk |
 | Release and sustain | `build-release-engineer`, `devops`, `sre`, `liveops-engineer` | Reproducible builds, packaging, rollout, observability, hotfix readiness | Shipping with any gate failure or unaccepted concern |
@@ -157,6 +159,34 @@ implemented story or code-bearing deliverable, not to Concept or Systems Design
 work.
 
 ## Handoff Contracts
+
+### Creative routing and executable dispatch contract
+
+Design and Game Build work use the same ordered creative handoff:
+
+```text
+UX/research -> Concept Artist -> Art Director -> UI/technical/engine handoff
+```
+
+The named skill files are `skills/concept-artist/LITE.md` and
+`skills/art-director/LITE.md`; downstream handoff paths include
+`skills/ui-designer/LITE.md`, `skills/technical-artist/LITE.md`, and the
+selected engine skill. Before dispatching a creative or downstream scope, run
+the repository-owned executables in this order:
+
+1. Resolve ordered, verified skill paths with
+   `python3 scripts/runtime/skill_routing.py --mode "$MODE" --config .forgewright/skills-config.json`.
+2. Validate the concept and art artifacts with
+   `python3 scripts/art-direction/creative-handoff.py validate-handoff "$CONCEPT_PACKET" "$ART_DIRECTION_GATES"`.
+3. Freeze a skill-aware dispatch packet containing each item's skill name,
+   `skill_path`, validated artifact paths, owned paths, checks, tier, and stop
+   conditions. Do not dispatch from an unfrozen or path-only packet.
+4. Resolve verified model fields by calling
+   `python3 scripts/runtime/codex-subagent-routing.py --config .production-grade.yaml --capabilities-json "$CODEX_SPAWN_CAPABILITIES_JSON" --tier "$TIER" --agent-type "$AGENT_TYPE" --overrides-json "$EXPLICIT_OVERRIDES_JSON"`.
+5. Give the frozen skill item/path and the resolver's emitted
+   `spawn_agent_args` to the **host-owned native `spawn_agent`** tool. The
+   repository does not provide, invoke, or own that native tool; when the host
+   does not expose it, keep the work local and report the boundary.
 
 ### Design-ready handoff
 
@@ -242,9 +272,14 @@ implementation.
 
 Resolve a concrete model only from a same-invocation structured capability probe:
 
-1. For the native Codex collaboration runtime, inspect the active `spawn_agent`
-   schema and its advertised agent types, model overrides, and reasoning
-   controls.
+1. For the native Codex collaboration runtime, read `subagents.codex` from
+   `.production-grade.yaml`, resolve explicit task override → agent type → tier
+   → default, then inspect the active `spawn_agent` schema and validate its
+   advertised model overrides and reasoning controls.
+   Immediately before each native spawn, run:
+   `python3 scripts/runtime/codex-subagent-routing.py --config .production-grade.yaml --capabilities-json "$CODEX_SPAWN_CAPABILITIES_JSON" --tier "$TIER" --agent-type "$AGENT_TYPE" --overrides-json "$EXPLICIT_OVERRIDES_JSON"`.
+   Pass only its emitted `spawn_agent_args` JSON object to the host-owned native
+   `spawn_agent`; the repository does not own that tool.
 2. For the external read-only adapter, use
    `scripts/parallel-dispatch-runner.py`, which probes the active provider and
    enforces the capability rules in `model-tier.md`.

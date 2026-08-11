@@ -55,3 +55,4 @@
 {"ts":"2026-08-01T16:42:02Z","rule":"HR1-verify","outcome":"violation","note":"source: user - previous turn omitted native turn evidence"}
 {"ts":"2026-08-03T09:05:08Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 VERDICT is not PASS"}
 {"ts":"2026-08-03T09:05:27Z","rule":"verify_contract","outcome":"violation","note":"source: user"}
+{"ts":"2026-08-10T05:31:52Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 3 missing fields: OUTPUT"}

@@ -85,6 +85,7 @@ FULL_SKILLS=(
     "xlsx-engineer"
     "debugger"
     "technical-writer"
+    "concept-artist"
     "art-director"
     "vision-review"
     "game-audio-engineer"
@@ -313,28 +314,41 @@ install_config() {
 
     log_header "Installing Configuration"
 
-    local configs=(
+    local config_sources=(
         ".production-grade.yaml"
         "CLAUDE.md"
         "AGENTS.md"
+        ".forgewright/skills-config.json"
+    )
+    local config_dests=(
+        "$FORGEWRIGHT_DIR/.production-grade.yaml"
+        "$FORGEWRIGHT_DIR/CLAUDE.md"
+        "$FORGEWRIGHT_DIR/AGENTS.md"
+        "$CONFIG_DIR/skills-config.json"
     )
 
-    for config in "${configs[@]}"; do
+    for index in "${!config_sources[@]}"; do
+        local config="${config_sources[$index]}"
         local config_source="$source_dir/$config"
-        local config_dest="$FORGEWRIGHT_DIR/$config"
+        local config_dest="${config_dests[$index]}"
 
         if [[ -f "$config_source" ]]; then
             if [[ "$dry_run" == "true" ]]; then
-                echo "  [DRY RUN] Would install: $config"
+                echo "  [DRY RUN] Would install: $config -> $config_dest"
             else
                 mkdir -p "$(dirname "$config_dest")"
-                if [[ -f "$config_dest" ]]; then
-                    log_warn "Config already exists: $config (skipping)"
+                # Never replace a project/user-owned file or symlink. This keeps
+                # reruns idempotent and prevents a fresh bundle from clobbering
+                # executable-router settings that a user has customized.
+                if [[ -e "$config_dest" || -L "$config_dest" ]]; then
+                    log_warn "Config already exists: $config_dest (skipping)"
                 else
                     cp "$config_source" "$config_dest"
-                    log_success "Installed: $config"
+                    log_success "Installed: $config -> $config_dest"
                 fi
             fi
+        elif [[ "$dry_run" == "false" ]]; then
+            log_warn "Config source not found: $config_source"
         fi
     done
 

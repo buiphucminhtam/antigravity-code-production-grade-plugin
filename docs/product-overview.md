@@ -6,7 +6,7 @@
 
 ## What Is Forgewright?
 
-Forgewright is an open-source AI orchestrator that turns raw language models (Claude, GPT, Gemini) into evidence-oriented software engineering agents. Supported runtime paths can use a structured pipeline of skills, guardrails, memory, and verification to attach evidence to completion claims and record lessons from failures. Those controls reduce risk; they do not guarantee correct output or eliminate repeated mistakes. The currently declared canonical runtime and its enforcement boundary are documented in the [canonical-runtime ADR](adr/0001-canonical-production-runtime.md). One install gives you 83 specialized AI skills covering the software lifecycle, as counted by `product-manifest.json` and checked by `npm run verify:product-truth`.
+Forgewright is an open-source AI orchestrator that turns raw language models (Claude, GPT, Gemini) into evidence-oriented software engineering agents. Supported runtime paths can use a structured pipeline of skills, guardrails, memory, and verification to attach evidence to completion claims and record lessons from failures. Those controls reduce risk; they do not guarantee correct output or eliminate repeated mistakes. The currently declared canonical runtime and its enforcement boundary are documented in the [canonical-runtime ADR](adr/0001-canonical-production-runtime.md). One install gives you 84 specialized AI skills covering the software lifecycle, as counted by `product-manifest.json` and checked by `npm run verify:product-truth`.
 
 ---
 
@@ -58,7 +58,7 @@ INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN
 | "Build a SaaS app" | Full Build | BA → PM → Architect → Engineers → QA → DevOps |
 | "Add dark mode" | Feature | PM → FE Engineer → QA |
 | "Review my code" | Review | Code Reviewer |
-| "Build a Unity game" | Game Build | Game Designer → Unity Engineer → Level/Audio |
+| "Build a Unity game" | Game Build | UX/research → Concept Artist → Art Director → UI/technical/engine handoff → Unity Engineer |
 | "Deploy to Vercel" | Ship | DevOps → SRE |
 
 ### 4. Local-First State & Configurable Data Boundaries
@@ -77,6 +77,10 @@ Forgewright exposes its capabilities through the **Model Context Protocol (MCP)*
 
 - **Forgewright MCP server** — Pipeline management, skill invocation, memory operations
 - **GitNexus MCP server** — Code intelligence with 19K+ symbols, impact analysis, blast radius, safe rename
+
+For design and game work, the creative handoff is explicit: UX/research →
+Concept Artist → Art Director → UI/technical/engine handoff. The corresponding
+skills are `skills/concept-artist/LITE.md` and `skills/art-director/LITE.md`.
 
 ```bash
 # One-command setup for all IDEs
@@ -116,7 +120,7 @@ Forgewright is designed so you can start with zero setup and add power increment
 
 ### Level 1 — Basic (Zero Setup)
 
-Copy `AGENTS.md` and `CLAUDE.md` into your project root. Open your IDE and start talking. All 83 AI skills auto-activate through the rule files.
+Copy `AGENTS.md` and `CLAUDE.md` into your project root. Open your IDE and start talking. All 84 AI skills auto-activate through the rule files.
 
 - **Requirements:** None beyond an AI-capable IDE
 - **What you get:** Full skill routing, pipeline orchestration, quality gates
@@ -210,7 +214,7 @@ bash scripts/forgewright-mcp-setup.sh
 | [Architecture](architecture.md) | 5-layer system architecture with visualizations |
 | [Roadmap](improvement-roadmap-v2.md) | Release history and planned features |
 | [Setup Guide](SETUP.md) | Detailed installation instructions |
-| [Skill Catalog](skill-catalog.md) | Full listing of 83 AI skills |
+| [Skill Catalog](skill-catalog.md) | Full listing of 84 AI skills |
 | [CHANGELOG](../CHANGELOG.md) | Detailed version history |
 | [VISION](../VISION.md) | The 10 design principles |
 

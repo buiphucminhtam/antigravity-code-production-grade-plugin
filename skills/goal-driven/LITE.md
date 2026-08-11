@@ -26,6 +26,7 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Amorphous Definition of Done**: Specifying subtasks with vague, non-testable descriptions (e.g., "make it work") instead of explicit CLI/assertion verifications.
 - **Infinite Loop Brute-Forcing**: Retrying a failing implementation path more than twice without triggering the mandatory Research Gate and updating `.forgewright/lessons.md`.
 - **Ignoring Token Caching Thresholds**: Running massive multi-step plan loops without utilizing context offloading, causing immediate token bloat and context memory exhaustion.
+- **Sentinel Goal Budget**: Never pass a fake positive budget such as `1` when a Codex Goal bridge requires one. Use objective-only goals when supported; otherwise continue with the normal task plan without creating an app goal.
 - **Non-Compliant File Names**: Storing task checklists or planning logs under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `project-roadmap.md`).
 
 ### Step 1: Ground the active project scope and baseline status

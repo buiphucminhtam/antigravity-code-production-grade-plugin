@@ -141,9 +141,9 @@ Override the detected mode only if the user's intent clearly differs from what w
 | **Explore** | "explain", "understand", "help me think", "what should I", "I'm not sure" | Polymath |
 | **Research** | "research", "deep research", "find sources", "analyze topic", "investigate [domain]", "NotebookLM", "study materials", "generate quiz" | NotebookLM Researcher → Polymath (research mode) + NotebookLM MCP (primary) |
 | **Optimize** | "performance", "slow", "optimize", "scale", "reliability" | Performance Engineer + SRE + Code Reviewer |
-| **Design** | "design UI", "wireframes", "design system", "color palette", "UX flow" | UX Researcher → UI Designer |
+| **Design** | "design UI", "wireframes", "design system", "color palette", "UX flow" | UX/research → Concept Artist → Art Director → UI/technical handoff |
 | **Mobile** | "mobile app", "React Native", "Flutter", "iOS", "Android" | BA (if gaps detected) → Mobile Engineer (+ PM scoped, Architect scoped if needed) |
-| **Game Build** | "game", "Unity", "Unreal", "Godot", "Roblox", "Phaser", "Three.js", "gameplay", "game design", "build a game" | Game Designer → Art Director Style DNA Gate → Engine Engineer (Unity/Unreal/Godot/Phaser 3/Three.js) → Level/Narrative/TechArt/Audio |
+| **Game Build** | "game", "Unity", "Unreal", "Godot", "Roblox", "Phaser", "Three.js", "gameplay", "game design", "build a game" | UX/research → Concept Artist → Art Director → UI/technical/engine handoff → Level/Narrative/TechArt/Audio |
 | **XR Build** | "VR", "AR", "MR", "XR", "spatial", "Quest", "Vision Pro", "WebXR" | XR Engineer (+ Game Build pipeline if game-like XR) |
 | **Marketing** | "marketing", "SEO", "launch strategy", "copywriting", "content strategy", "go-to-market" | Growth Marketer (+ Conversion Optimizer if CRO mentioned) |
 | **Grow** | "growth", "CRO", "conversion", "funnel", "A/B test", "churn", "retention", "referral" | Conversion Optimizer (+ Growth Marketer if strategy needed) |

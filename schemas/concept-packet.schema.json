@@ -1,0 +1,195 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://forgewright.dev/schemas/concept-packet.schema.json",
+  "title": "Forgewright Concept Packet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "project",
+    "visual_thesis",
+    "reference_role_map",
+    "directions",
+    "selected_direction_id",
+    "locked",
+    "controlled",
+    "open",
+    "prohibited",
+    "production_risks",
+    "target_context",
+    "handoff_metadata"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^concept-packet/v[0-9]+$"
+    },
+    "project": {
+      "$ref": "#/$defs/project"
+    },
+    "visual_thesis": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reference_role_map": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "transfer_mechanism", "prohibited_influence"],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "STYLE",
+              "SUBJECT",
+              "COMPOSITION",
+              "MATERIAL",
+              "LIGHTING",
+              "CAMERA",
+              "MOTION",
+              "PLATFORM"
+            ]
+          },
+          "transfer_mechanism": {
+            "type": "string",
+            "minLength": 1
+          },
+          "prohibited_influence": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "directions": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "$ref": "#/$defs/direction"
+      }
+    },
+    "selected_direction_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "locked": {
+      "$ref": "#/$defs/string_list"
+    },
+    "controlled": {
+      "$ref": "#/$defs/string_list"
+    },
+    "open": {
+      "$ref": "#/$defs/string_list"
+    },
+    "prohibited": {
+      "$ref": "#/$defs/string_list"
+    },
+    "production_risks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/production_risk"
+      }
+    },
+    "target_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["audience", "platform", "camera", "scale", "use_case"],
+      "properties": {
+        "audience": { "type": "string", "minLength": 1 },
+        "platform": { "type": "string", "minLength": 1 },
+        "camera": { "type": "string", "minLength": 1 },
+        "scale": { "type": "string", "minLength": 1 },
+        "use_case": { "type": "string", "minLength": 1 }
+      }
+    },
+    "handoff_metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["packet_id", "sender", "recipient", "revision", "created_at"],
+      "properties": {
+        "packet_id": { "type": "string", "minLength": 1 },
+        "sender": { "type": "string", "minLength": 1 },
+        "recipient": { "type": "string", "minLength": 1 },
+        "revision": { "type": "string", "minLength": 1 },
+        "created_at": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 }
+      }
+    },
+    "string_list": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "direction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "premise",
+        "structure",
+        "benefit",
+        "production_feasibility",
+        "risks",
+        "distinctive_difference"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "premise": { "type": "string", "minLength": 1 },
+        "structure": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "silhouette_or_massing",
+            "composition_and_value",
+            "shape_grammar",
+            "material_and_edge_language",
+            "lighting_and_camera",
+            "signature_motif"
+          ],
+          "properties": {
+            "silhouette_or_massing": { "type": "string", "minLength": 1 },
+            "composition_and_value": { "type": "string", "minLength": 1 },
+            "shape_grammar": { "type": "string", "minLength": 1 },
+            "material_and_edge_language": { "type": "string", "minLength": 1 },
+            "lighting_and_camera": { "type": "string", "minLength": 1 },
+            "signature_motif": { "type": "string", "minLength": 1 }
+          }
+        },
+        "benefit": { "type": "string", "minLength": 1 },
+        "production_feasibility": { "type": "string", "minLength": 1 },
+        "risks": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "distinctive_difference": { "type": "string", "minLength": 1 }
+      }
+    },
+    "production_risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "risk", "impact", "mitigation", "owner"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "risk": { "type": "string", "minLength": 1 },
+        "impact": { "type": "string", "minLength": 1 },
+        "mitigation": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

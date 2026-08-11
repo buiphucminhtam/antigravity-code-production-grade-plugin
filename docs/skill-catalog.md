@@ -13,7 +13,7 @@ Forgewright includes 55+ skills organized into 8 categories. Skills are loaded o
 | [Game Development](#game-development) | 15 | Unity, Unreal, Godot, Roblox, Phaser 3, Three.js |
 | [AI/ML](#aiml) | 4 | AI Engineer, Prompt Engineer, Data Scientist, NotebookLM |
 | [DevOps](#devops) | 5 | DevOps, SRE, Database Engineer, Performance Engineer, Security |
-| [Design](#design) | 6 | UX Researcher, UI Designer, Interaction Designer, etc. |
+| [Design](#design) | 6 | UX Researcher, Concept Artist, Art Director, UI Designer, Interaction Designer, etc. |
 | [Growth](#growth) | 3 | Growth Marketer, Conversion Optimizer |
 | [Meta](#meta) | 5 | Skill Maker, MCP Generator, Project Manager, etc. |
 
@@ -101,9 +101,10 @@ Forgewright includes 55+ skills organized into 8 categories. Skills are loaded o
 | Skill | Description | Use When |
 |-------|-------------|-----------|
 | **ux-researcher** | User research, usability testing | "Research user needs" |
+| **concept-artist** | Divergent visual concepts and selected concept packets | "Explore visual directions" |
+| **art-director** | Style DNA, visual gates, and production art direction | "Define the visual style" |
 | **ui-designer** | UI design, visual systems | "Design the interface" |
 | **interaction-designer** | Micro-interactions, animations | "Design the interactions" |
-| **art-director** | Art direction, visual vision | "Define the visual style" |
 | **vision-review** | AI-generated art quality check | "Review AI-generated assets" |
 | **accessibility-engineer** | Accessibility audits | "Check accessibility" |
 

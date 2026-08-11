@@ -16,6 +16,16 @@ expertMode:
     maxExpertCallsPerRun: 12
     requireConfirmationAbove: 3
 
+# Native Codex subagent routing. These values are preferences; apply them only
+# when the active spawn_agent schema advertises the exact model and effort.
+subagents:
+  codex:
+    default:
+      model: "gpt-5.6-luna"
+      reasoning_effort: "high"
+    tiers: {}
+    agent_types: {}
+
 token_tracking:
   enabled: true
   log_dir: "~/.forgewright/usage"

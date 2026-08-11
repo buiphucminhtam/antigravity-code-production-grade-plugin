@@ -1,97 +1,63 @@
 # Game 2D Icon Prompt Template
 
-## Context
-- **Asset type:** Game UI Icon (inventory, abilities, items, HUD)
-- **Project style:** READ FROM .forgewright/art-direction/game-art-contract.json
-- **Art style:** [Pixel art / Vector / Hand-drawn]
-- **Size:** [SIZE]×[SIZE]px (e.g., 64×64, 32×32, 16×16)
+## Contract inputs
 
-## Style Constraints
+- **Approved Style DNA:** [APPROVED_STYLE_DNA]
+- **Reference-role map:** [REFERENCE_ROLE_MAP]
+- **Observed or credible drift:** [OBSERVED_OR_CREDIBLE_DRIFT]
+- **Asset family:** [ASSET_FAMILY]
+- **Real-scale context:** [REAL_SCALE_CONTEXT]
+- **Platform and production constraints:** [PLATFORM_AND_PRODUCTION_CONSTRAINTS]
+- **Icon type:** [ICON_TYPE]
+- **Size:** [SIZE]×[SIZE]px
 
-- **Size:** [SIZE]px (STRICT — icons must be exact size)
-- **Color palette:** READ FROM .forgewright/art-direction/game-art-contract.json (MAX 4 colors including outline)
-- **Outline:** 1-2px, color [BORDER_COLOR]
-- **Grid:** Pixel-perfect (if pixel art)
+## Style and technical bindings
 
-## Generation Prompt
+- **Rendering mode:** [RENDERING_MODE]
+- **Shape and silhouette grammar:** [SHAPE_AND_SILHOUETTE_RULES]
+- **Color roles and semantic states:** [COLOR_ROLES_AND_STATES]
+- **Outline / edge treatment:** [OUTLINE_EDGE_RULES]
+- **Grid and scaling policy:** [GRID_AND_SCALING_POLICY]
+- **Required negative constraints:** [PROHIBITED_DRIFT]
+- **Set lineage and variation:** [ICON_SET_LINEAGE_AND_VARIATION]
 
-Generate a game icon matching these exact specifications.
+Any color count, outline width, detail threshold, or contrast target must be
+derived from the approved contract and tested at `[REAL_SCALE_CONTEXT]`; this
+template does not choose a universal number. `[PROHIBITED_DRIFT]` is evidence-
+backed prohibited drift for this icon family, not a global denylist.
 
-**⚠️ CRITICAL:**
+## Generation prompt
 
-**Size — STRICT:**
-- Icon must be exactly [SIZE]×[SIZE]px
-- All icons in a set must use same grid
-- No anti-aliasing (if pixel art)
-- Use nearest-neighbor scaling only
+Generate a `[ICON_TYPE]` icon that belongs to `[ASSET_FAMILY]`, preserving the
+approved Style DNA, reference roles, and semantic state hierarchy. Make the
+silhouette and key action/item read at `[REAL_SCALE_CONTEXT]`; resolve secondary
+detail only where `[PLATFORM_AND_PRODUCTION_CONSTRAINTS]` supports it.
 
-**Readability at scale:**
-```
-[SIZE] = 16px:  Silhouette only, 1 color + outline, no internal detail
-[SIZE] = 32px:  Basic shape + 1 main detail
-[SIZE] = 64px:  Full detail, readable face/expression
-```
+### Icon role examples
 
-**Color limit — MANDATORY:**
-- Maximum 4 colors per icon (including outline)
-- Color 1: Main fill
-- Color 2: Highlight
-- Color 3: Shadow
-- Color 4: Outline
+Use the applicable contract-defined role, not a default visual treatment:
 
-**AI tells to AVOID:**
-- Over-detailed for size (16px icon ≠ 256px illustration)
-- Too many colors
-- Complex gradients
-- Poor silhouette at small sizes
-- Inconsistent style within icon set
+- **Inventory item:** [INVENTORY_ITEM_READ_AND_RARITY_RULES]
+- **Ability/action:** [ABILITY_ACTION_READ_AND_COOLDOWN_SPACE]
+- **HUD element:** [HUD_STATE_AND_REDUNDANT_CUE_RULES]
+- **Navigation:** [NAVIGATION_DIRECTION_AND_MARKER_RULES]
 
-## Icon Types
+### Set consistency
 
-**For [ICON_TYPE], generate:**
+- **Shared geometry/material/camera:** [SET_SHARED_RULES]
+- **Allowed variation:** [SET_ALLOWED_VARIATION]
+- **State and accessibility variants:** [SET_STATE_VARIANTS]
+- **Anti-drift check:** [SET_DRIFT_CHECK]
 
-**Inventory Item:**
-- Simple shape: recognizable from silhouette
-- Color coding: item rarity (common/uncommon/rare/legendary)
-- Icon frame: optional, consistent across set
+## Output and acceptance
 
-**Ability/Action:**
-- Clear action symbol (sword = attack, shield = defend)
-- Cooldown indicator space (if applicable)
-- Cast animation hint (if animated)
+- **Exact dimensions and bounds:** [EXACT_DIMENSIONS_AND_BOUNDS]
+- **Format and transparency:** [OUTPUT_FORMAT_AND_TRANSPARENCY]
+- **Naming:** [NAMING_CONVENTION]
+- **Anti-aliasing / scaling:** [ANTIALIASING_AND_SCALING_POLICY]
+- **Family and real-scale artifact:** [FAMILY_AND_SCALE_ARTIFACT]
+- **Review owner and next test:** [REVIEW_OWNER_AND_NEXT_TEST]
 
-**HUD Element:**
-- Health: Red/orange fill
-- Mana: Blue/purple fill
-- Stamina: Green fill
-- Experience: Yellow fill
-- Progress bars: Clear fill vs empty
-
-**Navigation:**
-- Arrow: Directional, 8-way or 4-way
-- Marker: Pin/dot/flag with readable symbol
-- Minimap: Simplified silhouette
-
-## Set Consistency
-
-**All icons in a set must share:**
-- Same pixel grid
-- Same outline style (1px / 2px)
-- Same color palette
-- Same perspective (front-facing / top-down)
-- Same detail level
-
-**Inconsistent = rejected**
-
-## Metadata
-- **Format:** PNG with transparency
-- **Naming:** `icon-[category]-[name]-[size].png`
-- **Example:** `icon-item-health-potion-32x32.png`
-
-## Acceptance Checklist
-- [ ] Exact pixel size [SIZE]×[SIZE]
-- [ ] Maximum 4 colors
-- [ ] Readable silhouette at [SIZE]
-- [ ] Consistent with icon set
-- [ ] No anti-aliasing artifacts
-- [ ] Clear at small scale
+Non-default examples: a 16px silhouette-only read, a 32px single interior
+landmark, or a 64px face detail are example scale tests, not mandatory detail
+levels. Keep only the scale cases required by the target platform.

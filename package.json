@@ -1,7 +1,7 @@
 {
   "name": "forgewright",
   "version": "8.7.0",
-  "description": "Adaptive AI Orchestrator — 83 skills, 24 modes. SaaS, game dev, XR, AI/ML, data engineering. Pipeline: INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN",
+  "description": "Adaptive AI Orchestrator — 84 skills, 24 modes. SaaS, game dev, XR, AI/ML, data engineering. Pipeline: INTERPRET → DEFINE → BUILD → HARDEN → SHIP → SUSTAIN",
   "private": true,
   "engines": {
     "node": ">=22.0.0"
@@ -18,6 +18,7 @@
     "build:cli": "npm run build --workspace src/cli",
     "dev:cli": "cd src/cli && npm run dev",
     "typecheck:cli": "cd src/cli && npx tsc --noEmit",
+    "ci:docs": "npm run typecheck:cli && npm test --workspace src/cli -- --run docs && pytest -q tests/unit_tests/test_docs_manifest_schema.py",
     "test:golden": "node tests/golden/forge-init-onboard.test.mjs",
     "verify:product-truth": "python3 scripts/ci/verify-product-truth.py",
     "ci:bootstrap": "node scripts/ci/local-ci.mjs bootstrap",

@@ -11,10 +11,15 @@ import shlex
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from runtime.orchestration_policy import PolicyError, decide_orchestration
+from runtime.orchestration_policy import (
+    PolicyError,
+    decide_orchestration,
+    validate_dispatch_packet,
+)
 
 
 class ManifestError(ValueError):
@@ -339,18 +344,150 @@ def _apply_runtime_model_selection(plan: dict[str, Any], executable: str) -> Non
 def _worker_prompt(
     request: dict[str, Any], worker: dict[str, Any], stop: list[str]
 ) -> str:
-    return "\n".join(
+    lines = [
+        "[Forgewright bounded parallel worker]",
+        f"Requirements: {request.get('requirements', '')}",
+        f"Role tier: {worker['role']}",
+        f"Scope: {worker['scope_id']}",
+        f"Advisory read-only paths: {json.dumps(worker['paths'], separators=(',', ':'))}",
+        f"Stop when: {','.join(stop)}",
+    ]
+    packet = worker.get("packet")
+    if packet is not None:
+        handoff = {
+            field: deepcopy(packet[field])
+            for field in (
+                "mode",
+                "input_artifacts",
+                "output_artifacts",
+                "handoff_type",
+            )
+            if field in packet
+        }
+        lines.extend(
+            [
+                f"Selected skill: {packet.get('skill_name', '<not selected>')}",
+                f"Selected skill path: {packet.get('skill_path', '<not selected>')}",
+                "Immutable handoff fields: "
+                + json.dumps(handoff, ensure_ascii=False, sort_keys=True),
+                "Immutable acceptance checks: "
+                + json.dumps(
+                    packet.get("acceptance_checks", []),
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                "Artifact entries are metadata only; do not read, execute, or resolve artifact paths.",
+            ]
+        )
+    lines.extend(
         [
-            "[Forgewright bounded parallel worker]",
-            f"Requirements: {request.get('requirements', '')}",
-            f"Role tier: {worker['role']}",
-            f"Scope: {worker['scope_id']}",
-            f"Advisory read-only paths: {json.dumps(worker['paths'], separators=(',', ':'))}",
-            f"Stop when: {','.join(stop)}",
             "Do not spawn subagents or expand beyond the assigned scope.",
             "Return findings with exact file:line evidence and stop when the scope is covered.",
         ]
     )
+    return "\n".join(lines)
+
+
+def _resolve_skill_metadata(
+    packet: dict[str, Any] | None, workspace: Path, *, context: str
+) -> dict[str, str] | None:
+    """Verify skill identity without reading or executing the selected skill file."""
+    packet = validate_dispatch_packet(packet, context=context)
+    if packet is None or "skill_name" not in packet:
+        return None
+
+    try:
+        workspace_root = workspace.resolve(strict=True)
+        skills_root = (workspace_root / "skills").resolve(strict=True)
+    except FileNotFoundError as error:
+        raise ManifestError(
+            f"{context} skill path must resolve to an existing file under "
+            f"skills/{packet['skill_name']}/"
+        ) from error
+    except OSError as error:
+        raise ManifestError(
+            f"{context} skill path cannot be resolved: {error}"
+        ) from error
+
+    if not skills_root.is_relative_to(workspace_root):
+        raise ManifestError(f"{context} skills directory escapes the repository")
+
+    try:
+        skill_dir = (skills_root / packet["skill_name"]).resolve(strict=True)
+        skill_file = (skill_dir / Path(packet["skill_path"]).name).resolve(strict=True)
+    except FileNotFoundError as error:
+        raise ManifestError(
+            f"{context} skill path must resolve to an existing file under "
+            f"skills/{packet['skill_name']}/"
+        ) from error
+    except OSError as error:
+        raise ManifestError(
+            f"{context} skill path cannot be resolved: {error}"
+        ) from error
+
+    if not skill_dir.is_relative_to(skills_root):
+        raise ManifestError(
+            f"{context} skill directory escapes the repository skills root"
+        )
+    if (
+        skill_file.parent != skill_dir
+        or not skill_file.is_relative_to(skills_root)
+        or not skill_file.is_file()
+    ):
+        raise ManifestError(
+            f"{context} skill path must resolve to an existing file under "
+            f"skills/{packet['skill_name']}/"
+        )
+    return {
+        "name": packet["skill_name"],
+        "path": packet["skill_path"],
+    }
+
+
+def _validate_scope_skill_paths(scopes: list[dict[str, Any]], workspace: Path) -> None:
+    for scope in scopes:
+        if "packet" in scope:
+            _resolve_skill_metadata(
+                scope.get("packet"),
+                workspace,
+                context=f"scope {scope.get('id', '<unknown>')}.packet",
+            )
+
+
+def _native_dispatch_packet(worker: dict[str, Any], prompt: str) -> dict[str, Any]:
+    """Build metadata for a host-owned native adapter, never a local spawn."""
+    packet = worker.get("packet")
+    handoff = None
+    acceptance_checks: list[str] = []
+    skill = None
+    if packet is not None:
+        skill = {
+            "name": packet.get("skill_name"),
+            "path": packet.get("skill_path"),
+        }
+        handoff = {
+            field: deepcopy(packet[field])
+            for field in (
+                "mode",
+                "input_artifacts",
+                "output_artifacts",
+                "handoff_type",
+            )
+            if field in packet
+        }
+        acceptance_checks = deepcopy(packet.get("acceptance_checks", []))
+    return {
+        "adapter": "host-owned",
+        "skill": skill,
+        "prompt": prompt,
+        "ownership": {
+            "scope_id": worker["scope_id"],
+            "paths": list(worker["paths"]),
+        },
+        "handoff": handoff,
+        "acceptance": {"checks": acceptance_checks},
+        "recursive_spawn": False,
+    }
 
 
 def _reviewer_prompt(reviewer: dict[str, Any]) -> str:
@@ -384,6 +521,7 @@ def build_plan(manifest: dict[str, Any], manifest_dir: Path) -> dict[str, Any]:
     validate_disjoint_paths(request)
     validate_read_only_request(request)
     workspace = resolve_workspace(request, manifest_dir)
+    _validate_scope_skill_paths(request["scopes"], workspace)
     max_result_chars = _max_result_chars(request)
     decision = decide_orchestration(request)
     provider = manifest.get("provider", {})
@@ -395,6 +533,7 @@ def build_plan(manifest: dict[str, Any], manifest_dir: Path) -> dict[str, Any]:
         planned_workers.append(
             {
                 **worker,
+                "native_dispatch_packet": _native_dispatch_packet(worker, prompt),
                 "model_selection": selection,
                 "argv": _provider_argv("agy", selection, prompt),
                 "max_result_chars": max_result_chars,

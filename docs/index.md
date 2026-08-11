@@ -2,7 +2,7 @@
 
 > **Central documentation index for Forgewright**
 
-Welcome to Forgewright — an adaptive orchestrator with 83 AI skills covering the full software development lifecycle.
+Welcome to Forgewright — an adaptive orchestrator with 84 AI skills covering the full software development lifecycle.
 
 ## Quick Navigation
 
@@ -18,6 +18,7 @@ Welcome to Forgewright — an adaptive orchestrator with 83 AI skills covering t
 - **[Setup Guide](SETUP.md)** — Detailed installation instructions
 - **[Configuration Guide](SETUP-REFERENCE.md)** — Configure Forgewright for your project
 - **[CLI Init/Onboard Golden Path](guides/forge-init-onboard.md)** — Deterministic project initialization and profiling workflow
+- **[Docs Hub](guides/docs-hub.md)** — Build a privacy-safe multi-project HTML/CSS documentation portal
 
 ### Core Concepts
 - **[Mode Reference](mode-reference.md)** — 24 execution modes explained
@@ -27,6 +28,7 @@ Welcome to Forgewright — an adaptive orchestrator with 83 AI skills covering t
 
 ### Architecture
 - **[Architecture Overview](architecture.md)** — System design and component interactions
+- **[ADR-011: Central Docs Hub](adr/ADR-011-central-docs-hub.md)** — Local-first documentation architecture and safety boundaries
 
 ### Migration & Troubleshooting
 - **[Migration Guide](migration/v8-to-v9.md)** — Upgrade from v8 to v9 `[Planned]`
@@ -37,7 +39,7 @@ Welcome to Forgewright — an adaptive orchestrator with 83 AI skills covering t
 
 | Feature | Description |
 |---------|-------------|
-| **Skill Health Check** | `bash scripts/skill-health.sh check` — validates all 83 canonical skills |
+| **Skill Health Check** | `bash scripts/skill-health.sh check` — validates all 84 canonical skills |
 | **Dependency Graph** | `bash scripts/dep-graph.sh` — detects cycles, generates DOT/Mermaid exports |
 | **Skill Versioning** | `bash scripts/skill-rollback.sh` — rollback skills to previous versions |
 | **Session Tracker** | `bash scripts/forgewright-session-tracker.sh` — tracks consecutive plan failures |

@@ -249,7 +249,7 @@ Forgewright:
 
 **Trigger signals:** "design UI", "wireframes", "design system", "color palette", "UX flow"
 
-**Skills invoked:** UX Researcher → UI Designer
+**Skills invoked:** UX/research → Concept Artist → Art Director → UI/technical handoff
 
 **Use when:** UI/UX design work
 
@@ -257,7 +257,9 @@ Forgewright:
 User: "Design the checkout flow"
 Forgewright:
   1. UX Researcher → User research
-  2. UI Designer → Wireframes, design system
+  2. Concept Artist → Distinct visual directions and selected concept packet
+  3. Art Director → Style DNA and production visual gates
+  4. UI/technical handoff → Wireframes, design system, and implementation constraints
 ```
 
 ---
@@ -283,17 +285,27 @@ Forgewright:
 
 **Trigger signals:** "game", "Unity", "Unreal", "Godot", "Roblox", "Phaser", "Three.js", "gameplay"
 
-**Skills invoked:** Game Designer → [Engineer by platform] → [Level, Narrative, Audio as needed]
+**Skills invoked:** UX/research → Concept Artist → Art Director → UI/technical/engine handoff → [Level, Narrative, Audio as needed]
 
 **Use when:** Building games
 
 ```
 User: "Build a Unity game"
 Forgewright:
-  1. Game Designer → Mechanics, balance
-  2. Unity Engineer → Implementation
-  3. Level Designer → Levels
+  1. UX/research → Player needs and constraints
+  2. Concept Artist → Distinct visual directions and selected concept packet
+  3. Art Director → Style DNA and production visual gates
+  4. UI/technical/engine handoff → Unity implementation constraints
+  5. Level Designer → Levels
 ```
+
+The executable route resolves ordered verified paths with
+`python3 scripts/runtime/skill_routing.py --mode design|game-build --config
+.forgewright/skills-config.json`, validates concept/art artifacts with
+`python3 scripts/art-direction/creative-handoff.py validate-handoff "$CONCEPT_PACKET" "$ART_DIRECTION_GATES"`, freezes a
+skill-aware dispatch packet, and then uses the host-owned native `spawn_agent`
+only after `python3 scripts/runtime/codex-subagent-routing.py` resolves safe
+spawn arguments.
 
 ### Game Engine Routing
 

@@ -1,77 +1,68 @@
 # UI Card Prompt Template
 
-## Context
+## Contract inputs
+
+- **Approved Style DNA:** [APPROVED_STYLE_DNA]
+- **Reference-role map:** [REFERENCE_ROLE_MAP]
+- **Observed or credible drift:** [OBSERVED_OR_CREDIBLE_DRIFT]
+- **Asset family:** [ASSET_FAMILY]
+- **Real-scale context:** [REAL_SCALE_CONTEXT]
+- **Platform and production constraints:** [PLATFORM_AND_PRODUCTION_CONSTRAINTS]
 - **Asset type:** UI Card (content container)
-- **Project style:** READ FROM .forgewright/art-direction/game-art-contract.json
-- **Output format:** PNG or SVG
+- **Output format:** [OUTPUT_FORMAT]
 
-## Style Constraints
+## Style and layout bindings
 
-- **Background:** [BG_HEX] (light mode) or dark variant
-- **Border:** 1px solid [BORDER_HEX]
-- **Border radius:** [BR_MD]px
-- **Shadow:** [SHADOW_SM] — subtle, matching background tint
-- **Padding:** 16px-24px internal
+- **Surface and semantic colors:** [COLOR_ROLES_AND_STATES]
+- **Typography hierarchy:** [TYPOGRAPHY_SYSTEM]
+- **Border, radius, shadow, and material:** [SURFACE_AND_DEPTH_RULES]
+- **Spacing and content density:** [SPACING_AND_DENSITY_RULES]
+- **Focal order and alignment:** [COMPOSITION_RULES]
+- **Responsive behavior:** [RESPONSIVE_CARD_RULES]
+- **Required negative constraints:** [PROHIBITED_DRIFT]
 
-## Generation Prompt
+The contract decides whether a card is centered, offset, symmetric, asymmetric,
+flat, elevated, bordered, or textured. This template does not prescribe a layout
+shape or fixed visual token. Treat `[PROHIBITED_DRIFT]` as evidence-backed
+prohibited drift for the named family and real-scale context.
 
-Generate a UI card matching this exact specification. The card must look professional and human-designed.
+## Generation prompt
 
-**Visual Style:**
-- Style: Clean, minimal — NO glassmorphism, NO heavy blur
-- Background: Solid [BG_HEX] — NOT gradient
-- Border: 1px solid [BORDER_HEX] — subtle, not dominant
-- Border radius: [BR_MD]px (NOT [BR_LG]px — too bubbly)
-- Shadow: Subtle, z-index 10 equivalent — NO large drop shadow
+Generate a UI card for `[ASSET_FAMILY]` that matches the approved Style DNA and
+reference roles. Preserve hierarchy and legibility at `[REAL_SCALE_CONTEXT]`,
+then resolve content detail within `[PLATFORM_AND_PRODUCTION_CONSTRAINTS]`.
+Apply `[COMPOSITION_RULES]` and `[SPACING_AND_DENSITY_RULES]` without adding
+unapproved decoration or generic drift.
 
-**Typography:**
-- Heading: [HEADING_FONT], weight 600, size 18-20px, color [TEXT_HEX]
-- Body: [BODY_FONT], weight 400, size 14-16px, color [TEXT_HEX]
-- Muted: [MUTED_HEX], size 12-14px
-- Line height: 1.5 for body text
+### Content and states
 
-**Content Layout:**
-- Header: Optional, with title + action icon
-- Body: Text, image, or mixed content
-- Footer: Optional, with actions (buttons, links)
-- Spacing: 16px between sections
+- **Header:** [CARD_HEADER_RULES]
+- **Body:** [CARD_BODY_RULES]
+- **Footer/actions:** [CARD_FOOTER_RULES]
+- **Basic:** [BASIC_CARD_VARIANT]
+- **Elevated:** [ELEVATED_CARD_VARIANT]
+- **Interactive:** [INTERACTIVE_CARD_VARIANT]
+- **Stat:** [STAT_CARD_VARIANT]
+- **Media:** [MEDIA_CARD_VARIANT]
+- **Action:** [ACTION_CARD_VARIANT]
+- **Hover / focus / active / disabled / loading:** [CARD_STATE_RULES]
 
-**Card Variants:**
-1. **Basic:** Border only, no shadow
-2. **Elevated:** Shadow added (for floating above content)
-3. **Interactive:** Hover state — border color changes to [PRIMARY_HEX], slight translateY(-2px)
-4. **Stat Card:** Large number + label + trend indicator
-5. **Media Card:** Image top, content bottom
-6. **Action Card:** Prominent CTA button
+### Family consistency
 
-**Layout — AVOID these AI patterns:**
-- ❌ Three equal-width cards in a row → Use: 2-column, asymmetric, or bento grid
-- ❌ Centered content → Use: left-aligned or off-center composition
-- ❌ Equal padding all sides → Use: larger padding top/bottom, tighter inline spacing
-- ❌ Purple or blue accent → Use: [PRIMARY_HEX] or [ACCENT_HEX]
-- ❌ Circular avatar images → Use: rounded square (border-radius: 8px)
+- **Shared lineage:** [CARD_FAMILY_LINEAGE]
+- **Allowed variation:** [CARD_ALLOWED_VARIATION]
+- **Cross-family separation:** [CROSS_FAMILY_HIERARCHY]
+- **Observed drift correction:** [DRIFT_CORRECTION_MECHANISM]
 
-**Composition:**
-- Width: Variable (min 280px, max 400px for standalone)
-- Aspect ratio: Variable based on content
-- Background: Never pure white #FFFFFF — use #FAFAFA or [BG_HEX]
+Non-default examples: a 280–400px standalone width, 16–24px padding, a left
+aligned body, or a two-column/bento arrangement are examples only. Retain them
+only when the actual viewport, content model, and Style DNA support them.
 
-**Negative prompts (NEVER generate):**
-- ❌ Purple/blue neon glow
-- ❌ Gradient backgrounds or borders
-- ❌ Large shadow (max shadow-sm equivalent)
-- ❌ Circular spinner or loading indicator inside card
-- ❌ Generic Inter font
-- ❌ Pure black #000000
-- ❌ Three equal cards side by side
-- ❌ Centered everything
+## Output and acceptance
 
-## Metadata
-- **Format:** PNG with transparency / SVG
-- **Naming:** `card-[variant]-[W]x[H].png`
-
-## Acceptance Checklist
-- [ ] No AI tells (purple glow, 3 equal columns, generic fonts)
-- [ ] Consistent border radius (same across all card variants)
-- [ ] Proper typography hierarchy
-- [ ] Interactive states defined (hover, focus, active)
+- **Dimensions and responsive states:** [DIMENSIONS_AND_RESPONSIVE_STATES]
+- **Format and transparency:** [OUTPUT_FORMAT]
+- **Naming:** [NAMING_CONVENTION]
+- **Typography and hierarchy artifact:** [TYPOGRAPHY_REVIEW_ARTIFACT]
+- **Family / scale review:** [FAMILY_AND_SCALE_ARTIFACT]
+- **Review owner and next test:** [REVIEW_OWNER_AND_NEXT_TEST]

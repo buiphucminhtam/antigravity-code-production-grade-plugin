@@ -1,88 +1,63 @@
 # UI Hero Section Prompt Template
 
-## Context
+## Contract inputs
+
+- **Approved Style DNA:** [APPROVED_STYLE_DNA]
+- **Reference-role map:** [REFERENCE_ROLE_MAP]
+- **Observed or credible drift:** [OBSERVED_OR_CREDIBLE_DRIFT]
+- **Asset family:** [ASSET_FAMILY]
+- **Real-scale context:** [REAL_SCALE_CONTEXT]
+- **Platform and production constraints:** [PLATFORM_AND_PRODUCTION_CONSTRAINTS]
 - **Asset type:** Hero Section (landing page above-the-fold)
-- **Project style:** READ FROM .forgewright/art-direction/game-art-contract.json
-- **Output format:** Full-width composition
+- **Output format:** [OUTPUT_FORMAT]
 
-## Style Constraints
+## Style and composition bindings
 
-- **Background:** [BG_HEX] or dark [PRIMARY_HEX] variant
-- **Typography:** [HEADING_FONT] + [BODY_FONT]
-- **Primary color:** [PRIMARY_HEX]
-- **Accent:** [ACCENT_HEX]
-- **Spacing:** 4px grid, large section gaps (64px+)
+- **Background and atmosphere:** [BACKGROUND_AND_ATMOSPHERE_RULES]
+- **Typography and type/UI relationship:** [TYPOGRAPHY_SYSTEM]
+- **Color roles and focal contrast:** [COLOR_ROLES_AND_FOCAL_HIERARCHY]
+- **Composition, crop, and focal order:** [COMPOSITION_RULES]
+- **Responsive behavior and breakpoints:** [RESPONSIVE_HERO_RULES]
+- **Required negative constraints:** [PROHIBITED_DRIFT]
 
-## Generation Prompt
+The approved basis decides whether the hero is centered, offset, asymmetric,
+symmetrical, full-bleed, split, cropped, or text-led. Do not make any of those
+choices universal. Review `[PROHIBITED_DRIFT]` as evidence-backed prohibited
+drift for this hero family and viewport.
 
-Generate a hero section that feels editorial and human-designed — NOT generic AI output.
+## Generation prompt
 
-**🚫 AVOID: The most common AI hero mistakes:**
-- Centered H1 over dark background
-- Gradient text on headings
-- Three feature cards in equal columns below
-- Purple/blue neon glow effects
-- Generic Inter font
+Generate a hero section for `[ASSET_FAMILY]` that communicates the approved
+creative promise at `[REAL_SCALE_CONTEXT]`. Use the assigned reference roles and
+`[COMPOSITION_RULES]` to stage the headline, visual, CTA, and optional proof.
+Preserve type hierarchy, accessibility, and responsive behavior under
+`[PLATFORM_AND_PRODUCTION_CONSTRAINTS]`; apply only `[PROHIBITED_DRIFT]`.
 
-**✅ USE INSTEAD:**
+### Composition options
 
-**Layout — Choose ONE asymmetric approach:**
-1. **Split screen:** 60% text left, 40% visual right (NOT 50/50)
-2. **Off-center:** Text positioned at left third, visual fills right two-thirds
-3. **Magazine:** Large headline overlapping a full-bleed image
-4. **Asymmetric grid:** Bento-style layout with varying card sizes
+Select one only when the Style DNA or a tested direction approves it:
 
-**Background:**
-- Solid color OR subtle texture (noise, grain)
-- Dark mode: [BACKGROUND_COLOR] dark variant — NOT pure black #000000
-- Light mode: [BG_HEX] or slightly off-white (#FAFAFA)
-- NO large gradient fills (small gradient accents OK)
+1. **Split screen:** [SPLIT_SCREEN_RULES]
+2. **Offset composition:** [OFFSET_COMPOSITION_RULES]
+3. **Magazine / full-bleed:** [MAGAZINE_COMPOSITION_RULES]
+4. **Grid / bento:** [GRID_COMPOSITION_RULES]
+5. **Other approved structure:** [OTHER_COMPOSITION_RULES]
 
-**Typography:**
-- Heading: [HEADING_FONT] (NOT Inter), weight 700-800, size 48-64px
-- Subheading: [BODY_FONT], weight 400, size 18-20px, color [MUTED_HEX]
-- NO gradient text on headings — use weight and size for hierarchy
-- Line height: 1.1 for headings, 1.6 for body
+These are **non-default examples**, not a mandatory asymmetry rule.
 
-**Visual:**
-- Image/illustration: Abstract, geometric, or editorial photography style
-- NO generic tech illustration with floating circles/nodes
-- Position: Offset, not perfectly centered
+### Content and supporting elements
 
-**CTA (Call to Action):**
-- Primary button: [PRIMARY_HEX] background, clear action text
-- Secondary: Text link or ghost button
-- NO: "Get Started" or "Learn More" — use specific copy
+- **Heading and subheading:** [HERO_COPY_AND_TYPE_RULES]
+- **Visual asset / illustration:** [HERO_VISUAL_RULES]
+- **Primary and secondary CTA:** [HERO_CTA_RULES]
+- **Social proof, if applicable:** [SOCIAL_PROOF_RULES]
+- **Below-the-fold relationship, if shown:** [BELOW_FOLD_RULES]
 
-**Social proof (if included):**
-- Use realistic company names (NOT: Acme, Nexus, SmartFlow)
-- Use organic messy numbers (NOT: 99.99%, 50%, $9.99)
+## Output and acceptance
 
-**Below the fold (if shown):**
-- NOT three equal cards — use asymmetric grid
-- Feature cards with varying widths
-- Different card heights for rhythm
-
-**Negative prompts (NEVER generate):**
-- ❌ Centered hero layout
-- ❌ Gradient text headers
-- ❌ Three equal feature cards
-- ❌ Purple/blue neon glow
-- ❌ Inter font
-- ❌ Circular node network illustrations
-- ❌ "Elevate", "Seamless", "Unleash", "Next-Gen" copy
-- ❌ Generic company names or fake round numbers
-- ❌ Default shadcn/ui styling
-
-## Metadata
-- **Dimensions:** Full viewport width, 600-800px height
-- **Format:** PNG or SVG
-- **Naming:** `hero-[layout-type]-[W]x[H].png`
-
-## Acceptance Checklist
-- [ ] Asymmetric layout (NOT centered)
-- [ ] No gradient text
-- [ ] No three equal columns
-- [ ] No AI tells
-- [ ] Typography hierarchy clear
-- [ ] CTA is specific (not generic)
+- **Dimensions / viewport range:** [DIMENSIONS_AND_VIEWPORT_RANGE]
+- **Format:** [OUTPUT_FORMAT]
+- **Naming:** [NAMING_CONVENTION]
+- **Responsive and horizontal-overflow check:** [RESPONSIVE_REVIEW_ARTIFACT]
+- **Copy / accessibility check:** [COPY_ACCESSIBILITY_ARTIFACT]
+- **Review owner and next test:** [REVIEW_OWNER_AND_NEXT_TEST]

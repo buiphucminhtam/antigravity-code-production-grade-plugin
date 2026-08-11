@@ -86,4 +86,72 @@ def test_effective_env_prepends_resolved_node_directory() -> None:
     env = runner._effective_env()
     path_parts = env["PATH"].split(os.pathsep)
     assert path_parts[0] == str(Path(runner.python).resolve().parent)
-    assert str(Path("/tmp/fake-node/bin").resolve()) in path_parts[:6]
+    assert path_parts[1] == str(Path("/tmp/fake-node/bin").resolve())
+
+
+@pytest.mark.skipif(
+    os.name == "nt",
+    reason="PATH/shebang semantics are validated by Windows integration",
+)
+def test_effective_env_deduplicates_workspace_bins_in_deterministic_order(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module = _module()
+    workspace = tmp_path / "workspace"
+    root_modules = workspace / "node_modules"
+    mcp_modules = workspace / "mcp" / "node_modules"
+    cli_modules = workspace / "src" / "cli" / "node_modules"
+    for node_modules in (root_modules, mcp_modules, cli_modules):
+        (node_modules / ".bin").mkdir(parents=True)
+
+    monkeypatch.setattr(module, "ROOT", workspace)
+    monkeypatch.setenv("FORGEWRIGHT_ROOT_NODE_MODULES", str(root_modules))
+    monkeypatch.setenv("FORGEWRIGHT_MCP_NODE_MODULES", str(mcp_modules))
+    monkeypatch.setenv("FORGEWRIGHT_CLI_NODE_MODULES", str(cli_modules))
+    parent_path = [str(tmp_path / "parent-bin"), str(tmp_path / "parent-other")]
+    monkeypatch.setenv("PATH", os.pathsep.join(parent_path))
+
+    runner = module.LocalCI(dry_run=True, keep_going=False, timeout=1, base_ref=None)
+    runner.primary_node = str(tmp_path / "node" / "bin" / "node")
+    env = runner._effective_env()
+    path_parts = env["PATH"].split(os.pathsep)
+    local_prefix = [
+        str(Path(runner.python).resolve().parent),
+        str(Path(runner.primary_node).resolve().parent),
+        str(root_modules / ".bin"),
+        str(mcp_modules / ".bin"),
+        str(cli_modules / ".bin"),
+    ]
+
+    assert path_parts == local_prefix + parent_path
+    assert len(local_prefix) == len(set(local_prefix))
+    assert env["FORGEWRIGHT_EFFECTIVE_NODE_BIN"] == runner.primary_node
+
+
+@pytest.mark.skipif(
+    os.name == "nt",
+    reason="PATH/shebang semantics are validated by Windows integration",
+)
+def test_effective_env_omits_absent_local_bins_and_primary_node(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module = _module()
+    monkeypatch.setattr(module, "ROOT", tmp_path / "workspace")
+    for variable in (
+        "FORGEWRIGHT_ROOT_NODE_MODULES",
+        "FORGEWRIGHT_MCP_NODE_MODULES",
+        "FORGEWRIGHT_CLI_NODE_MODULES",
+        "FORGEWRIGHT_EFFECTIVE_NODE_BIN",
+    ):
+        monkeypatch.delenv(variable, raising=False)
+    parent_path = str(tmp_path / "parent-bin")
+    monkeypatch.setenv("PATH", parent_path)
+
+    runner = module.LocalCI(dry_run=True, keep_going=False, timeout=1, base_ref=None)
+    env = runner._effective_env()
+
+    assert env["PATH"].split(os.pathsep) == [
+        str(Path(runner.python).resolve().parent),
+        parent_path,
+    ]
+    assert "FORGEWRIGHT_EFFECTIVE_NODE_BIN" not in env

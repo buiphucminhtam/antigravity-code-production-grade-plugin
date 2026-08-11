@@ -17,6 +17,30 @@ Do not assume slash commands, named agents, or an external swarm runtime exist.
 Apply the required role lenses locally unless the user explicitly requests
 delegation or parallel work.
 
+## Ordered Creative Handoff and Dispatch
+
+Design and Game Build work share this handoff order:
+
+```text
+UX/research -> Concept Artist -> Art Director -> UI/technical/engine handoff
+```
+
+Use the explicit skill files `skills/concept-artist/LITE.md` and
+`skills/art-director/LITE.md`, followed by the applicable
+`skills/ui-designer/LITE.md`, `skills/technical-artist/LITE.md`, or engine skill.
+For each creative/downstream dispatch, execute this repository-owned chain:
+
+1. `python3 scripts/runtime/skill_routing.py --mode "$MODE" --config .forgewright/skills-config.json`
+   returns ordered, verified skill paths.
+2. `python3 scripts/art-direction/creative-handoff.py validate-handoff "$CONCEPT_PACKET" "$ART_DIRECTION_GATES"`
+   validates the concept and art artifacts.
+3. Freeze the skill-aware dispatch packet with the selected skill item/path,
+   validated artifacts, ownership, checks, tier, and stop conditions.
+4. Call `python3 scripts/runtime/codex-subagent-routing.py --config .production-grade.yaml --capabilities-json "$CODEX_SPAWN_CAPABILITIES_JSON" --tier "$TIER" --agent-type "$AGENT_TYPE" --overrides-json "$EXPLICIT_OVERRIDES_JSON"`.
+5. The host then invokes its **host-owned native `spawn_agent`** with the frozen
+   skill item/path and emitted `spawn_agent_args`. The repository does not own or
+   provide the native tool; if the host does not expose it, keep the work local.
+
 ## Steps
 
 1. **Detect the entry point**
@@ -47,14 +71,19 @@ delegation or parallel work.
      reservation, risk routing, and stop conditions.
    - Read `skills/_shared/protocols/model-tier.md`; record each selected scope's
      `scout`, `builder`, or `expert` tier before resolving any concrete model.
-   - Resolve model/reasoning overrides only from the active runtime's structured
-     capabilities. Otherwise keep selection `provider-managed` and omit the
-     override.
+   - Read `subagents.codex` from `.production-grade.yaml`. Resolve explicit task
+     override → agent type → tier → default, then validate the exact model and
+     reasoning effort against the active runtime's structured capabilities.
+     Immediately before each native spawn, run the exact command:
+     `python3 scripts/runtime/codex-subagent-routing.py --config .production-grade.yaml --capabilities-json "$CODEX_SPAWN_CAPABILITIES_JSON" --tier "$TIER" --agent-type "$AGENT_TYPE" --overrides-json "$EXPLICIT_OVERRIDES_JSON"`.
+     Pass only its emitted `spawn_agent_args` object to `spawn_agent`; otherwise
+     keep selection `provider-managed` and omit unsupported fields.
    - Freeze requirements, dependencies, owned paths, checks, advisory token
      budgets, deadlines, and stop conditions in the dispatch packet.
-   - If the policy returns workers and delegation is authorized, call the native
-     `spawn_agent` adapter for all independent scopes concurrently. Set explicit
-     ownership, forbid recursive spawn, and do not dispatch dependent scopes.
+   - If the policy returns workers and delegation is authorized, ask the host-owned
+     native `spawn_agent` adapter to run all independent scopes concurrently. Set
+     explicit ownership, forbid recursive spawn, and do not dispatch dependent
+     scopes.
      Use `scripts/parallel-dispatch-runner.py` only for its explicitly authorized
      read-only external adapter.
    - Wait for every selected result, verify its owned scope, then fan-in. Resolve
@@ -62,8 +91,8 @@ delegation or parallel work.
      requirements, diff, and raw evidence when the policy reserves one.
 
 4. **Execute the active phase**
-   - Concept: game promise, engine/platform, pillars, core loop, budgets, Style
-     DNA.
+   - Concept: game promise, engine/platform, pillars, core loop, budgets,
+     divergent visual concepts, selected concept packet, and approved Style DNA.
    - Systems Design: systems map, per-system specifications, dependencies,
      balance, UX, accessibility, acceptance criteria.
    - Technical Setup: architecture, ADRs, control manifest, test/build scaffold.

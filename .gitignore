@@ -39,7 +39,9 @@ __pycache__/
 .husky/_/
 
 # Antigravity planning directories (ephemeral planning notes)
-antigravity/planning/
+antigravity/planning/*
+!antigravity/planning/docs-hub/
+!antigravity/planning/docs-hub/**
 
 # Local sensitive configuration and credentials
 scripts/cf-dns-add.sh
@@ -70,6 +72,7 @@ _local_tmp_edits/
 .forgewright/reports/
 .forgewright/local-ci-venv/
 .forgewright/cache/
+.forgewright/docs-hub/
 .forgewright/memory-bank/
 .forgewright/subagent-context/
 .forgewright/bookkeep.log

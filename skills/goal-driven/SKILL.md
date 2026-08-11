@@ -91,7 +91,6 @@ Goals persist in `.forgewright/active-goal.json`:
   "created_at": "2026-05-24T13:30:00+07:00",
   "created_by": "user",
   "turns": 0,
-  "max_turns": 50,
   "last_evaluation": null,
   "status": "active",
   "progress": []
@@ -182,7 +181,6 @@ Feasibility: HIGH — Ready to proceed
   "verification": "npm test -- test/auth/",
   "created_at": "2026-05-24T13:35:00+07:00",
   "turns": 0,
-  "max_turns": 50,
   "status": "active"
 }
 ```
@@ -411,10 +409,6 @@ _Framework: Forgewright Goal-Driven Workflow v1.1_
 # .production-grade.yaml
 goal:
   auto_mode: true              # Approve tool calls automatically
-  max_turns: 50               # Safety limit (0 = unlimited)
-  stop_after:
-    turns: 50                 # or stop after N turns
-    minutes: 120              # or stop after N minutes
   progress_file: ".forgewright/goal-progress.md"
   state_file: ".forgewright/active-goal.json"
 ```
@@ -433,6 +427,16 @@ goal:
 
 ## Commands
 
+### Codex App Goal Compatibility
+
+- Set a Codex App goal with an objective only and leave `tokenBudget` unset or
+  `null`.
+- If the available runtime bridge requires a positive token budget, do not call
+  that bridge. Continue through the normal Codex task plan instead.
+- Never use a sentinel budget such as `1` to satisfy a tool schema; it
+  immediately turns a valid long-running task into a premature stop.
+- Clear a stale or budget-limited Codex goal before resuming normal execution.
+
 ### Setting a Goal
 ```
 /goal [completion condition]
@@ -450,7 +454,7 @@ Examples:
 ```
 Shows:
 - Current goal and condition
-- Turns elapsed / max turns
+- Turns elapsed
 - Last evaluation result
 - Progress summary
 
@@ -478,15 +482,15 @@ Cancels the active goal without completion.
 ### For Goal Setters
 1. **Be specific**: "All tests pass" > "Make it work"
 2. **Include constraints**: "Until tests pass AND no regressions"
-3. **Set limits**: "or stop after 20 turns" prevents runaway
-4. **Verify first**: Run verification command manually first
-5. **Start simple**: Complex goals may need breaking down
+3. **Verify first**: Run verification command manually first
+4. **Start simple**: Complex goals may need breaking down
+5. **Stop explicitly**: Clear the goal when the user no longer wants autonomous pursuit
 
 ### For Execution
 1. **Log everything**: Write progress to goal-progress.md
 2. **Verify often**: Check if goal is met after each turn
 3. **Handle errors**: Don't let one failure stop the goal
-4. **Respect limits**: Stop at max_turns if set
+4. **Respect runtime guards**: Timeouts and tool-call limits remain safety rails, not goal quotas
 5. **Be honest**: Report blockers, don't hide failures
 
 ---
@@ -496,7 +500,7 @@ Cancels the active goal without completion.
 | Mistake | Fix |
 |---------|-----|
 | Vague condition | Make it specific and verifiable |
-| No exit strategy | Set max_turns to prevent infinite loops |
+| No exit strategy | Use a specific, verifiable completion condition |
 | Ignoring failures | Fix failures before continuing |
 | No progress logging | Update goal-progress.md each turn |
 | Forgetting constraints | Check "no regressions" constraint |
@@ -508,5 +512,5 @@ Cancels the active goal without completion.
 - Goals run in same trust context as normal Forgewright
 - No additional permissions required
 - User can always `/goal clear` to stop
-- Safety limits (max_turns, timeout) prevent runaway
+- Runtime timeout and tool-call guards prevent runaway; the goal itself has no turn quota
 - Goal state files are user-writable for manual intervention

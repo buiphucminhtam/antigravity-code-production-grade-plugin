@@ -13,7 +13,7 @@
     <img src="https://img.shields.io/github/forks/buiphucminhtam/forgewright?style=flat-square&logo=github&label=Forks" alt="Forks" />
   </a>
   <img src="https://img.shields.io/badge/version-8.7.0-blue?style=flat-square" alt="Version" />
-  <img src="https://img.shields.io/badge/skills-83-brightgreen?style=flat-square" alt="Skills" />
+  <img src="https://img.shields.io/badge/skills-84-brightgreen?style=flat-square" alt="Skills" />
   <img src="https://img.shields.io/badge/MCP-Supported-purple?style=flat-square" alt="MCP Supported" />
   <img src="https://img.shields.io/badge/Architecture-Agentic_Framework-orange?style=flat-square" alt="Agentic Framework" />
   <a href="https://opensource.org/licenses/MIT">
@@ -222,7 +222,7 @@ Forgewright adapts to the scale of your project, offering different tiers of aut
 
 | Level | Features | Setup Required | Best For |
 | --- | --- | --- | --- |
-| **Level 1**<br/>Zero Setup | Basic chat, 83 auto-activated skills | Just run your AI chat | Quick questions, single-file scripts |
+| **Level 1**<br/>Zero Setup | Basic chat, 84 auto-activated skills | Just run your AI chat | Quick questions, single-file scripts |
 | **Level 2**<br/>Code Intelligence | `gitnexus_impact`, `gitnexus_query`, `gitnexus_rename` | `gitnexus setup` | Refactoring, code reviews, debugging |
 | **Level 3**<br/>GraphRAG Memory | Persistent local knowledge, automatic lesson retention | Python 3.8+ | Long-running projects, complex domains |
 | **Level 4**<br/>Full Power | Parallel dispatch, multi-repo support, full pipeline orchestration | MCP Setup script | Team projects, end-to-end autonomous dev |
@@ -393,13 +393,24 @@ Score your repository health locally before committing changes to the main branc
 bash scripts/forge-validate.sh
 ```
 
-### Sync Documentation to Shared Obsidian Wiki
+### Build the Local Docs Hub
 
-Easily publish your architectural records to a centralized Obsidian vault for your team.
+Create a privacy-safe manifest, register projects, and build a searchable static
+HTML/CSS portal without moving source documents.
 
 ```bash
-./scripts/forgewright-wiki-sync.sh
+forge docs init .
+forge docs registry add .
+forge docs build .
+forge docs doctor . --strict
 ```
+
+Use `forge docs build --all` for every registered project and
+`forge docs export obsidian --all` when an optional Obsidian vault is needed.
+The older `forgewright-wiki-sync*.sh` entry points remain legacy compatibility
+tools; new workflows should use the source-preserving Docs Hub.
+
+**[Read the Docs Hub Guide ➔](docs/guides/docs-hub.md)**
 
 ### Analyze Token Budget
 
@@ -449,6 +460,8 @@ forge token report --period week
 - **[Security Practices](.forgewright/security/README.md)**: Security scanner and vulnerability detection.
 - **[Advanced Guides](docs/guides/gitnexus.md)**: Detailed instructions for GitNexus, parallel dispatch, and testing.
 - **[ADR-010: Runtime Lifecycle Guard](docs/adr/ADR-010-runtime-lifecycle-guard.md)**: Port/process/disk reclamation across Claude, Codex and Antigravity.
+- **[Docs Hub](docs/guides/docs-hub.md)**: Multi-project static documentation, search, diagnostics, traceability, and Obsidian export.
+- **[ADR-011: Central Docs Hub](docs/adr/ADR-011-central-docs-hub.md)**: Source ownership, privacy, normalization, and rendering boundaries.
 - **[Changelog](CHANGELOG.md)**: Release history.
 
 ---

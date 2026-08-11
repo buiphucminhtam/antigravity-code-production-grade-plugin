@@ -1,7 +1,10 @@
+import asyncio
 import importlib.util
 import json
+from contextlib import asynccontextmanager
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -66,11 +69,115 @@ def test_code_dir_is_resolved_and_root_is_rejected(tmp_path: Path) -> None:
         orchestrator.resolve_code_dir(str(Path(Path.cwd().anchor)))
 
 
-def test_runtime_limits_reject_nonpositive_and_invalid_values() -> None:
-    with pytest.raises(ValueError, match="FORGEWRIGHT_MAX_TURNS"):
-        orchestrator.RuntimeLimits.from_env({"FORGEWRIGHT_MAX_TURNS": "0"})
+def test_runtime_limits_have_no_default_turn_quota() -> None:
+    assert orchestrator.RuntimeLimits.from_env({}).max_turns is None
+    assert (
+        orchestrator.RuntimeLimits.from_env({"FORGEWRIGHT_MAX_TURNS": "0"}).max_turns
+        is None
+    )
+
+
+def test_runtime_limits_reject_invalid_turn_caps() -> None:
     with pytest.raises(ValueError, match="FORGEWRIGHT_MAX_TURNS"):
         orchestrator.RuntimeLimits.from_env({"FORGEWRIGHT_MAX_TURNS": "many"})
+    with pytest.raises(ValueError, match="FORGEWRIGHT_MAX_TURNS"):
+        orchestrator.RuntimeLimits.from_env({"FORGEWRIGHT_MAX_TURNS": "-1"})
+
+
+def _install_fake_mcp(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    @asynccontextmanager
+    async def fake_stdio_client(_params):
+        yield object(), object()
+
+    class FakeClientSession:
+        def __init__(self, _read, _write):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, _exc_type, _exc, _traceback):
+            return False
+
+        async def initialize(self) -> None:
+            return None
+
+        async def list_tools(self):
+            return SimpleNamespace(tools=[])
+
+    monkeypatch.setattr(orchestrator, "stdio_client", fake_stdio_client)
+    monkeypatch.setattr(orchestrator, "ClientSession", FakeClientSession)
+
+
+def _tool_turn(index: int) -> dict[str, object]:
+    return {
+        "content": "",
+        "tool_calls": [
+            {
+                "id": f"call-{index}",
+                "type": "function",
+                "function": {"name": "missing_tool", "arguments": "{}"},
+            }
+        ],
+    }
+
+
+def test_run_without_turn_cap_continues_past_former_default(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / ".antigravity").mkdir()
+    (tmp_path / ".antigravity" / "mcp-manifest.json").write_text("{}")
+    _install_fake_mcp(monkeypatch)
+    agent = orchestrator.ForgewrightAgent("project", str(tmp_path))
+    agent.limits = replace(
+        agent.limits,
+        max_turns=None,
+        max_tool_calls_total=30,
+    )
+    calls = 0
+
+    def fake_call_api(_tools):
+        nonlocal calls
+        calls += 1
+        return _tool_turn(calls) if calls <= 21 else {"content": "done"}
+
+    monkeypatch.setattr(agent, "_call_api", fake_call_api)
+
+    asyncio.run(agent.run("exercise the unlimited goal loop"))
+
+    assert calls == 22
+
+
+def test_explicit_positive_turn_cap_remains_an_emergency_guard(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / ".antigravity").mkdir()
+    (tmp_path / ".antigravity" / "mcp-manifest.json").write_text("{}")
+    _install_fake_mcp(monkeypatch)
+    agent = orchestrator.ForgewrightAgent("project", str(tmp_path))
+    agent.limits = replace(
+        agent.limits,
+        max_turns=2,
+        max_tool_calls_total=10,
+    )
+    calls = 0
+
+    def fake_call_api(_tools):
+        nonlocal calls
+        calls += 1
+        return _tool_turn(calls)
+
+    monkeypatch.setattr(agent, "_call_api", fake_call_api)
+
+    with pytest.raises(SystemExit) as exit_info:
+        asyncio.run(agent.run("exercise the emergency cap"))
+
+    assert exit_info.value.code == 1
+    assert calls == 2
 
 
 def test_qualified_tool_names_are_bounded_stable_and_namespaced() -> None:
@@ -165,7 +272,9 @@ def test_runtime_source_wires_fail_closed_limits_and_workspace() -> None:
     source = MODULE_PATH.read_text(encoding="utf-8")
     required = [
         '"max_tokens": self.limits.max_output_tokens',
-        "for turn in range(1, self.limits.max_turns + 1)",
+        "while True:",
+        "self.limits.max_turns is not None",
+        "runtime limit exceeded: max turns",
         "self.limits.max_tool_calls_per_turn",
         "self.limits.max_tool_calls_total",
         "self.limits.max_tool_argument_bytes",

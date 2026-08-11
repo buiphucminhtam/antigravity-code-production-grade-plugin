@@ -148,17 +148,22 @@ class LocalCI:
     def _effective_env(self, overrides: dict[str, str] | None = None) -> dict[str, str]:
         env = os.environ.copy()
         path_parts: list[str] = []
+
+        def add_path(path: str) -> None:
+            if path not in path_parts:
+                path_parts.append(path)
+
         python_dir = str(Path(self.python).resolve().parent)
-        path_parts.append(python_dir)
+        add_path(python_dir)
+        if self.primary_node:
+            node_dir = str(Path(self.primary_node).resolve().parent)
+            add_path(node_dir)
+            env["FORGEWRIGHT_EFFECTIVE_NODE_BIN"] = self.primary_node
         for component in ("root", "mcp", "cli"):
             for node_modules in self._node_modules_roots(component):
                 bin_dir = node_modules / ".bin"
                 if bin_dir.is_dir():
-                    path_parts.append(str(bin_dir))
-        if self.primary_node:
-            node_dir = str(Path(self.primary_node).resolve().parent)
-            path_parts.append(node_dir)
-            env["FORGEWRIGHT_EFFECTIVE_NODE_BIN"] = self.primary_node
+                    add_path(str(bin_dir))
         env["PATH"] = os.pathsep.join(path_parts + [env.get("PATH", "")])
         if overrides:
             env.update(overrides)

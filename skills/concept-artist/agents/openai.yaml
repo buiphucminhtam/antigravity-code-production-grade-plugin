@@ -1,0 +1,4 @@
+interface:
+  display_name: "Concept Artist"
+  short_description: "Develop production-ready visual concepts"
+  default_prompt: "Use $concept-artist to develop distinct visual directions and a production-ready concept packet."

@@ -17,6 +17,10 @@ from mcp.client.stdio import stdio_client
 # Repo-relative paths — derived from this script's own location.
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _REPO_ROOT = str(Path(__file__).resolve().parents[2])
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
+
+from skill_routing import route_skills  # noqa: E402 — sys.path must precede this repo-relative import.
 
 # Provider / model are read exclusively from env vars so that the harness
 # controls them without needing to hard-code any model name in this file.
@@ -70,9 +74,23 @@ def _positive_int(environ: dict[str, str], name: str, default: int) -> int:
     return value
 
 
+def _optional_positive_int(environ: dict[str, str], name: str) -> int | None:
+    """Read an optional positive limit; missing or zero means unlimited."""
+    raw = environ.get(name)
+    if raw is None or not raw.strip():
+        return None
+    try:
+        value = int(raw)
+    except ValueError as error:
+        raise ValueError(f"{name} must be a positive integer or 0") from error
+    if value < 0:
+        raise ValueError(f"{name} must be a positive integer or 0")
+    return value or None
+
+
 @dataclass(frozen=True)
 class RuntimeLimits:
-    max_turns: int
+    max_turns: int | None
     max_tool_calls_per_turn: int
     max_tool_calls_total: int
     max_output_tokens: int
@@ -89,7 +107,9 @@ class RuntimeLimits:
     def from_env(cls, environ: dict[str, str] | None = None) -> "RuntimeLimits":
         env = dict(os.environ if environ is None else environ)
         return cls(
-            max_turns=_positive_int(env, "FORGEWRIGHT_MAX_TURNS", 20),
+            # Goal execution has no default turn quota. An explicit positive
+            # value remains available as an emergency runtime circuit breaker.
+            max_turns=_optional_positive_int(env, "FORGEWRIGHT_MAX_TURNS"),
             max_tool_calls_per_turn=_positive_int(
                 env, "FORGEWRIGHT_MAX_TOOL_CALLS_PER_TURN", 8
             ),
@@ -431,111 +451,23 @@ class ForgewrightAgent:
                 with open(escalate_path, "r", encoding="utf-8") as f:
                     escalate_content = f.read()
 
-            # Simple keyword matching against prompt to select skill overlay
-            skill_overlay_content = ""
-            matched_skill = None
-            prompt_lower = task.lower()
-
-            triggers_map = {
-                "debugger": [
-                    "bug",
-                    "crash",
-                    "error",
-                    "exception",
-                    "broken",
-                    "failing",
-                    "not working",
-                    "typeerror",
-                    "fail",
-                ],
-                "software-engineer": [
-                    "service",
-                    "logic",
-                    "refactor",
-                    "api",
-                    "feature",
-                    "build",
-                ],
-                "qa-engineer": ["test", "qa", "verify", "validation", "coverage"],
-                "frontend-engineer": [
-                    "ui",
-                    "component",
-                    "react",
-                    "next.js",
-                    "tailwind",
-                    "css",
-                    "html",
-                    "style",
-                    "frontend",
-                    "form",
-                ],
-                "frontend": [
-                    "ui",
-                    "component",
-                    "react",
-                    "next.js",
-                    "tailwind",
-                    "css",
-                    "html",
-                    "style",
-                    "frontend",
-                    "form",
-                ],
-                "backend": [
-                    "server",
-                    "route",
-                    "middleware",
-                    "auth",
-                    "cors",
-                    "express",
-                    "backend",
-                ],
-                "api-designer": ["openapi", "swagger", "endpoint", "spec", "rest api"],
-                "database-engineer": [
-                    "db",
-                    "schema",
-                    "migration",
-                    "prisma",
-                    "sql",
-                    "query",
-                    "index",
-                    "database",
-                ],
-                "security-engineer": [
-                    "security",
-                    "audit",
-                    "owasp",
-                    "sanitize",
-                    "threat",
-                    "injection",
-                    "parameterize",
-                ],
-                "code-reviewer": ["review", "lint", "style", "pr ", "pull request"],
-                "product-manager": [
-                    "brd",
-                    "prd",
-                    "gherkin",
-                    "user story",
-                    "acceptance criteria",
-                ],
-            }
-
-            for skill_name, triggers in triggers_map.items():
-                for trigger in triggers:
-                    if trigger in prompt_lower:
-                        matched_skill = skill_name
-                        break
-                if matched_skill:
-                    break
-
-            if matched_skill:
-                overlay_path = os.path.join(
-                    repo_root, "skills", matched_skill, "LITE.md"
+            # The local config owns ordered mode routing and its cap. Ordinary
+            # prompts with no configured mode intentionally keep the safe base
+            # Lite prompt without a skill overlay.
+            routing = route_skills(prompt=task, project_root=repo_root)
+            if routing["status"] != "ok":
+                raise RuntimeError(
+                    "skill routing failed: " + "; ".join(routing["errors"])
                 )
-                if os.path.exists(overlay_path):
-                    with open(overlay_path, "r", encoding="utf-8") as f:
-                        skill_overlay_content = f.read()
-                        print(f"[*] Loaded skill LITE overlay: {matched_skill}")
+
+            skill_overlay_content = ""
+            for skill in routing["skills"]:
+                with open(skill["lite_path"], "r", encoding="utf-8") as f:
+                    skill_overlay_content += (
+                        f"\n## Skill-Specific Instructions: {skill['name']}\n"
+                        f"{f.read()}\n"
+                    )
+                print(f"[*] Loaded skill LITE overlay: {skill['name']}")
 
             system_prompt = f"""
 {entry_content}
@@ -656,7 +588,14 @@ Khi bạn nghĩ rằng mình ĐÃ THỰC THI XONG VÀ HOÀN CHỈNH CODE, hãy t
                     raise RuntimeError("runtime budget exceeded: tool schema bytes")
 
                 total_tool_calls = 0
-                for turn in range(1, self.limits.max_turns + 1):
+                turn = 0
+                while True:
+                    turn += 1
+                    if (
+                        self.limits.max_turns is not None
+                        and turn > self.limits.max_turns
+                    ):
+                        raise RuntimeError("runtime limit exceeded: max turns")
                     if (
                         time.monotonic() - self._started_at
                         > self.limits.runtime_timeout_seconds
@@ -742,8 +681,6 @@ Khi bạn nghĩ rằng mình ĐÃ THỰC THI XONG VÀ HOÀN CHỈNH CODE, hãy t
                         final_str = reply.get("content", "")
                         print(f"\n[🏁 KẾT THÚC TASK]\n{final_str}")
                         break
-                else:
-                    raise RuntimeError("runtime budget exceeded: model turns")
         except Exception as err:
             print(f"[!] Orchestrator Error: {str(err)}")
             sys.exit(1)

@@ -41,7 +41,7 @@ When Goal mode is triggered, Forgewright enters autonomous pursuit mode:
 4. EXIT CONDITIONS:
    - Condition is met (evaluator returns MET)
    - User runs `/goal clear`
-   - Safety limit reached (max_turns, timeout)
+   - Explicit runtime safety guard is reached (timeout, tool-call or byte limit)
    - User explicitly stops
 ```
 
@@ -431,7 +431,9 @@ Build a game from concept to a verified release using the control plane in
    enter at the earliest incomplete phase instead of recreating valid artifacts.
 4. **Use role lanes, not a fictional roster**:
    - Control plane: `production-grade`, `project-manager`
-   - Creative: `game-designer`, `art-director`, `level-designer`,
+   - Creative order: UX/research → `concept-artist` → `art-director` → UI/technical/engine handoff
+   - Creative files: `skills/concept-artist/LITE.md`, then `skills/art-director/LITE.md`
+   - Creative: `game-designer`, `concept-artist`, `art-director`, `level-designer`,
      `narrative-designer`, `game-audio-engineer`
    - Technical: `solution-architect`, `game-engineer`, engine-specific skills,
      `technical-artist`
@@ -441,7 +443,13 @@ Build a game from concept to a verified release using the control plane in
    project profile, and engine files. If genuinely unset, recommend Unity,
    Unreal, Godot, Phaser 3, or Three.js from platform and production constraints
    and ask only when the choice materially changes architecture.
-6. **Preserve the Style DNA gate** — initialize and validate
+6. **Preserve the concept and Style DNA gates** — call
+   `python3 scripts/runtime/skill_routing.py --mode game-build --config .forgewright/skills-config.json`
+   for ordered verified paths, use `concept-artist` to produce
+   structurally distinct visual directions and a selected concept packet, then
+   validate the concept/art artifacts with
+   `python3 scripts/art-direction/creative-handoff.py validate-handoff "$CONCEPT_PACKET" "$ART_DIRECTION_GATES"`,
+   freeze the skill-aware dispatch packet, and then initialize and validate
    `.forgewright/art-direction/game-art-contract.json` using the Art Director
    protocol. Asset generation and engine handoff require approved style,
    confidence resolution, drift validation, manifest, and handoff evidence.

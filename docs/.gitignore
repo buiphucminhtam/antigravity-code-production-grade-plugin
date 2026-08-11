@@ -30,3 +30,4 @@ assets/!(donate)
 !adr/*.md
 !archive/
 !active-roadmap.md
+!guides/docs-hub.md

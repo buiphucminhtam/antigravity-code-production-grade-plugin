@@ -51,6 +51,17 @@ Format: `n. ACTION | TARGET | CHECK`
 | Review | Code Reviewer | "Review my code" |
 | Test | QA Engineer | "Write tests" |
 | Ship | DevOps → SRE | "Deploy / CI/CD" |
-| Design | UX → UI Designer | "Design UI for..." |
-| Game Build | Game Designer → Art Director Style DNA Gate → Engine | "Build a game..." |
+| Design | UX/research → Concept Artist → Art Director → UI/technical handoff | "Design UI for..." |
+| Game Build | UX/research → Concept Artist → Art Director → UI/technical/engine handoff | "Build a game..." |
 | Explore | Polymath | "Help me think..." |
+
+For Design and Game Build, resolve the ordered verified paths before loading a
+specialist: `python3 scripts/runtime/skill_routing.py --mode "$MODE" --config
+.forgewright/skills-config.json`. The creative files are
+`skills/concept-artist/LITE.md` then `skills/art-director/LITE.md`; downstream
+paths are selected from the UI, technical-art, or engine handoff. Validate the
+concept/art packet with `python3 scripts/art-direction/creative-handoff.py
+validate-handoff "$CONCEPT_PACKET" "$ART_DIRECTION_GATES"`, freeze the
+skill-aware dispatch packet, call
+`python3 scripts/runtime/codex-subagent-routing.py`, and only then let the
+host-owned native `spawn_agent` receive the skill item/path.

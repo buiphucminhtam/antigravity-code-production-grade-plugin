@@ -1,114 +1,68 @@
 # Game 2D Character Prompt Template
 
-## Context
-- **Asset type:** 2D Game Character
-- **Project style:** READ FROM .forgewright/art-direction/game-art-contract.json
-- **Game type:** [Side-scroller / Top-down / Isometric / Platformer]
-- **Art style:** [Pixel art / Hand-drawn / Vector / Painted]
+## Contract inputs
 
-## Style Constraints
+- **Approved Style DNA:** [APPROVED_STYLE_DNA]
+- **Reference-role map:** [REFERENCE_ROLE_MAP]
+- **Observed or credible drift:** [OBSERVED_OR_CREDIBLE_DRIFT]
+- **Asset family:** [ASSET_FAMILY]
+- **Real-scale context:** [REAL_SCALE_CONTEXT]
+- **Platform and production constraints:** [PLATFORM_AND_PRODUCTION_CONSTRAINTS]
+- **Game type:** [GAME_TYPE]
+- **Art style:** [ART_STYLE]
 
-- **Camera:** [CAMERA_ANGLE] (e.g., 3/4 top-down isometric)
-- **Tile size:** [TILE_SIZE]px
-- **Character height:** [CHAR_HEIGHT_TILES] tiles = [CALC_HEIGHT]px
-- **Color palette:** READ FROM .forgewright/art-direction/game-art-contract.json — STRICT adherence
-- **Lighting direction:** [LIGHTING_DIR] (e.g., top-left 45°)
+## Style and technical bindings
 
-## Generation Prompt
+- **Camera / projection:** [CAMERA_ANGLE]
+- **Tile size:** [TILE_SIZE]
+- **Character height:** [CHARACTER_HEIGHT_TILES] tiles = [CALCULATED_PIXEL_HEIGHT]px
+- **Shape, proportion, and silhouette rules:** [SHAPE_PROPORTION_SILHOUETTE_RULES]
+- **Color roles and state progression:** [COLOR_ROLES_AND_PROGRESSION]
+- **Lighting direction and material behavior:** [LIGHTING_AND_MATERIAL_RULES]
+- **First-read scale:** [FIRST_READ_SCALE]
+- **Required negative constraints:** [PROHIBITED_DRIFT]
 
-Generate a 2D game character matching these exact constraints. The character must be production-ready and game-engine compatible.
+The bindings above are family-specific. Do not import a fixed palette limit,
+symmetry preference, anatomy heuristic, or detail threshold from this template.
+Treat `[PROHIBITED_DRIFT]` as evidence-backed prohibited drift for this family
+and review context only.
 
-**⚠️ CRITICAL CONSTRAINTS:**
+## Generation prompt
 
-**Anatomy — STRICT RULES:**
-- Head-to-body ratio: [HEAD_BODY_RATIO] (e.g., 1:4 for heroic)
-- Maximum 4 visible fingers (NOT 5 — AI over-renders hands)
-- No extra digits, asymmetric limbs, or broken joints
-- Proportions must match the art style (pixel = pixel grid, painted = painterly)
-- Silhouette readable at 16×16px
+Generate a 2D game character for `[ASSET_FAMILY]` that matches the approved Style
+DNA and reference roles. Preserve the required silhouette and role read at
+`[REAL_SCALE_CONTEXT]`, then resolve identity details at `[HERO_REVIEW_SCALE]`.
+Keep proportions, pose, construction, states, and export compatible with
+`[PLATFORM_AND_PRODUCTION_CONSTRAINTS]`.
 
-**Color Palette — MANDATORY:**
-```
-[READ PALETTE FROM .forgewright/art-direction/game-art-contract.json]
-Primary:    [PRIMARY_HEX]
-Secondary:  [ACCENT_HEX]
-Shadow:     [CALCULATE_SHADOW_FROM_PALETTE]
-Highlight:  [CALCULATE_HIGHLIGHT_FROM_PALETTE]
-Skin:       [SKIN_TONE_FROM_PALETTE]
-```
+### Character construction
 
-**AI tells to AVOID:**
-- Perfect symmetry (break symmetry: pose offset, asymmetric features)
-- Generic "attractive average" face (define unique face shape)
-- Over-detailed face at small display sizes
-- Too-smooth skin textures (in stylized game = out of place)
-- All characters from same face template
+- **Anatomy / pose / deformation rules:** [ANATOMY_POSE_DEFORMATION_RULES]
+- **Class or gameplay read:** [ROLE_READ_RULES]
+- **Identity anchors and permitted variation:** [IDENTITY_ANCHORS_AND_VARIATION]
+- **Equipment and prop relationship:** [EQUIPMENT_RELATIONSHIP]
+- **Internal detail and simplification by scale:** [DETAIL_BY_SCALE_RULES]
+- **Observed/credible drift correction:** [DRIFT_CORRECTION_MECHANISM]
 
-**Lighting:**
-- Light direction: [LIGHTING_DIR]
-- Shadow: Cast on opposite side of light
-- Highlight: On light-facing surfaces
-- Rim light: Complementary color to key light (optional, adds depth)
+### Character sheet format
 
-## Character Sheet Format
-
-Generate a character sheet with ALL required frames:
-
-```
-Canvas size: [W]×[H]px (all frames same size)
-
-Sheet layout:
-[Row 1: Idle]     [idle_1] [idle_2] [idle_3] [idle_4]
-[Row 2: Walk]     [walk_1] [walk_2] [walk_3] [walk_4]
-[Row 3: Attack]   [atk_1]  [atk_2]  [atk_3]  [atk_4]
-[Row 4: Hurt]     [hurt_1] [hurt_2]
-[Row 5: Death]    [death_1] [death_2] [death_3]
+```text
+Canvas size: [CANVAS_WIDTH]×[CANVAS_HEIGHT]px (all frames same size)
+Sheet layout: [SHEET_LAYOUT]
+States and frame counts: [STATE_FRAME_COUNTS]
+Frame timing / loop contract: [ANIMATION_TIMING_AND_LOOP_RULES]
+Pivot, bounds, atlas, and import: [PIVOT_BOUNDS_ATLAS_IMPORT]
 ```
 
-**Frame count:**
-- Idle: 4 frames (loop)
-- Walk: 4-6 frames (loop)
-- Attack: 4-6 frames
-- Hurt: 2 frames
-- Death: 3 frames
+Non-default examples: idle/walk/attack/hurt/death rows, 4–6 frames for a loop,
+or a first-frame/last-frame match are illustrative production patterns only.
+Use them only when the animation and engine contracts call for them.
 
-**Animation principles:**
-- Use keyframe pacing: slow-in, slow-out
-- Anticipation frame before attack (1 frame of wind-down)
-- Impact frame: hold for 2× normal duration
-- First frame = last frame for seamless loops
-- Walk cycle: contact → passing → high point → contact
+## Output and review
 
-## Character Design
-
-**Silhouette (readable at 16×16):**
-- Distinct outline shape
-- Readable weapon/tool
-- Clear class archetype (tank = broad, mage = lean)
-
-**Details (readable at full size):**
-- Face: 2-3 colors max at pixel scale
-- Equipment: 1-2 accent colors
-- Cloth folds: 1px lines at pixel scale
-
-**Palette limit:**
-- Maximum 8 colors total (including outline)
-- Use dithering for intermediate tones
-- NO more than 1 highlight color
-- NO more than 1 shadow color
-
-## Metadata
-- **Canvas:** [W]×[H]px (power of 2 preferred)
-- **DPI:** 72
-- **Format:** PNG with transparency
-- **Naming:** `char-[name]-[animation]-[N]frames_w[xh].png`
-- Example: `char-goblin-warrior-walk-6_32x48.png`
-
-## Acceptance Checklist
-- [ ] All colors from project palette only
-- [ ] No AI anatomy errors (extra fingers, broken limbs)
-- [ ] Consistent lighting direction
-- [ ] Animations loop seamlessly
-- [ ] Silhouette readable at 16×16
-- [ ] Consistent pixel grid (if pixel art)
-- [ ] Touch-ready export (clean edges, no artifacts)
+- **Format and transparency:** [OUTPUT_FORMAT_AND_TRANSPARENCY]
+- **Naming:** [NAMING_CONVENTION]
+- **Grid/anti-aliasing policy:** [GRID_AND_ANTIALIASING_POLICY]
+- **Family comparison artifact:** [FAMILY_COMPARISON_ARTIFACT]
+- **Real-scale silhouette result:** [REAL_SCALE_REVIEW_RESULT]
+- **Acceptance owner and next test:** [REVIEW_OWNER_AND_NEXT_TEST]

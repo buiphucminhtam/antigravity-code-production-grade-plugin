@@ -1,83 +1,67 @@
 # UI Button Prompt Template
 
-## Context
+## Contract inputs
+
+- **Approved Style DNA:** [APPROVED_STYLE_DNA]
+- **Reference-role map:** [REFERENCE_ROLE_MAP]
+- **Observed or credible drift:** [OBSERVED_OR_CREDIBLE_DRIFT]
+- **Asset family:** [ASSET_FAMILY]
+- **Real-scale context:** [REAL_SCALE_CONTEXT]
+- **Platform and production constraints:** [PLATFORM_AND_PRODUCTION_CONSTRAINTS]
 - **Asset type:** UI Button (interactive element)
-- **Project style:** READ FROM .forgewright/art-direction/game-art-contract.json
-- **Output format:** PNG with transparency (web) or SVG (vector)
+- **Output format:** [OUTPUT_FORMAT]
 
-## Style Constraints
+## Style and interaction bindings
 
-- **Primary color:** [PRIMARY_HEX]
-- **Accent color:** [ACCENT_HEX]
-- **Border radius:** [BR_SM]px (small) / [BR_MD]px (medium) / [BR_LG]px (large)
-- **Typography:** [BODY_FONT], weight 600
-- **Shadow:** [SHADOW_SM] (subtle, inner-tinted)
-- **Spacing:** 4px grid system
+- **Color roles:** [COLOR_ROLES_AND_STATES]
+- **Typography:** [TYPOGRAPHY_SYSTEM]
+- **Geometry, spacing, and radius:** [GEOMETRY_SPACING_AND_RADIUS]
+- **Material, border, and shadow behavior:** [SURFACE_AND_DEPTH_RULES]
+- **State hierarchy:** [BUTTON_STATE_RULES]
+- **Accessibility and touch contract:** [ACCESSIBILITY_AND_TOUCH_CONTRACT]
+- **Required negative constraints:** [PROHIBITED_DRIFT]
 
-## Generation Prompt
+All visual values must be copied from the approved Style DNA or a named platform
+requirement. Do not substitute a generic font, color, grid, radius, shadow, or
+composition preference. The assigned reference roles and `[PROHIBITED_DRIFT]`
+define the prohibited drift and what is in scope for this button family.
 
-Generate a UI button matching this exact specification. The button must look professional and human-designed — NOT AI-generated.
+## Generation prompt
 
-**Visual Style:**
-- Style: Modern, flat with subtle depth — NOT glassmorphism, NOT neumorphism, NOT gradient-heavy
-- Background: Solid [PRIMARY_HEX] — NOT gradient
-- Text color: White (#FFFFFF) or [TEXT_HEX] depending on contrast
-- Border: None (clean edges) OR 1px solid [BORDER_HEX]
-- Border radius: [BR_SM]px
-- Padding: 12px vertical × 24px horizontal
+Generate a UI button for `[ASSET_FAMILY]` that preserves the approved type/UI
+relationship and semantic hierarchy. Resolve the button at `[REAL_SCALE_CONTEXT]`
+and include the states required by `[PLATFORM_AND_PRODUCTION_CONSTRAINTS]`.
+Use `[COLOR_ROLES_AND_STATES]`, `[TYPOGRAPHY_SYSTEM]`, and
+`[SURFACE_AND_DEPTH_RULES]` exactly as bound; apply only the listed drift
+constraints.
 
-**Typography:**
-- Font: [BODY_FONT] (NOT Inter) — prefer: Geist, Satoshi, Outfit, Cabinet Grotesk, Plus Jakarta Sans
-- Weight: 600 (semi-bold)
-- Size: 16px
-- Letter spacing: 0.01em
+### States to include
 
-**Shadow (if elevated):**
-- Use inner shadow tint matching background hue
-- NO outer neon glow
-- NO large box-shadow
-- Example: `inset 0 1px 0 rgba(255,255,255,0.15), 0 1px 2px rgba(0,0,0,0.1)`
+1. **Default:** [DEFAULT_STATE]
+2. **Hover / focus:** [HOVER_FOCUS_STATE]
+3. **Active / pressed:** [ACTIVE_PRESSED_STATE]
+4. **Disabled:** [DISABLED_STATE]
+5. **Loading / progress:** [LOADING_STATE]
 
-**States to include:**
-1. **Default:** As described above
-2. **Hover:** Background lightens 8%, translateY(-1px), shadow increases slightly
-3. **Active/Pressed:** Background darkens 5%, translateY(0), shadow decreases
-4. **Disabled:** Opacity 40%, cursor: not-allowed, no shadow
-5. **Loading:** Skeleton pulse OR small spinner (NOT large circular spinner)
+### Variants and composition
 
-**Variants:**
-- **Primary:** [PRIMARY_HEX] background, white text
-- **Secondary:** Transparent background, [PRIMARY_HEX] border + text
-- **Ghost:** Transparent background, [PRIMARY_HEX] text only
-- **Danger:** [ERROR_HEX] background for destructive actions
-- **Icon-only:** Square, icon centered, 40×40px minimum touch target
+- **Primary:** [PRIMARY_VARIANT]
+- **Secondary:** [SECONDARY_VARIANT]
+- **Ghost:** [GHOST_VARIANT]
+- **Danger:** [DANGER_VARIANT]
+- **Icon-only:** [ICON_ONLY_VARIANT]
+- **Text/icon alignment and truncation:** [BUTTON_CONTENT_RULES]
 
-**Composition:**
-- Minimum touch target: 44×44px (WCAG)
-- Text centered, never truncate
-- Icon left (optional): Lucide-style, 20px, stroke width 2
-- Clean edges, no anti-aliasing artifacts
+Non-default examples: a 44×44px touch target, a 1px border, a 600 font weight,
+or an inner-tinted shadow are illustrative values only. Keep them only when the
+platform contract or Style DNA requires them.
 
-**Negative prompts (NEVER generate):**
-- ❌ Purple or blue neon glow effects
-- ❌ Gradient backgrounds
-- ❌ Circular spinner loading (use skeleton or small spinner)
-- ❌ Pure black #000000
-- ❌ Inter font
-- ❌ Outer glow box-shadow
-- ❌ AI buzzword copy inside button ("Elevate", "Seamless")
-- ❌ 99.99% or $9.99 fake numbers
-- ❌ Three equal-width buttons side by side (use varied widths)
+## Output and acceptance
 
-## Metadata
-- **Aspect ratio:** Variable (typically 2:1 to 4:1)
-- **DPI:** 72 (web) or 144 (mobile retina)
-- **Format:** PNG with transparency / SVG
-- **Naming:** `button-[variant]-[state]wxh.png` (e.g., `button-primary-default-120x44.png`)
-
-## Acceptance Checklist
-- [ ] Passes WCAG AA contrast (4.5:1 minimum)
-- [ ] Touch target ≥ 44×44px
-- [ ] No AI tells detected
-- [ ] Consistent with project style guide
-- [ ] All states (default, hover, active, disabled) generated
+- **Aspect ratio / dimensions:** [DIMENSIONS_AND_ASPECT_RATIO]
+- **Format and transparency:** [OUTPUT_FORMAT]
+- **DPI / density:** [DPI_AND_DENSITY]
+- **Naming:** [NAMING_CONVENTION]
+- **Contrast and redundant cues:** [CONTRAST_AND_REDUNDANT_CUES]
+- **State coverage artifact:** [STATE_COVERAGE_ARTIFACT]
+- **Review owner and next test:** [REVIEW_OWNER_AND_NEXT_TEST]

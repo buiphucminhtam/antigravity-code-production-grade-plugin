@@ -122,6 +122,12 @@ skills:
     has_lite_md: true
     version: 1.0.0
 
+  - name: concept-artist
+    type: canonical
+    has_skill_md: true
+    has_lite_md: true
+    version: 1.0.0
+
   - name: conversion-optimizer
     type: canonical
     has_skill_md: true
