@@ -4,8 +4,20 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from pathlib import PurePosixPath
+import hashlib
+import json
+from pathlib import Path, PurePosixPath
+import re
 from typing import Any
+
+from .peer_collaboration import (
+    PEER_PROFILES,
+    CollaborationPolicy,
+    EventValidationError as CollaborationEventValidationError,
+    PolicyError as CollaborationPolicyError,
+    load_policy,
+    validate_artifact_refs,
+)
 
 
 HIGH_RISK = {"security", "schema", "public-api", "concurrency"}
@@ -13,7 +25,6 @@ STOP_CONDITIONS = [
     "duplicate_findings",
     "scope_covered",
     "same_blocker_twice",
-    "advisory_token_budget",
     "deadline_cap",
 ]
 PACKET_FIELDS = (
@@ -24,14 +35,283 @@ PACKET_FIELDS = (
     "output_artifacts",
     "handoff_type",
     "acceptance_checks",
+    "artifact_refs",
 )
 PACKET_LIST_FIELDS = {"input_artifacts", "output_artifacts", "acceptance_checks"}
 MAX_PACKET_LIST_ITEMS = 32
 MAX_PACKET_STRING_CHARS = 512
+MAX_ARTIFACT_REFS = 8
+COLLABORATION_ACTIVATION_FIELDS = {
+    "mode",
+    "profile",
+    "participants",
+    "purpose",
+    "frozen_inputs",
+    "fallback",
+    "artifact_refs",
+}
+MAX_COLLABORATION_PURPOSE_CHARS = 512
+COLLABORATION_PROFILE_REGISTRY = {
+    "concept-art-direction/v1": Path(__file__).resolve().parents[2]
+    / "config"
+    / "peer-collaboration"
+    / "concept-art-direction.v1.json",
+}
+COLLABORATION_SCHEMA_REFS = {
+    "event": "schemas/peer-collaboration-event.v1.schema.json",
+    "policy": "schemas/peer-collaboration-policy.v1.schema.json",
+}
+_SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
+_ARTIFACT_URI_RE = re.compile(
+    r"^artifact://[a-z0-9][a-z0-9._-]{0,63}/[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$"
+)
+_MEDIA_TYPE_RE = re.compile(
+    r"^[a-z0-9][a-z0-9!#$&^_.+-]*/[a-z0-9][a-z0-9!#$&^_.+-]*(?:;[A-Za-z0-9][A-Za-z0-9._-]{0,31}=[A-Za-z0-9][A-Za-z0-9._-]{0,127})?$"
+)
+_SCHEMA_REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$")
 
 
 class PolicyError(ValueError):
     """Raised when a policy request is structurally invalid."""
+
+
+def _validate_artifact_refs(value: Any, *, context: str) -> list[dict[str, Any]]:
+    if not isinstance(value, list) or len(value) > MAX_ARTIFACT_REFS:
+        raise PolicyError(f"{context} must contain at most {MAX_ARTIFACT_REFS} objects")
+    normalized: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for index, ref in enumerate(value):
+        if not isinstance(ref, dict):
+            raise PolicyError(f"{context}[{index}] must be an object")
+        allowed = {"uri", "sha256", "media_type", "schema"}
+        if set(ref) - allowed or set(ref) < {"uri", "sha256", "media_type"}:
+            raise PolicyError(
+                f"{context}[{index}] requires only uri, sha256, media_type, and optional schema"
+            )
+        uri = ref["uri"]
+        if (
+            not isinstance(uri, str)
+            or not _ARTIFACT_URI_RE.fullmatch(uri)
+            or "\\" in uri
+            or "//" in uri[len("artifact://") :]
+            or any(part in {".", ".."} for part in uri[len("artifact://") :].split("/"))
+        ):
+            raise PolicyError(f"{context}[{index}].uri must be a safe artifact:// URI")
+        digest = ref["sha256"]
+        media_type = ref["media_type"]
+        if not isinstance(digest, str) or not _SHA256_RE.fullmatch(digest):
+            raise PolicyError(f"{context}[{index}].sha256 must be lowercase SHA-256")
+        if not isinstance(media_type, str) or not _MEDIA_TYPE_RE.fullmatch(media_type):
+            raise PolicyError(f"{context}[{index}].media_type must be a media type")
+        if "schema" in ref and (
+            not isinstance(ref["schema"], str)
+            or not _SCHEMA_REF_RE.fullmatch(ref["schema"])
+            or ".." in ref["schema"]
+        ):
+            raise PolicyError(
+                f"{context}[{index}].schema must be a safe schema reference"
+            )
+        key = json.dumps(ref, sort_keys=True, separators=(",", ":"))
+        if key in seen:
+            raise PolicyError(f"{context} must contain unique references")
+        seen.add(key)
+        normalized.append(deepcopy(ref))
+    return normalized
+
+
+def _load_collaboration_profile(
+    request: dict[str, Any],
+) -> tuple[str, CollaborationPolicy, dict[str, Any]] | None:
+    """Load a strict, repo-owned activation; never accept a path from a request."""
+    if "collaboration" not in request:
+        return None
+    value = request["collaboration"]
+    if not isinstance(value, dict) or set(value) != COLLABORATION_ACTIVATION_FIELDS:
+        raise PolicyError(
+            "collaboration must be an object with exactly mode, profile, participants, "
+            "purpose, frozen_inputs, fallback, and artifact_refs"
+        )
+    if value["mode"] != "bounded-advisory":
+        raise PolicyError("collaboration.mode must be bounded-advisory")
+    profile = value["profile"]
+    if (
+        profile != "concept-art-direction/v1"
+        or profile not in COLLABORATION_PROFILE_REGISTRY
+    ):
+        raise PolicyError("unsupported collaboration profile")
+    participants = value["participants"]
+    if participants != list(PEER_PROFILES):
+        raise PolicyError(
+            "collaboration.participants must be exactly concept-artist and art-director"
+        )
+    purpose = value["purpose"]
+    if (
+        not isinstance(purpose, str)
+        or not purpose.strip()
+        or len(purpose) > MAX_COLLABORATION_PURPOSE_CHARS
+    ):
+        raise PolicyError("collaboration.purpose must be a bounded non-empty string")
+    if value["frozen_inputs"] is not True:
+        raise PolicyError("collaboration.frozen_inputs must be true")
+    if value["fallback"] != "parent-serial":
+        raise PolicyError("collaboration.fallback must be parent-serial")
+    try:
+        policy = load_policy(COLLABORATION_PROFILE_REGISTRY[profile])
+        refs = validate_artifact_refs(
+            value["artifact_refs"], context="collaboration.artifact_refs"
+        )
+    except (CollaborationPolicyError, CollaborationEventValidationError) as error:
+        raise PolicyError(
+            f"invalid repo-owned collaboration profile: {error}"
+        ) from error
+    if not refs:
+        raise PolicyError("collaboration.artifact_refs must be non-empty")
+    if policy.policy_id != "concept-art-direction-v1" or policy.max_rounds != 1:
+        raise PolicyError(
+            "collaboration profile does not match concept-art-direction/v1"
+        )
+    activation = {
+        "mode": "bounded-advisory",
+        "profile": profile,
+        "participants": list(PEER_PROFILES),
+        "purpose": purpose.strip(),
+        "frozen_inputs": True,
+        "fallback": "parent-serial",
+        "artifact_refs": [deepcopy(ref) for ref in refs],
+    }
+    return profile, policy, activation
+
+
+def _collaboration_session_id(task_id: Any) -> str:
+    source = task_id if isinstance(task_id, str) and task_id else "task"
+    digest = hashlib.sha256(source.encode("utf-8")).hexdigest()[:16]
+    return f"collab-{digest}"
+
+
+def _collaboration_plan(
+    profile: str,
+    policy: CollaborationPolicy,
+    task_id: Any,
+    request: dict[str, Any],
+    scopes: list[dict[str, Any]],
+    *,
+    concurrency: int,
+    activation: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]], str]:
+    by_profile: dict[str, dict[str, Any]] = {}
+    duplicate_profile: str | None = None
+    for scope in scopes:
+        packet = scope.get("packet")
+        skill_name = packet.get("skill_name") if isinstance(packet, dict) else None
+        if skill_name in PEER_PROFILES:
+            if skill_name in by_profile:
+                duplicate_profile = skill_name
+            else:
+                by_profile[skill_name] = scope
+
+    fallback_reason: str | None = None
+    if request.get("serial") is True:
+        raise PolicyError("serial=true cannot request collaboration")
+    elif request.get("task_size") == "small":
+        fallback_reason = "small_task"
+    elif request.get("mechanical_inventory") is True:
+        fallback_reason = "mechanical_inventory"
+    elif concurrency < 2:
+        fallback_reason = "insufficient_peer_capacity"
+    elif duplicate_profile is not None:
+        fallback_reason = f"duplicate_peer_profile:{duplicate_profile}"
+    elif set(by_profile) != set(PEER_PROFILES):
+        fallback_reason = "missing_required_peer_role"
+
+    selected = (
+        []
+        if fallback_reason
+        else [by_profile[profile_name] for profile_name in PEER_PROFILES]
+    )
+    participants = []
+    for index, participant in enumerate(policy.participants):
+        scope = by_profile.get(participant.profile)
+        if fallback_reason or scope is None:
+            continue
+        participants.append(
+            {
+                "id": participant.id,
+                "profile": participant.profile,
+                "collaboration_profile": profile,
+                "profile_version": 1,
+                "session_id": _collaboration_session_id(task_id),
+                "scope_id": scope["id"],
+                "worker_id": f"worker-{index + 1}",
+                "allowed_recipients": list(policy.allowed_recipients[participant.id]),
+                "allowed_kinds": list(policy.allowed_kinds[participant.id]),
+                "artifact_refs": deepcopy(activation["artifact_refs"]),
+                "purpose": activation["purpose"],
+                "frozen_inputs": True,
+                "fallback": "parent-serial",
+                "event_schema": COLLABORATION_SCHEMA_REFS["event"],
+                "policy_schema": COLLABORATION_SCHEMA_REFS["policy"],
+                "parent_only_decision": True,
+                "peer_writes": False,
+                "shared_mutable_paths": False,
+                "recursive_spawn": False,
+            }
+        )
+    if fallback_reason:
+        participants = []
+    plan = {
+        "enabled": True,
+        "status": "serial-fallback" if fallback_reason else "planned",
+        "mode": activation["mode"],
+        "profile": profile,
+        "version": 1,
+        "session_id": _collaboration_session_id(task_id),
+        "participants": participants,
+        "purpose": activation["purpose"],
+        "frozen_inputs": True,
+        "fallback": "parent-serial",
+        "ownership": {
+            "parent": "orchestrator",
+            "decision_arbiter": "orchestrator",
+            "peer_append": False,
+            "peer_writes": False,
+            "shared_mutable_paths": False,
+            "recursive_spawn": False,
+        },
+        "limits": {
+            "max_peers": policy.max_peers,
+            "max_rounds": policy.max_rounds,
+            "max_events": policy.max_events,
+            "max_payload_bytes": policy.max_payload_bytes,
+            "max_event_bytes": policy.max_event_bytes,
+            "max_total_bytes": policy.max_total_bytes,
+            "deadline_seconds": policy.deadline_seconds,
+        },
+        "schemas": dict(COLLABORATION_SCHEMA_REFS),
+        "artifact_refs": deepcopy(activation["artifact_refs"]),
+        "artifact_content_embedded": False,
+        "host_capabilities": {
+            "required": [
+                "parent-mediated-in-process-mailbox",
+                "parent-owned-jsonl-event-log",
+            ],
+            "verified": False,
+            "status": "host-required",
+        },
+        "transport": {
+            "preference": "in-process",
+            "mode": "parent-mediated",
+            "external_agy_peer_transport": False,
+        },
+        "serial_fallback_reason": fallback_reason,
+        "serial_fallback": {"mode": "parent-serial", "reason": "host-required"},
+    }
+    return (
+        plan,
+        selected,
+        "collaboration_serial_fallback"
+        if fallback_reason
+        else "collaboration_peer_path",
+    )
 
 
 def _positive_int(value: Any, name: str) -> int:
@@ -73,7 +353,11 @@ def validate_dispatch_packet(
         if field not in packet:
             continue
         value = packet[field]
-        if field in PACKET_LIST_FIELDS:
+        if field == "artifact_refs":
+            normalized[field] = _validate_artifact_refs(
+                value, context=f"{context}.{field}"
+            )
+        elif field in PACKET_LIST_FIELDS:
             if (
                 not isinstance(value, list)
                 or len(value) > MAX_PACKET_LIST_ITEMS
@@ -172,6 +456,7 @@ def decide_orchestration(request: dict[str, Any]) -> dict[str, Any]:
     """Return a deterministic worker/reviewer decision without calling a provider."""
     if not isinstance(request, dict):
         raise PolicyError("request must be an object")
+    collaboration_profile = _load_collaboration_profile(request)
     if request.get("hard_token_cap") is True:
         raise PolicyError("hard token cap is unavailable for the AGY runtime")
     scopes = _scopes(request)
@@ -181,37 +466,42 @@ def decide_orchestration(request: dict[str, Any]) -> dict[str, Any]:
     if limits.get("hard_token_cap") is True:
         raise PolicyError("hard token cap is unavailable for the AGY runtime")
     concurrency = _nonnegative_int(limits.get("concurrency", 1), "limits.concurrency")
-    remaining = _nonnegative_int(
-        limits.get("remaining_token_budget", 1), "limits.remaining_token_budget"
-    )
-    per_worker = _positive_int(
-        limits.get("worker_token_budget", 1), "limits.worker_token_budget"
-    )
     deadline_ms = _positive_int(limits.get("deadline_ms", 30_000), "limits.deadline_ms")
-    budget_slots = remaining // per_worker
     reviewer_requested = request.get("independent_review") is True
-    reviewer_reserved_budget_slots = 1 if reviewer_requested else 0
-    if reviewer_reserved_budget_slots > budget_slots:
-        raise PolicyError("insufficient token budget for requested independent review")
-    worker_budget_slots = budget_slots - reviewer_reserved_budget_slots
+    collaboration_requested = collaboration_profile is not None
+    # Legacy manifests may still carry historical token fields, but they are
+    # deliberately ignored: planning has no token/cost/goal quota or stop
+    # condition and never emits those fields.
     mechanical = request.get("mechanical_inventory") is True
     disagreement = request.get("disagreement") is True
 
+    collaboration_plan = None
     selected: list[dict[str, Any]] = []
     reason = "no_parallel_benefit"
-    if request.get("task_size") == "small":
+    if collaboration_profile is not None:
+        profile, policy, activation = collaboration_profile
+        collaboration_plan, selected, reason = _collaboration_plan(
+            profile,
+            policy,
+            request.get("task_id", "task"),
+            request,
+            scopes,
+            concurrency=concurrency,
+            activation=activation,
+        )
+    elif request.get("task_size") == "small":
         reason = "small_task"
     elif request.get("serial") is True:
         reason = "serial_dependency"
     elif mechanical:
-        if scopes and concurrency >= 1 and worker_budget_slots >= 1:
+        if scopes and concurrency >= 1:
             selected = scopes[:1]
             reason = "mechanical_inventory"
         else:
             reason = "insufficient_capacity"
     else:
         independent = [scope for scope in scopes if scope.get("independent") is True]
-        cap = min(len(independent), concurrency, worker_budget_slots, 3)
+        cap = min(len(independent), concurrency, 3)
         if cap >= 2:
             selected = independent[:cap]
             reason = "independent_scopes"
@@ -219,17 +509,22 @@ def decide_orchestration(request: dict[str, Any]) -> dict[str, Any]:
             reason = "parallel_minimum_not_met"
 
     workers = []
+    collaboration_by_scope = {
+        participant["scope_id"]: participant
+        for participant in (collaboration_plan or {}).get("participants", [])
+    }
     for index, scope in enumerate(selected):
         worker = {
             "id": f"worker-{index + 1}",
             "scope_id": scope["id"],
             "paths": list(scope["paths"]),
             "role": _role(scope, disagreement=disagreement, mechanical=mechanical),
-            "token_budget": per_worker,
-            "token_budget_enforcement": "advisory",
             "deadline_ms": deadline_ms,
             "recursive_spawn": False,
         }
+        if scope["id"] in collaboration_by_scope:
+            worker["peer_profile"] = collaboration_by_scope[scope["id"]]["profile"]
+            worker["collaboration"] = deepcopy(collaboration_by_scope[scope["id"]])
         if scope.get("packet") is not None:
             worker["packet"] = deepcopy(scope["packet"])
         workers.append(worker)
@@ -238,8 +533,6 @@ def decide_orchestration(request: dict[str, Any]) -> dict[str, Any]:
     if reviewer_requested:
         reviewer = {
             "role": "expert",
-            "token_budget": per_worker,
-            "token_budget_enforcement": "advisory",
             "packet": {
                 "requirements": deepcopy(request.get("requirements", "")),
                 "diff": deepcopy(request.get("diff", "")),
@@ -248,21 +541,26 @@ def decide_orchestration(request: dict[str, Any]) -> dict[str, Any]:
             "recursive_spawn": False,
         }
 
-    return {
+    result = {
         "version": 1,
         "task_id": request.get("task_id", "task"),
         "decision_reason": reason,
         "worker_count": len(workers),
         "workers": workers,
         "reviewer": reviewer,
-        "token_budget_enforcement": "advisory",
         "stop_conditions": list(STOP_CONDITIONS),
         "caps": {
             "scope_count": len(scopes),
             "concurrency": concurrency,
-            "budget_slots": budget_slots,
-            "worker_budget_slots": worker_budget_slots,
-            "reviewer_reserved_budget_slots": reviewer_reserved_budget_slots,
+            "hard_worker_cap": 3,
+        }
+        if collaboration_requested
+        else {
+            "scope_count": len(scopes),
+            "concurrency": concurrency,
             "hard_worker_cap": 3,
         },
     }
+    if collaboration_plan is not None:
+        result["collaboration_plan"] = collaboration_plan
+    return result

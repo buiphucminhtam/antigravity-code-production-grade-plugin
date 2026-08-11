@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forgewright.dev/schemas/peer-collaboration-event.v1.schema.json",
+  "title": "Forgewright Peer Collaboration Event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "session_id",
+    "task_id",
+    "sequence",
+    "round",
+    "created_at",
+    "deadline_at",
+    "sender_id",
+    "recipient_id",
+    "kind",
+    "parent_event_ids",
+    "payload",
+    "artifact_refs",
+    "content_hash"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "event_id": { "$ref": "#/$defs/id" },
+    "session_id": { "$ref": "#/$defs/id" },
+    "task_id": { "$ref": "#/$defs/id" },
+    "sequence": { "type": "integer", "minimum": 1, "maximum": 12 },
+    "round": { "type": "integer", "minimum": 0, "maximum": 1 },
+    "created_at": { "type": "string", "format": "date-time", "maxLength": 64 },
+    "deadline_at": { "type": "string", "format": "date-time", "maxLength": 64 },
+    "sender_id": { "$ref": "#/$defs/id" },
+    "recipient_id": { "$ref": "#/$defs/id" },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "session.opened",
+        "assignment.sent",
+        "peer.message",
+        "artifact.proposed",
+        "finding.reported",
+        "blocker.reported",
+        "decision.requested",
+        "decision.issued",
+        "session.closed",
+        "policy.rejected"
+      ]
+    },
+    "parent_event_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 12,
+      "items": { "$ref": "#/$defs/id" }
+    },
+    "payload": {
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": false,
+      "properties": {
+        "assignment_id": { "$ref": "#/$defs/payload_string" },
+        "blocker_id": { "$ref": "#/$defs/payload_string" },
+        "decision_event_id": { "$ref": "#/$defs/payload_string" },
+        "evidence": { "$ref": "#/$defs/payload_string_list" },
+        "finding_id": { "$ref": "#/$defs/payload_string" },
+        "message": { "$ref": "#/$defs/payload_string" },
+        "profiles": { "$ref": "#/$defs/payload_string_list" },
+        "reason": { "$ref": "#/$defs/payload_string" },
+        "request_id": { "$ref": "#/$defs/payload_string" },
+        "confidence_basis_points": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "selected": { "$ref": "#/$defs/payload_string" },
+        "summary": { "$ref": "#/$defs/payload_string" }
+      }
+    },
+    "artifact_refs": {
+      "type": "array",
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/artifact_ref" }
+    },
+    "content_hash": { "$ref": "#/$defs/sha256" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "kind": { "const": "session.opened" } },
+        "required": ["kind"]
+      },
+      "then": {
+        "properties": {
+          "sequence": { "const": 1 },
+          "parent_event_ids": { "minItems": 0, "maxItems": 0 },
+          "sender_id": { "const": "orchestrator" },
+          "recipient_id": { "const": "system" }
+        }
+      },
+      "else": {
+        "properties": { "parent_event_ids": { "minItems": 1 } }
+      }
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri", "sha256", "media_type"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "pattern": "^artifact://[a-z0-9][a-z0-9._-]{0,63}/(?!.*\\/\\/)(?!.*\\/(?:\\.|\\.\\.)(?:\\/|$))[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$"
+        },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "media_type": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9!#$&^_.+-]*/[a-z0-9][a-z0-9!#$&^_.+-]*(?:;[A-Za-z0-9][A-Za-z0-9._-]{0,31}=[A-Za-z0-9][A-Za-z0-9._-]{0,127})?$",
+          "maxLength": 160
+        },
+        "schema": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$",
+          "maxLength": 160
+        }
+      }
+    },
+    "payload_string": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "payload_string_list": {
+      "type": "array",
+      "maxItems": 64,
+      "items": { "$ref": "#/$defs/payload_string" }
+    }
+  }
+}

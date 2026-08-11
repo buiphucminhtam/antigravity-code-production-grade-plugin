@@ -74,6 +74,25 @@ def request_with_packets() -> dict[str, object]:
     }
 
 
+def collaboration_activation() -> dict[str, object]:
+    return {
+        "mode": "bounded-advisory",
+        "profile": "concept-art-direction/v1",
+        "participants": ["concept-artist", "art-director"],
+        "purpose": "Compare concept direction and production risks.",
+        "frozen_inputs": True,
+        "fallback": "parent-serial",
+        "artifact_refs": [
+            {
+                "uri": "artifact://creative-dispatch/brief.json",
+                "sha256": "a" * 64,
+                "media_type": "application/json",
+                "schema": "brief/v1",
+            }
+        ],
+    }
+
+
 def manifest(request: dict[str, object], workspace: Path = ROOT) -> dict[str, object]:
     return {
         "version": 1,
@@ -229,4 +248,144 @@ def test_packet_lists_are_bounded() -> None:
     request["scopes"][0]["packet"]["acceptance_checks"] = ["check"] * 33
 
     with pytest.raises(PolicyError, match="bounded list"):
+        decide_orchestration(request)
+
+
+def test_collaboration_is_opt_in_named_profile_with_parent_arbiter_plan() -> None:
+    from scripts.runtime.orchestration_policy import decide_orchestration
+
+    request = request_with_packets()
+    request["collaboration"] = collaboration_activation()
+    decision = decide_orchestration(request)
+    collaboration = decision["collaboration_plan"]
+
+    assert decision["decision_reason"] == "collaboration_peer_path"
+    assert collaboration["status"] == "planned"
+    assert collaboration["mode"] == "bounded-advisory"
+    assert collaboration["fallback"] == "parent-serial"
+    assert collaboration["artifact_refs"][0]["uri"].startswith("artifact://")
+    assert [item["profile"] for item in collaboration["participants"]] == [
+        "concept-artist",
+        "art-director",
+    ]
+    assert collaboration["ownership"] == {
+        "parent": "orchestrator",
+        "decision_arbiter": "orchestrator",
+        "peer_append": False,
+        "peer_writes": False,
+        "shared_mutable_paths": False,
+        "recursive_spawn": False,
+    }
+    assert collaboration["transport"] == {
+        "preference": "in-process",
+        "mode": "parent-mediated",
+        "external_agy_peer_transport": False,
+    }
+    assert "budget_limited" not in json.dumps(collaboration).lower()
+    assert "quota" not in json.dumps(collaboration).lower()
+    assert "token" not in json.dumps(collaboration).lower()
+
+
+def test_legacy_decision_has_no_collaboration_output() -> None:
+    from scripts.runtime.orchestration_policy import decide_orchestration
+
+    decision = decide_orchestration(request_with_packets())
+    assert "collaboration_plan" not in decision
+    assert [worker["scope_id"] for worker in decision["workers"]] == [
+        "concept",
+        "direction",
+    ]
+    assert decision["stop_conditions"] == [
+        "duplicate_findings",
+        "scope_covered",
+        "same_blocker_twice",
+        "deadline_cap",
+    ]
+    assert set(decision) == {
+        "version",
+        "task_id",
+        "decision_reason",
+        "worker_count",
+        "workers",
+        "reviewer",
+        "stop_conditions",
+        "caps",
+    }
+
+
+@pytest.mark.parametrize(
+    "collaboration, message",
+    [
+        ({**collaboration_activation(), "profile": "arbitrary"}, "unsupported"),
+        (
+            {**collaboration_activation(), "policy_path": "../../attacker.json"},
+            "exactly",
+        ),
+    ],
+)
+def test_collaboration_rejects_untrusted_profile_or_policy_path(
+    collaboration: dict[str, object], message: str
+) -> None:
+    from scripts.runtime.orchestration_policy import PolicyError, decide_orchestration
+
+    request = request_with_packets()
+    request["collaboration"] = collaboration
+    with pytest.raises(PolicyError, match=message):
+        decide_orchestration(request)
+
+
+def test_collaboration_role_mismatch_uses_deterministic_serial_fallback() -> None:
+    from scripts.runtime.orchestration_policy import decide_orchestration
+
+    request = request_with_packets()
+    request["collaboration"] = collaboration_activation()
+    request["scopes"][0]["packet"] = packet(
+        "art-director",
+        "skills/art-director/LITE.md",
+        handoff_type="wrong-role",
+    )
+    decision = decide_orchestration(request)
+    assert decision["workers"] == []
+    assert decision["decision_reason"] == "collaboration_serial_fallback"
+    assert decision["collaboration_plan"]["status"] == "serial-fallback"
+    assert (
+        decision["collaboration_plan"]["serial_fallback_reason"]
+        == "duplicate_peer_profile:art-director"
+    )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "concept-art-direction/v1",
+        {**collaboration_activation(), "unknown": True},
+    ],
+)
+def test_collaboration_requires_strict_activation_object(value: object) -> None:
+    from scripts.runtime.orchestration_policy import PolicyError, decide_orchestration
+
+    request = request_with_packets()
+    request["collaboration"] = value
+    with pytest.raises(PolicyError, match="exactly"):
+        decide_orchestration(request)
+
+
+def test_collaboration_rejects_serial_request_instead_of_empty_peer_plan() -> None:
+    from scripts.runtime.orchestration_policy import PolicyError, decide_orchestration
+
+    request = request_with_packets()
+    request["serial"] = True
+    request["collaboration"] = collaboration_activation()
+    with pytest.raises(PolicyError, match="serial=true"):
+        decide_orchestration(request)
+
+
+def test_collaboration_requires_activation_artifact_refs_not_input_artifacts() -> None:
+    from scripts.runtime.orchestration_policy import PolicyError, decide_orchestration
+
+    request = request_with_packets()
+    activation = collaboration_activation()
+    activation["artifact_refs"] = []
+    request["collaboration"] = activation
+    with pytest.raises(PolicyError, match="artifact_refs.*non-empty"):
         decide_orchestration(request)

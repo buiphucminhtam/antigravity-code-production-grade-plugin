@@ -19,6 +19,7 @@ Welcome to Forgewright — an adaptive orchestrator with 84 AI skills covering t
 - **[Configuration Guide](SETUP-REFERENCE.md)** — Configure Forgewright for your project
 - **[CLI Init/Onboard Golden Path](guides/forge-init-onboard.md)** — Deterministic project initialization and profiling workflow
 - **[Docs Hub](guides/docs-hub.md)** — Build a privacy-safe multi-project HTML/CSS documentation portal
+- **[Peer Collaboration Guide](guides/peer-collaboration.md)** — Use bounded, parent-mediated advisory feedback safely
 
 ### Core Concepts
 - **[Mode Reference](mode-reference.md)** — 24 execution modes explained
@@ -29,6 +30,7 @@ Welcome to Forgewright — an adaptive orchestrator with 84 AI skills covering t
 ### Architecture
 - **[Architecture Overview](architecture.md)** — System design and component interactions
 - **[ADR-011: Central Docs Hub](adr/ADR-011-central-docs-hub.md)** — Local-first documentation architecture and safety boundaries
+- **[ADR-012: Bounded Peer Collaboration](adr/ADR-012-bounded-peer-collaboration.md)** — Read-only, bounded peer feedback with parent arbitration
 
 ### Migration & Troubleshooting
 - **[Migration Guide](migration/v8-to-v9.md)** — Upgrade from v8 to v9 `[Planned]`

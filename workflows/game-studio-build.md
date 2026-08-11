@@ -41,6 +41,24 @@ For each creative/downstream dispatch, execute this repository-owned chain:
    skill item/path and emitted `spawn_agent_args`. The repository does not own or
    provide the native tool; if the host does not expose it, keep the work local.
 
+If `PIPELINE_CONTEXT` explicitly requests
+`collaboration.mode: bounded-advisory`, and the Concept Packet has passed
+validation, the parent may broker one read-only Concept Artist ↔ Art Director
+feedback loop. Use typed events and immutable artifact refs through the parent;
+do not open direct peer chat. Concept Artist owns concepts/the packet, Art
+Director owns Style DNA/gates, and the parent owns the decision. Cap the initial
+strict profile `concept-art-direction/v1` at exactly two participants and one
+round. No collaboration loop is required for every task.
+
+The host integration must inject a same-process parent-TCB
+`TrustedParentHostAdapter` and out-of-band `TrustedHostCapability`; neither may
+come from a peer or manifest. Participant callbacks receive JSON-compatible
+assignments only and return untrusted event mappings; they never receive the
+broker, controller, channel, callable, or capability. Missing capability,
+malformed or late events, stale refs, deadline/limit breach, or disagreement
+requires explicit parent-serial fallback and is nonzero unless a parent serial
+executor completes that fallback.
+
 ## Steps
 
 1. **Detect the entry point**
@@ -78,8 +96,14 @@ For each creative/downstream dispatch, execute this repository-owned chain:
      `python3 scripts/runtime/codex-subagent-routing.py --config .production-grade.yaml --capabilities-json "$CODEX_SPAWN_CAPABILITIES_JSON" --tier "$TIER" --agent-type "$AGENT_TYPE" --overrides-json "$EXPLICIT_OVERRIDES_JSON"`.
      Pass only its emitted `spawn_agent_args` object to `spawn_agent`; otherwise
      keep selection `provider-managed` and omit unsupported fields.
-   - Freeze requirements, dependencies, owned paths, checks, advisory token
-     budgets, deadlines, and stop conditions in the dispatch packet.
+   - Freeze requirements, dependencies, owned paths, checks, deadlines, and stop
+     conditions in the dispatch packet.
+   - If the context requests bounded peer advice, freeze the exact activation:
+     mode, `concept-art-direction/v1` profile, two participants, purpose,
+     `frozen_inputs: true`, `fallback: parent-serial`, and non-empty strict
+     artifact refs. The repo-owned profile supplies participant/round/event/byte/
+     deadline limits. Do not add token, cost, or goal quotas or allow recursive
+     spawn.
    - If the policy returns workers and delegation is authorized, ask the host-owned
      native `spawn_agent` adapter to run all independent scopes concurrently. Set
      explicit ownership, forbid recursive spawn, and do not dispatch dependent
@@ -93,6 +117,9 @@ For each creative/downstream dispatch, execute this repository-owned chain:
 4. **Execute the active phase**
    - Concept: game promise, engine/platform, pillars, core loop, budgets,
      divergent visual concepts, selected concept packet, and approved Style DNA.
+     When explicitly requested, run the single parent-mediated Art Director
+     feedback loop only after Concept Packet validation; otherwise use the
+     serial Concept → Art Director handoff.
    - Systems Design: systems map, per-system specifications, dependencies,
      balance, UX, accessibility, acceptance criteria.
    - Technical Setup: architecture, ADRs, control manifest, test/build scaffold.

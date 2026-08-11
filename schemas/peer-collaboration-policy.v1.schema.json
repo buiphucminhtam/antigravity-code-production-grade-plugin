@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forgewright.dev/schemas/peer-collaboration-policy.v1.schema.json",
+  "title": "Forgewright Peer Collaboration Policy v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy_id",
+    "participants",
+    "max_peers",
+    "max_rounds",
+    "max_events",
+    "max_payload_bytes",
+    "max_event_bytes",
+    "max_total_bytes",
+    "deadline_seconds",
+    "orchestrator_id",
+    "system_id",
+    "recursive_spawning",
+    "peer_write_paths",
+    "allowed_recipients",
+    "allowed_kinds"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "policy_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$" },
+    "participants": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "contains": { "const": { "id": "concept-artist", "profile": "concept-artist" } },
+      "allOf": [
+        { "contains": { "const": { "id": "art-director", "profile": "art-director" } } }
+      ],
+      "items": { "$ref": "#/$defs/participant" }
+    },
+    "max_peers": { "type": "integer", "minimum": 2, "maximum": 3 },
+    "max_rounds": { "const": 1 },
+    "max_events": { "type": "integer", "minimum": 1, "maximum": 12 },
+    "max_payload_bytes": { "const": 16384 },
+    "max_event_bytes": { "const": 16384 },
+    "max_total_bytes": { "const": 196608 },
+    "deadline_seconds": { "type": "integer", "minimum": 1, "maximum": 86400 },
+    "orchestrator_id": { "const": "orchestrator" },
+    "system_id": { "const": "system" },
+    "recursive_spawning": { "const": false },
+    "peer_write_paths": {
+      "type": "array",
+      "maxItems": 0,
+      "items": { "type": "string" }
+    },
+    "allowed_recipients": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["concept-artist", "art-director", "orchestrator", "system"],
+      "properties": {
+        "concept-artist": { "$ref": "#/$defs/recipient_list" },
+        "art-director": { "$ref": "#/$defs/recipient_list" },
+        "orchestrator": { "$ref": "#/$defs/recipient_list" },
+        "system": { "$ref": "#/$defs/recipient_list" }
+      }
+    },
+    "allowed_kinds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["concept-artist", "art-director", "orchestrator", "system"],
+      "properties": {
+        "concept-artist": { "$ref": "#/$defs/kind_list" },
+        "art-director": { "$ref": "#/$defs/kind_list" },
+        "orchestrator": { "$ref": "#/$defs/kind_list" },
+        "system": { "$ref": "#/$defs/kind_list" }
+      }
+    }
+  },
+  "$defs": {
+    "participant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "profile"],
+      "properties": {
+        "id": { "type": "string", "enum": ["concept-artist", "art-director"] },
+        "profile": { "type": "string", "enum": ["concept-artist", "art-director"] }
+      }
+    },
+    "recipient_list": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 4,
+      "items": { "type": "string", "enum": ["concept-artist", "art-director", "orchestrator", "system"] }
+    },
+    "kind_list": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 10,
+      "items": {
+        "type": "string",
+        "enum": [
+          "session.opened",
+          "assignment.sent",
+          "peer.message",
+          "artifact.proposed",
+          "finding.reported",
+          "blocker.reported",
+          "decision.requested",
+          "decision.issued",
+          "session.closed",
+          "policy.rejected"
+        ]
+      }
+    }
+  }
+}

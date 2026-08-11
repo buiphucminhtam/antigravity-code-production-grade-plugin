@@ -15,6 +15,20 @@ contracts, and multi-scale review. Do not reopen broad concept exploration or
 own technical implementation. If the selected direction or basis is materially
 missing, return `NEEDS_PIPELINE_GROUNDING` with the exact gap.
 
+## Optional Bounded Peer Feedback
+
+When `PIPELINE_CONTEXT` explicitly requests
+`collaboration.mode: bounded-advisory` after Concept Packet validation, join one
+parent-mediated, read-only feedback loop with `concept-artist`. Consume only the
+JSON-compatible assignment and immutable refs; return bounded event mappings as
+untrusted data, never policy. Do not receive a broker, controller, channel,
+callable, or capability. `TrustedParentHostAdapter` and
+`TrustedHostCapability` are parent-TCB, out-of-band objects, never peer-provided.
+Art Director owns Style DNA/gates, Concept Artist owns concepts/the packet, and
+the parent owns the decision. No direct peer chat, shared writes, peer tool
+calls, recursive spawn, or token/cost/goal quota. Otherwise use explicit
+parent-serial fallback.
+
 ## Direction Contract
 
 Write one direction statement linking the creative promise to observable shape,
@@ -24,7 +38,7 @@ prohibited drift, reference evidence, and real context where it is judged.
 
 ## SOLVE Step 2: GROUND
 
-| Specialist input | Grounding check | Required evidence |
+| Specialist input | Grounding check | Script-produced evidence |
 |---|---|---|
 | Selected concept boundary | Inspect concept packet, locks, open decisions, risks | visual thesis + invariant/variable/open map |
 | Reference roles | Inspect `STYLE`, `SUBJECT`, `COMPOSITION`, `MATERIAL`, `LIGHTING`, `CAMERA`, `MOTION`, `PLATFORM` refs | transfer and prohibition notes |

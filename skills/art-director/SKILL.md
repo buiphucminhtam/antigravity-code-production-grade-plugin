@@ -27,6 +27,24 @@ If the concept boundary or visual basis is materially missing, return
 [art-direction-system.md](references/art-direction-system.md) for the complete
 direction canvas, family-bible template, and review rubric.
 
+## Optional Bounded Peer Feedback
+
+Participate with `concept-artist` only when `PIPELINE_CONTEXT` explicitly
+requests `collaboration.mode: bounded-advisory` and the parent has validated the
+Concept Packet. Use [`peer-collaboration.md`](../_shared/protocols/peer-collaboration.md):
+consume the JSON-compatible assignment and immutable artifact refs, then return
+bounded event mappings as untrusted data. Never receive or request the broker,
+parent controller, participant channel, callable, or `TrustedHostCapability`.
+The same-process `TrustedParentHostAdapter` belongs to the parent TCB and is
+never peer-provided. Do not open direct peer chat, write shared state, call tools
+for a peer, or spawn recursively.
+
+Art Director owns Style DNA and its gates. Concept Artist owns concepts and the
+Concept Packet. The parent/orchestrator brokers, observes, and makes the final
+decision. The initial loop is one feedback round only; if it is not requested
+or cannot run safely, continue the explicit parent-serial handoff. The peer
+profile defines no token, cost, or goal quota.
+
 ## Non-Negotiable Principles
 
 1. **Intent before taste.** Judge whether the work delivers the selected

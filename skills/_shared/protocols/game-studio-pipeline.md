@@ -1,3 +1,17 @@
+---
+id: game-studio-pipeline
+title: Game Studio Control Plane
+summary: Artifact-driven control plane for cross-discipline game development from concept through verified release.
+status: active
+version: 1.0.0
+owners: [core]
+triggers: [game build, cross-discipline game work]
+used_by: [game-designer, game-engineer, production-grade]
+related: [game-test-protocol, model-tier, peer-collaboration, quality-gate, task-validator]
+supersedes: []
+superseded_by: null
+---
+
 # Game Studio Control Plane
 
 > A Codex-native, artifact-driven operating model for taking a game from an idea
@@ -30,6 +44,9 @@ still preserve the phase's inputs, evidence, and handoff contract.
    release-risk decisions remain user decisions.
 7. **Evidence closes work** — tests, builds, playtests, performance captures,
    screenshots, and acceptance-criteria mappings are the completion record.
+8. **Bounded peer advice is opt-in** — a parent/control-plane owner may broker a
+   read-only, typed feedback loop between named disciplines, but peers never
+   form a free-chat mesh or become decision owners.
 
 ## State Path Resolution
 
@@ -188,6 +205,30 @@ the repository-owned executables in this order:
    repository does not provide, invoke, or own that native tool; when the host
    does not expose it, keep the work local and report the boundary.
 
+When `PIPELINE_CONTEXT` explicitly requests
+`collaboration.mode: bounded-advisory`, the parent may add one creative
+feedback loop after `creative-handoff.py validate-handoff` passes:
+
+```text
+Concept Packet -> Art Director typed feedback -> parent decision
+```
+
+This is not a replacement for the ordered handoff. Concept Artist owns
+concepts and the packet; Art Director owns Style DNA and gates; the parent is
+the broker, observer, policy owner, and final arbiter. Both skills receive only
+JSON-compatible assignments with immutable artifact refs and return untrusted
+typed event mappings. They never receive a broker, controller, channel, callable,
+or capability. The exact profile is `concept-art-direction/v1`: two participants,
+one round, repo-owned hard limits, and `parent-serial` fallback. If the context
+does not request collaboration, do not add this loop.
+
+Execution requires a same-process parent-TCB `TrustedParentHostAdapter` plus an
+out-of-band `TrustedHostCapability`; neither may be peer-provided or loaded from
+the dispatch manifest. The runner privately publishes validated mappings through
+the `InProcessBroker` and parent-owned JSONL log. Missing capability, malformed or
+late events, stale refs, limit breach, or disagreement requires explicit
+parent-serial fallback and returns nonzero when no parent serial executor exists.
+
 ### Design-ready handoff
 
 Required before architecture or story creation:
@@ -230,6 +271,7 @@ Choose topology from the dependency graph:
 | `pipeline` | Design → architecture → implementation → QA has strict handoffs | Each stage consumes a versioned handoff; blocked stages stop downstream work |
 | `fan-out/fan-in` | Independent research or reviews share immutable inputs | Freeze the review packet, collect every result, then synthesize disagreements |
 | `hierarchical` | A milestone spans multiple independent, path-disjoint lanes | One control-plane owner, bounded workers, explicit ownership, scheduled fan-in |
+| `bounded-advisory` | A named peer needs one read-only review of a validated artifact | Parent-mediated typed events, finite limits, and serial fallback |
 
 Before any multi-agent dispatch, run the deterministic decision contract in
 `scripts/runtime/orchestration_policy.py`. Follow its worker cap, reviewer
@@ -244,6 +286,14 @@ Rules for every dispatched worker:
 - no edits outside owned paths without a control-plane handoff;
 - exact verification command and a completion/blocker message;
 - partial results remain usable when another worker blocks.
+
+For the optional bounded-advisory topology, apply
+`skills/_shared/protocols/peer-collaboration.md`: no peer writes, peer tool
+calls, merge authority, recursive spawn, remote webhook, or distributed broker.
+The v1 path is strict: same-process trusted parent adapter, private in-process
+broker/channel publication, and parent-owned bounded JSONL. Callback waits obey
+the shared deadline, but timed-out daemon threads cannot be portably killed;
+the adapter must be cancellation-aware and late results are discarded.
 
 For security, schema, public API, concurrency, release-risk, or unresolved
 creative/technical disagreement, use an expert or independent review. Do not
@@ -290,8 +340,8 @@ Resolve a concrete model only from a same-invocation structured capability probe
    lower an `expert` assignment.
 
 Before spawning, freeze a dispatch packet containing the task requirements,
-dependency inputs, owned paths, tier, advisory token budget, deadline, stop
-conditions, and exact checks. Spawn selected independent workers concurrently;
+dependency inputs, owned paths, tier, deadline, stop conditions, and exact
+checks. Spawn selected independent workers concurrently;
 never start a dependent scope early. Every worker returns a bounded result,
 evidence, changed paths when writes were authorized, and blockers.
 
@@ -301,7 +351,8 @@ At fan-in:
 - reject out-of-scope edits and rerun each scope's exact checks;
 - compare overlapping conclusions and escalate unresolved disagreement to
   `expert`;
-- reserve one advisory token-budget slot when independent review is requested;
+- do not reserve one advisory token-budget slot or any token/cost/goal quota;
+  reserve one advisory reviewer slot when independent review is requested;
 - give the independent reviewer only immutable requirements, diff, and raw
   evidence, never worker reasoning or mutable synthesis context;
 - run parent-level integration, playtest, and phase-gate checks after merging

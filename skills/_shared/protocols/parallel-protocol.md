@@ -22,6 +22,33 @@ superseded_by: null
 3. **Partial reports** — Always report what succeeded and what failed
 4. **Explicit dependencies** — Never assume one task's output
 
+## Bounded Peer Advisory Mode
+
+The worker waves below describe parent-dispatched tasks. They do not authorize
+peer-to-peer chat or shared mutable state. When `PIPELINE_CONTEXT` explicitly
+requests `collaboration.mode: bounded-advisory`, apply
+[`peer-collaboration.md`](peer-collaboration.md) instead of inventing a mesh.
+
+- The parent/orchestrator remains broker, policy owner, observer, and final
+  arbiter.
+- The same-process `TrustedParentHostAdapter` and its out-of-band
+  `TrustedHostCapability` belong to the parent TCB and are never peer-provided or
+  manifest-loaded. Participant callbacks receive JSON-compatible assignments,
+  never a broker, controller, channel, callable, or capability; they return
+  untrusted event mappings for private parent validation/publication.
+- Enforce finite hard limits for participants, rounds, events, bytes, and the
+  deadline. The peer protocol adds no token, cost, or goal quota and no recursive
+  spawn.
+- Unsupported capability, malformed event, stale artifact, deadline expiry, or
+  unresolved disagreement closes the advisory attempt and falls back to the
+  equivalent parent-serial handoff. Without a parent serial executor, execution
+  records `parent-serial-required` and returns nonzero.
+
+The implemented path is a serial, thread-safe `InProcessBroker` with a bounded,
+hash-chained, parent-owned JSONL event log. Adapter callbacks share the policy
+deadline; a timed-out daemon thread cannot be portably killed, so trusted
+adapters must honor `cancel(reason)` and late results are discarded.
+
 ## Dependency Analysis
 
 ### Step 1: Identify Tasks

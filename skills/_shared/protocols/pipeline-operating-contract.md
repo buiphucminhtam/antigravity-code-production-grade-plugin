@@ -54,6 +54,31 @@ unresolved_decisions: <only decisions still capable of changing the contract>
 
 The envelope is a handoff, not a second specification system. Do not duplicate BRDs, ADRs, GDDs, threat models, or design systems inside it.
 
+An optional collaboration block is present only when the pipeline requests
+bounded advisory feedback:
+
+```text
+collaboration:
+  mode: bounded-advisory
+  profile: concept-art-direction/v1
+  participants: [concept-artist, art-director]
+  purpose: <bounded non-empty review question>
+  frozen_inputs: true
+  fallback: parent-serial
+  artifact_refs: <non-empty strict artifact:// references>
+```
+
+`bounded-advisory` is governed by
+[`peer-collaboration.md`](peer-collaboration.md). The exact activation is
+validated by `orchestration_policy.py`; hard limits come from the repo-owned
+profile, not caller-supplied quota fields. The same-process
+`TrustedParentHostAdapter` is parent TCB code gated by an out-of-band
+`TrustedHostCapability`, never a peer-provided adapter. Peers receive only
+JSON-compatible assignments and return untrusted event mappings; they never
+receive the broker, controller, channel, or capability. Unsupported capability,
+malformed or late events, limit breach, or disagreement uses explicit
+`parent-serial` fallback, which is nonzero when no parent serial executor exists.
+
 ## Phase Ownership
 
 | Phase | Pipeline responsibility | Specialist responsibility |
@@ -75,6 +100,14 @@ A specialist should not re-run the generic pipeline loop merely because its SKIL
 - reports newly discovered facts as `DOMAIN_FINDING` when they can change scope, safety, or another role's contract;
 - returns `NEEDS_PIPELINE_GROUNDING` when required cross-cutting context is missing instead of inventing it;
 - never silently changes the pipeline scope or another specialist's authoritative contract.
+
+When the envelope requests bounded advisory collaboration, the named
+specialists participate only in the stated review question and only after the
+parent validates the input artifacts. They do not open direct peer channels,
+write shared state, call tools on one another's behalf, or decide the outcome.
+If the collaboration cannot run safely, each specialist resumes its normal
+serial handoff. The strict runtime uses an in-process broker plus parent-owned
+bounded JSONL; it defines no token, cost, or goal quota.
 
 Domain overlap is valid only when it is genuinely part of the specialty: prompt injection belongs deeply in security analysis; reference hierarchy belongs deeply in UI/art review; source triangulation belongs deeply in research. What is forbidden is making each skill a miniature copy of the entire pipeline.
 

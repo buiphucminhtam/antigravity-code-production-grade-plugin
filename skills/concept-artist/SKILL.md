@@ -22,6 +22,25 @@ basis may contain research references and constraints rather than an approved
 style. If no trustworthy basis exists, return `NEEDS_PIPELINE_GROUNDING` with
 the exact missing inputs.
 
+## Optional Bounded Peer Feedback
+
+Participate in the Concept Artist ↔ Art Director feedback loop only when
+`PIPELINE_CONTEXT` explicitly requests
+`collaboration.mode: bounded-advisory` and the parent has validated the Concept
+Packet. Follow [`peer-collaboration.md`](../_shared/protocols/peer-collaboration.md):
+consume the JSON-compatible assignment and immutable artifact refs, then return
+bounded event mappings as untrusted data. Never receive or request the broker,
+parent controller, participant channel, callable, or `TrustedHostCapability`.
+The same-process `TrustedParentHostAdapter` belongs to the parent TCB and is
+never peer-provided. This is not direct peer chat, shared workspace activity, a
+tool call, or a recursive spawn.
+
+Concept Artist owns divergent concepts and the Concept Packet. Art Director
+owns Style DNA and its gates. The parent/orchestrator brokers, observes, and
+makes the final decision. The initial loop is at most one feedback round; if it
+is not requested or cannot run safely, continue with the explicit parent-serial
+handoff. The peer profile defines no token, cost, or goal quota.
+
 Read [concept-development.md](references/concept-development.md) when building a
 full concept matrix, category-specific packet, or scored selection review.
 

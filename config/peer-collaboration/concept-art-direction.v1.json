@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "policy_id": "concept-art-direction-v1",
+  "participants": [
+    { "id": "concept-artist", "profile": "concept-artist" },
+    { "id": "art-director", "profile": "art-director" }
+  ],
+  "max_peers": 3,
+  "max_rounds": 1,
+  "max_events": 12,
+  "max_payload_bytes": 16384,
+  "max_event_bytes": 16384,
+  "max_total_bytes": 196608,
+  "deadline_seconds": 900,
+  "orchestrator_id": "orchestrator",
+  "system_id": "system",
+  "recursive_spawning": false,
+  "peer_write_paths": [],
+  "allowed_recipients": {
+    "concept-artist": ["orchestrator"],
+    "art-director": ["orchestrator"],
+    "orchestrator": ["concept-artist", "art-director", "system"],
+    "system": []
+  },
+  "allowed_kinds": {
+    "concept-artist": ["peer.message", "artifact.proposed", "finding.reported", "blocker.reported", "decision.requested"],
+    "art-director": ["peer.message", "artifact.proposed", "finding.reported", "blocker.reported", "decision.requested"],
+    "orchestrator": ["session.opened", "assignment.sent", "decision.requested", "decision.issued", "session.closed", "policy.rejected"],
+    "system": []
+  }
+}
