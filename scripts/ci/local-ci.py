@@ -872,6 +872,19 @@ class LocalCI:
         assert mcp_tsc and cli_tsc and mcp_vitest and cli_vitest
         self.run("mcp-typecheck", [mcp_tsc, "--noEmit"], cwd=ROOT / "mcp")
         self.run("cli-typecheck", [cli_tsc, "--noEmit"], cwd=ROOT / "src" / "cli")
+        self.run("cli-build", [self.npm, "run", "build:cli"])
+        self.run(
+            "docs-continuity",
+            [
+                self.node,
+                "src/cli/dist/index.js",
+                "docs",
+                "gate",
+                ".",
+                "--staged",
+                "--json",
+            ],
+        )
         self.run(
             "mcp-tests",
             [self.node, mcp_vitest, "run", "--reporter=basic"],

@@ -21,6 +21,11 @@ import {
   validateManifest,
 } from "../src/docs/manifest.js";
 import {
+  createDefaultProjectState,
+  safeLoadProjectState,
+  validateProjectState,
+} from "../src/docs/project-state.js";
+import {
   DocsPathError,
   isAllowedByPrivacy,
   matchesGlob,
@@ -104,6 +109,178 @@ describe("docs manifest and registry", () => {
     expect(() =>
       resolveWithinProject(root, "../outside", { mustExist: false }),
     ).toThrow(DocsPathError);
+  });
+
+  it("creates a canonical project state non-destructively", () => {
+    const root = copyFixture("forgewright");
+    const first = initManifest(root);
+    expect(first.manifest.project_docs).toEqual({
+      schema_version: 1,
+      state: "docs/project-state.json",
+      max_stale_days: 30,
+    });
+    const statePath = join(root, "docs", "project-state.json");
+    const originalState = readFileSync(statePath, "utf8");
+    writeJson(statePath, {
+      ...createDefaultProjectState(root),
+      project: {
+        ...createDefaultProjectState(root).project,
+        summary: "Owner state",
+      },
+    });
+    expect(initManifest(root).status).toBe("already_exists");
+    expect(readFileSync(statePath, "utf8")).not.toBe(originalState);
+    expect(JSON.parse(readFileSync(statePath, "utf8")).project.summary).toBe(
+      "Owner state",
+    );
+  });
+
+  it("migrates an existing manifest to the mandatory project docs contract", () => {
+    const root = copyFixture("forgewright");
+    const manifestPath = join(root, ".forgewright", "docs-manifest.json");
+    writeJson(manifestPath, {
+      schema_version: 1,
+      project: { id: "legacy-project", title: "Legacy Project" },
+      sources: [{ path: "README.md", type: "overview" }],
+      truth: ["README.md"],
+      privacy: { mode: "allowlist", allow: ["README.md"] },
+    });
+
+    const result = initManifest(root);
+
+    expect(result.status).toBe("migrated");
+    expect(result.manifest.project.id).toBe("legacy-project");
+    expect(result.manifest.project_docs?.state).toBe("docs/project-state.json");
+    expect(result.manifest.sources).toContainEqual({
+      path: "docs/project-state.json",
+      type: "metadata",
+    });
+    expect(result.manifest.privacy.allow).toContain("README.md");
+    expect(result.manifest.privacy.allow).toContain("docs/project-state.json");
+    expect(existsSync(join(root, "docs", "project-state.json"))).toBe(true);
+  });
+
+  it("validates the complete project-state contract and rejects malformed sections", () => {
+    const root = copyFixture("forgewright");
+    const state = createDefaultProjectState(root);
+    expect(validateProjectState(state)).toEqual(state);
+    expect(() =>
+      validateProjectState({ ...state, backlog: undefined }),
+    ).toThrow();
+    expect(() =>
+      validateProjectState({
+        ...state,
+        project: { ...state.project, product_type: "website" },
+      }),
+    ).toThrow();
+    expect(() =>
+      validateProjectState({
+        ...state,
+        structure: {
+          ...state.structure,
+          roots: [{ ...state.structure.roots[0], path: "../outside" }],
+        },
+      }),
+    ).toThrow();
+    expect(() =>
+      validateProjectState({
+        ...state,
+        roadmap: [
+          {
+            id: "same",
+            title: "One",
+            status: "planned",
+            priority: "medium",
+            owner: "team",
+            target_date: null,
+            depends_on: [],
+            references: [],
+          },
+          {
+            id: "same",
+            title: "Two",
+            status: "planned",
+            priority: "medium",
+            owner: "team",
+            target_date: null,
+            depends_on: [],
+            references: [],
+          },
+        ],
+      }),
+    ).toThrow();
+    expect(() =>
+      validateProjectState({
+        ...state,
+        status: { ...state.status, updated_at: "not-a-date" },
+      }),
+    ).toThrow();
+    expect(() =>
+      validateProjectState({
+        ...state,
+        status: { ...state.status, lifecycle: "active" },
+      }),
+    ).toThrow();
+    expect(() =>
+      validateProjectState({
+        ...state,
+        structure: {
+          ...state.structure,
+          dependencies: [{ from: "missing", to: "missing", type: "uses" }],
+        },
+      }),
+    ).toThrow();
+    expect(() =>
+      validateProjectState({
+        ...state,
+        roadmap: [
+          {
+            id: "roadmap-item",
+            title: "Roadmap item",
+            status: "planned",
+            priority: "medium",
+            owner: "team",
+            target_date: "2026-02-30",
+            depends_on: ["missing"],
+            references: [],
+          },
+        ],
+      }),
+    ).toThrow();
+    expect(() =>
+      validateProjectState({
+        ...state,
+        flows: [
+          {
+            id: "empty-flow",
+            title: "Empty flow",
+            status: "draft",
+            trigger: "A trigger",
+            steps: [],
+          },
+        ],
+      }),
+    ).toThrow();
+  });
+
+  it("rejects canonical state files reached through file or directory symlinks", () => {
+    const root = copyFixture("forgewright");
+    const realDirectory = join(root, "real-state");
+    mkdirSync(realDirectory);
+    writeJson(
+      join(realDirectory, "project-state.json"),
+      createDefaultProjectState(root),
+    );
+    symlinkSync("real-state/project-state.json", join(root, "state-link.json"));
+    symlinkSync("real-state", join(root, "state-dir-link"));
+
+    expect(safeLoadProjectState(root, "state-link.json").error?.code).toBe(
+      "containment",
+    );
+    expect(
+      safeLoadProjectState(root, "state-dir-link/project-state.json").error
+        ?.code,
+    ).toBe("containment");
   });
 
   it("adds, canonicalizes, lists, updates and removes registry projects", () => {
@@ -269,6 +446,97 @@ describe("privacy-safe scanning and deterministic normalization", () => {
     const path = writeCatalog(first);
     expect(path).toBe(getCatalogPath(root));
     expect(existsSync(path)).toBe(true);
+  });
+
+  it("loads project state, reports contract failures, and fingerprints state content", () => {
+    const root = copyFixture("forgewright");
+    initManifest(root);
+    const first = scanProject(root);
+    expect(first.project.state).not.toBeNull();
+    expect(first.project.stateHash).toBeTruthy();
+    const statePath = join(root, "docs", "project-state.json");
+    const changed = createDefaultProjectState(root);
+    changed.project.summary = "Changed canonical state";
+    writeJson(statePath, changed);
+    expect(scanProject(root).sourceFingerprint).not.toBe(
+      first.sourceFingerprint,
+    );
+
+    rmSync(statePath);
+    expect(scanProject(root).diagnostics.map((item) => item.code)).toContain(
+      "PROJECT_STATE_MISSING",
+    );
+
+    writeFileSync(statePath, "{invalid\n", "utf8");
+    expect(scanProject(root).diagnostics.map((item) => item.code)).toContain(
+      "PROJECT_STATE_INVALID",
+    );
+
+    const ownedState = join(root, "docs", "owned-state.json");
+    writeJson(ownedState, createDefaultProjectState(root));
+    rmSync(statePath);
+    symlinkSync("owned-state.json", statePath);
+    expect(scanProject(root).diagnostics.map((item) => item.code)).toContain(
+      "PROJECT_STATE_INVALID",
+    );
+    rmSync(statePath);
+
+    const stale = createDefaultProjectState(root);
+    stale.status.updated_at = "2020-01-01T00:00:00Z";
+    writeJson(statePath, stale);
+    expect(scanProject(root).diagnostics.map((item) => item.code)).toContain(
+      "PROJECT_STATE_STALE",
+    );
+
+    const inconsistent = createDefaultProjectState(root);
+    inconsistent.status.updated_at = "2999-01-01T00:00:00Z";
+    inconsistent.structure.roots.push({
+      id: "missing-root",
+      path: "missing-root",
+      kind: "directory",
+      purpose: "Must exist",
+      owner: "team",
+    });
+    inconsistent.roadmap.push({
+      id: "referenced-item",
+      title: "Referenced item",
+      status: "planned",
+      priority: "medium",
+      owner: "team",
+      target_date: null,
+      depends_on: [],
+      references: [{ path: "docs/missing.md" }],
+    });
+    writeJson(statePath, inconsistent);
+    const inconsistentCodes = scanProject(root).diagnostics.map(
+      (item) => item.code,
+    );
+    expect(inconsistentCodes).toContain("PROJECT_STATE_FUTURE_TIMESTAMP");
+    expect(inconsistentCodes).toContain("PROJECT_STRUCTURE_ROOT_UNAVAILABLE");
+    expect(inconsistentCodes).toContain("PROJECT_STATE_REFERENCE_UNAVAILABLE");
+
+    const manifestPath = join(root, ".forgewright", "docs-manifest.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Record<
+      string,
+      unknown
+    >;
+    writeJson(manifestPath, {
+      ...manifest,
+      privacy: { mode: "allowlist", allow: ["README.md"] },
+    });
+    expect(scanProject(root).diagnostics.map((item) => item.code)).toContain(
+      "PROJECT_STATE_NOT_ALLOWLISTED",
+    );
+
+    writeJson(manifestPath, {
+      schema_version: 1,
+      project: { id: "legacy", title: "Legacy" },
+      sources: [{ path: "README.md", type: "overview" }],
+      privacy: { mode: "allowlist", allow: ["README.md"] },
+    });
+    expect(scanProject(root).diagnostics.map((item) => item.code)).toContain(
+      "PROJECT_DOCS_CONTRACT_MISSING",
+    );
   });
 
   it("reports broken links, anchors, diagrams and stale indexes", () => {

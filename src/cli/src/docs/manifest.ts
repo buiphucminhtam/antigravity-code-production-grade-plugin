@@ -8,8 +8,10 @@ import {
 import { basename, join } from "node:path";
 import { z } from "zod";
 import { canonicalProjectRoot, normalizeRelativePath } from "./privacy.js";
+import { createDefaultProjectState } from "./project-state.js";
 import {
   DOCS_SCHEMA_VERSION,
+  DOCS_PROJECT_STATE_SCHEMA_VERSION,
   type DocsDiagnostic,
   type DocsManifest,
   type DocsSource,
@@ -21,6 +23,7 @@ export const DOCS_MANIFEST_PATH = join(".forgewright", "docs-manifest.json");
 const relativePathSchema = z
   .string()
   .min(1)
+  .refine((value) => !value.includes("\\"), "backslashes are not allowed")
   .refine((value) => {
     try {
       normalizeRelativePath(value);
@@ -58,6 +61,14 @@ export const docsManifestSchema = z
       })
       .strict(),
     sources: z.array(sourceSchema).min(1),
+    project_docs: z
+      .object({
+        schema_version: z.literal(DOCS_PROJECT_STATE_SCHEMA_VERSION),
+        state: relativePathSchema,
+        max_stale_days: z.number().int().min(1).max(365).optional(),
+      })
+      .strict()
+      .optional(),
     truth: z.array(relativePathSchema).optional(),
     adapters: z
       .object({
@@ -181,14 +192,26 @@ export function createDefaultManifest(projectRootInput: string): DocsManifest {
     title: humanizeProjectTitle(basename(projectRoot)),
   };
   const sources = discoverSources(projectRoot);
+  const projectStatePath = join("docs", "project-state.json");
+  if (!sources.some((source) => source.path === projectStatePath)) {
+    sources.push({ path: projectStatePath, type: "metadata" });
+  }
 
   return {
     schema_version: DOCS_SCHEMA_VERSION,
     project: identity,
     sources,
-    truth: sources
-      .filter((source) => source.type === "overview")
-      .map((source) => source.path),
+    project_docs: {
+      schema_version: DOCS_PROJECT_STATE_SCHEMA_VERSION,
+      state: projectStatePath,
+      max_stale_days: 30,
+    },
+    truth: [
+      ...sources
+        .filter((source) => source.type === "overview")
+        .map((source) => source.path),
+      projectStatePath,
+    ],
     adapters: {
       git: true,
       gitnexus: existsSync(join(projectRoot, ".gitnexus", "meta.json")),
@@ -226,24 +249,78 @@ export function initManifest(
   options: { force?: boolean } = {},
 ): {
   path: string;
-  status: "created" | "already_exists" | "overwritten";
+  status: "created" | "already_exists" | "migrated" | "overwritten";
   manifest: DocsManifest;
 } {
   const projectRoot = canonicalProjectRoot(projectRootInput);
   const manifestPath = join(projectRoot, DOCS_MANIFEST_PATH);
   if (existsSync(manifestPath) && !options.force) {
+    const existing = validateManifest(
+      JSON.parse(readFileSync(manifestPath, "utf8")),
+    );
+    if (!existing.project_docs) {
+      const statePath = join("docs", "project-state.json");
+      const sources = existing.sources.some(
+        (source) => source.path === statePath,
+      )
+        ? existing.sources
+        : [...existing.sources, { path: statePath, type: "metadata" as const }];
+      const allow = existing.privacy.allow
+        ? [...new Set([...existing.privacy.allow, statePath])]
+        : undefined;
+      const migrated: DocsManifest = {
+        ...existing,
+        sources,
+        project_docs: {
+          schema_version: DOCS_PROJECT_STATE_SCHEMA_VERSION,
+          state: statePath,
+          max_stale_days: 30,
+        },
+        truth: [...new Set([...(existing.truth ?? []), statePath])],
+        privacy: {
+          ...existing.privacy,
+          ...(allow ? { allow } : {}),
+        },
+      };
+      writeFileSync(
+        manifestPath,
+        `${JSON.stringify(migrated, null, 2)}\n`,
+        "utf8",
+      );
+      const absoluteStatePath = join(projectRoot, statePath);
+      if (!existsSync(absoluteStatePath)) {
+        mkdirSync(join(projectRoot, "docs"), { recursive: true });
+        writeFileSync(
+          absoluteStatePath,
+          `${JSON.stringify(createDefaultProjectState(projectRoot), null, 2)}\n`,
+          "utf8",
+        );
+      }
+      return {
+        path: manifestPath,
+        status: "migrated",
+        manifest: migrated,
+      };
+    }
     return {
       path: manifestPath,
       status: "already_exists",
-      manifest: validateManifest(
-        JSON.parse(readFileSync(manifestPath, "utf8")),
-      ),
+      manifest: existing,
     };
   }
 
   const manifest = createDefaultManifest(projectRoot);
   mkdirSync(join(projectRoot, ".forgewright"), { recursive: true });
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  const statePath = join(projectRoot, manifest.project_docs!.state);
+  if (!existsSync(statePath)) {
+    mkdirSync(join(projectRoot, "docs"), { recursive: true });
+    writeFileSync(
+      statePath,
+      `${JSON.stringify(createDefaultProjectState(projectRoot), null, 2)}\n`,
+      "utf8",
+    );
+  }
   return {
     path: manifestPath,
     status: options.force ? "overwritten" : "created",

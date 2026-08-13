@@ -9,6 +9,9 @@ A step is `HARD` when one or more material signals apply:
 - Security-sensitive behavior or permission boundary.
 - Public interface/schema/export contract change.
 - Concurrency, locking, ordering, migration, or irreversible release path.
+- Payment, billing, IAP/in-app purchase, receipt validation, entitlements,
+  subscription, or checkout behavior. These are mandatory `HARD` signals
+  regardless of file count.
 - Guardrail returned DENY/WARN that changes the feasible approach.
 - Process termination would affect an unowned or deliberately-kept runtime.
 
@@ -23,6 +26,14 @@ Otherwise the step is `EASY`; `QUICK` work does not need ceremonial per-line tag
 1. Treat escalated output as a proposal, not truth; verify it against current constraints and project evidence.
 2. Cross-validate only when disagreement or risk remains material — do not trigger a second model merely to satisfy a cascade.
 3. Integrate only verified output.
+
+For payment-domain and other HARD completion, the independent reviewer must be
+separate from the implementer and produce a signed `review-2` record using
+OpenSSH Ed25519. It must bind the canonical final-evidence digest, exact tree,
+turn, acceptance IDs, and `negative_path_bindings`, and verify against the
+external `FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS` file or
+`~/.forgewright/reviewers.allowed_signers`. Review-1, self-authored JSON, or a
+marker-only approval is `UNVERIFIED`.
 
 ## Budget / Stop Condition
 Respect declared cost/token/deadline constraints. When the preferred escalation is unavailable, use the safest bounded path that still meets acceptance; for security/irreversible/public-contract work, report the unresolved blocker rather than silently weakening the gate. Do not invent extra work to consume remaining budget.

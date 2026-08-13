@@ -10,7 +10,7 @@ Runtime guardrail configuration for tool execution. The policy lives in
 | Key | Default | Meaning |
 |---|---|---|
 | `mode` | `strict` | `strict` = deny blocks (exit 1) · `permissive` = warn but allow (exit 2) · `audit` = log to telemetry only (exit 0) |
-| `require_verify` | `true` | Every success claim requires a VERIFY block ([VERIFY.md](VERIFY.md)) |
+| `require_verify` | `true` | Code-change completion requires exact-turn schema-v2 evidence and strict response correlation ([VERIFY.md](VERIFY.md)) |
 | `max_escalations` | `3` | Max `escalate.sh` calls per user turn before pausing for approval ([ESCALATE.md](ESCALATE.md)) |
 | `deny_patterns` | see file | Case-insensitive POSIX ERE list matched against `"<tool_name> <args>"` |
 | `refresh_interval_ticks` | `10` | Guard re-reads the policy file every N tool calls (hot-reload) |

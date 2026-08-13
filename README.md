@@ -403,12 +403,16 @@ forge docs init .
 forge docs registry add .
 forge docs build .
 forge docs doctor . --strict
+forge docs gate . --worktree
 ```
 
 Use `forge docs build --all` for every registered project and
 `forge docs export obsidian --all` when an optional Obsidian vault is needed.
 The older `forgewright-wiki-sync*.sh` entry points remain legacy compatibility
 tools; new workflows should use the source-preserving Docs Hub.
+For material changes, `forge docs gate` is mandatory; it verifies the
+project-owned Markdown/JSON and canonical project state before accepting
+generated HTML/CSS output.
 
 **[Read the Docs Hub Guide ➔](docs/guides/docs-hub.md)**
 

@@ -197,7 +197,7 @@ VERDICT: PASS
 
 
 def test_stop_gate_accepts_valid_no_code_payload(tmp_path: Path) -> None:
-    result = run_stop_gate(tmp_path, "CLAUDE", VALID_VERIFY)
+    result = run_stop_gate(tmp_path, "CLAUDE", "No code changes were made.")
 
     assert result.returncode == 0
 
@@ -240,7 +240,7 @@ def test_claude_incomplete_claim_blocks_with_native_exit_code(tmp_path: Path) ->
 
 
 def test_codex_stop_gate_emits_one_parseable_continue_json(tmp_path: Path) -> None:
-    result = run_stop_gate(tmp_path, "CODEX", VALID_VERIFY)
+    result = run_stop_gate(tmp_path, "CODEX", "No code changes were made.")
 
     assert result.returncode == 0
     assert json.loads(result.stdout) == {"continue": True}
@@ -276,7 +276,9 @@ def test_codex_stop_gate_surfaces_bounded_redacted_evidence_reason(
     assert result.returncode == 0
     payload = json.loads(result.stdout)
     assert payload["decision"] == "block"
-    assert payload["reason"].startswith("MISSING:")
+    assert (
+        payload["reason"] == "Forgewright rule validator rejected the response payload."
+    )
     assert len(payload["reason"]) <= 512
     assert fake_secret not in payload["reason"]
 
@@ -320,7 +322,7 @@ PYEOF
     parsed = json.loads(result.stdout)
     assert parsed["decision"] == "block"
     assert parsed["reason"] == (
-        "Forgewright evidence validator rejected the response payload."
+        "Forgewright rule validator rejected the response payload."
     )
     assert len(parsed["reason"]) <= 512
     assert fake_secret not in parsed["reason"]

@@ -9,8 +9,15 @@ import {
 } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { renderMarkdown } from "./markdown.js";
+import { slugifyHeading } from "./normalize.js";
 import { buildSearchIndex } from "./search.js";
-import type { DocsBuildResult, DocsCatalog, DocsDocument } from "./types.js";
+import type {
+  DocsBuildResult,
+  DocsCatalog,
+  DocsDocument,
+  DocsProjectState,
+  DocsRef,
+} from "./types.js";
 
 export interface StaticRenderOptions {
   outputDir: string;
@@ -45,7 +52,8 @@ const CSS = `:root {
 }
 * { box-sizing: border-box; }
 html { background: var(--bg); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.65; overflow-wrap: anywhere; }
-body { margin: 0; min-width: 0; }
+html, body { max-width: 100%; }
+body { margin: 0; min-width: 0; overflow-x: clip; }
 a { color: var(--accent-strong); text-underline-offset: .18em; }
 a:hover { color: var(--accent); }
 a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
@@ -58,6 +66,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 .sidebar nav a:hover { background: var(--accent-soft); }
 .main { min-width: 0; padding: clamp(1.25rem, 4vw, 4rem); }
 .content { max-width: var(--measure); margin-inline: auto; }
+.shell, .main, .content, .card, .section-card, .state-grid, .field-list, .item-grid { min-width: 0; max-width: 100%; }
 h1, h2, h3 { line-height: 1.2; letter-spacing: -.025em; }
 h1 { font-size: clamp(2rem, 5vw, 3.5rem); margin-top: .35rem; }
 .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr)); gap: 1rem; }
@@ -66,11 +75,33 @@ h1 { font-size: clamp(2rem, 5vw, 3.5rem); margin-top: .35rem; }
 .meta { color: var(--muted); font-size: .92rem; }
 .eyebrow { color: var(--accent-strong); font-size: .78rem; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
 .metric { font-size: 1.65rem; font-weight: 760; line-height: 1; }
+.section-card { scroll-margin-top: 1rem; }
+.section-card + .section-card { margin-top: 1.25rem; }
+.section-nav { display: flex; flex-wrap: wrap; gap: .45rem; margin: 1.25rem 0; }
+.section-nav a { border: 1px solid var(--border); border-radius: 999px; padding: .25rem .65rem; }
+.state-grid, .field-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr)); gap: .8rem 1rem; margin: 0; }
+.field-list > div { min-width: 0; }
+.field-list dt { color: var(--muted); font-size: .82rem; font-weight: 700; }
+.field-list dd { margin: 0; min-width: 0; }
+.item-grid { display: grid; gap: .9rem; }
+.item-card { min-width: 0; border: 1px solid var(--border); border-radius: 9px; padding: .9rem; background: var(--surface-alt); }
+.item-card h3, .item-card h4 { overflow-wrap: anywhere; }
+.item-card h3 { margin: 0 0 .55rem; }
+.item-card h4 { margin-bottom: .35rem; }
+.item-card + .item-card { margin-top: .75rem; }
+.empty-state { border-left: 4px solid var(--border); color: var(--muted); margin: .7rem 0; padding: .45rem .75rem; }
+.empty-value { color: var(--muted); font-style: italic; }
+.compact-list { margin: .35rem 0 0; padding-left: 1.25rem; }
+.ref-list { display: grid; gap: .25rem; margin: .35rem 0 0; padding-left: 1.25rem; }
+.flow-steps { display: grid; gap: .8rem; margin: .75rem 0 0; padding-left: 1.4rem; }
+.compact-list, .ref-list, .flow-steps { min-width: 0; max-width: 100%; }
+.flow-steps > li { padding-left: .25rem; }
+.diagnostic-list code, .item-card code { overflow-wrap: anywhere; }
 .code-block, pre { overflow: auto; background: var(--code); padding: 1rem; border-radius: 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
 code { background: var(--code); padding: .1em .3em; border-radius: 4px; }
 pre code { background: transparent; padding: 0; }
 .table-scroll { max-width: 100%; overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; min-width: 32rem; }
+table { border-collapse: collapse; width: 100%; min-width: 0; table-layout: fixed; }
 th, td { border: 1px solid var(--border); padding: .6rem .75rem; text-align: left; vertical-align: top; }
 th { background: var(--surface-alt); }
 blockquote { border-left: .25rem solid var(--accent); margin: 1rem 0; padding: .25rem 1rem; color: var(--muted); }
@@ -97,6 +128,7 @@ input[type="search"] { width: min(100%, 42rem); min-height: 2.75rem; padding: .6
 }
 @media (max-width: 1023px) { .document-layout { grid-template-columns: 1fr; } .outline { position: static; order: -1; } }
 @media (max-width: 767px) { .shell { display: block; } .sidebar { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); } .sidebar nav { display: flex; flex-wrap: wrap; gap: .25rem; } .sidebar nav p { margin: 0; } .main { padding: 1rem; } }
+@media (max-width: 360px) { .main { padding: .75rem; } .card { padding: .85rem; } .state-grid, .field-list { grid-template-columns: 1fr; } th, td { padding: .45rem; word-break: break-word; } }
 @media print { .sidebar, .no-print, .outline { display: none !important; } .shell, .document-layout { display: block; } .main { padding: 0; } a { color: inherit; text-decoration: none; } .card { break-inside: avoid; box-shadow: none; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
 `;
@@ -120,6 +152,232 @@ function escape(value: string): string {
     .replace(/>/g, "&gt;")
     .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+function label(value: string | null | undefined): string {
+  if (!value) return "Unavailable";
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+function emptyState(message: string): string {
+  return `<p class="empty-state">${escape(message)}</p>`;
+}
+function listItems<T>(
+  items: T[],
+  render: (item: T, index: number) => string,
+  message: string,
+): string {
+  return items.length
+    ? `<div class="item-grid">${items.map(render).join("")}</div>`
+    : emptyState(message);
+}
+function valuesList(values: string[], message: string): string {
+  return values.length
+    ? `<ul class="compact-list">${values.map((value) => `<li>${escape(value)}</li>`).join("")}</ul>`
+    : emptyState(message);
+}
+function renderRef(
+  ref: DocsRef,
+  catalog: DocsCatalog,
+  fromRoute: string,
+): string {
+  const document = catalog.documents.find(
+    (candidate) => candidate.sourcePath === ref.path,
+  );
+  const text = `${ref.path}${ref.anchor ? `#${ref.anchor}` : ""}`;
+  if (!document) return `<code>${escape(text)}</code>`;
+  const fragment = ref.anchor ? `#${slugifyHeading(ref.anchor)}` : "";
+  return `<a href="${escape(`${href(fromRoute, document.route)}${fragment}`)}">${escape(text)}</a>`;
+}
+function renderRefs(
+  refs: DocsRef[],
+  catalog: DocsCatalog,
+  fromRoute: string,
+  message = "No references recorded.",
+): string {
+  return refs.length
+    ? `<ul class="ref-list">${refs.map((ref) => `<li>${renderRef(ref, catalog, fromRoute)}</li>`).join("")}</ul>`
+    : emptyState(message);
+}
+function fieldList(fields: Array<[string, string]>): string {
+  return `<dl class="field-list">${fields.map(([name, value]) => `<div><dt>${escape(name)}</dt><dd>${value}</dd></div>`).join("")}</dl>`;
+}
+function stateUnavailable(): string {
+  return emptyState("Project state unavailable.");
+}
+function stateFreshness(catalog: DocsCatalog): string {
+  if (!catalog.project.state) return "Unavailable";
+  if (
+    catalog.diagnostics.some(
+      (diagnostic) => diagnostic.code === "PROJECT_STATE_FUTURE_TIMESTAMP",
+    )
+  ) {
+    return "Future timestamp";
+  }
+  return catalog.diagnostics.some(
+    (diagnostic) => diagnostic.code === "PROJECT_STATE_STALE",
+  )
+    ? "Stale"
+    : "Current";
+}
+function stateUpdated(catalog: DocsCatalog): string {
+  return catalog.project.state?.status.updated_at ?? "Unavailable";
+}
+function stateSource(catalog: DocsCatalog): string {
+  return catalog.project.statePath ?? "Unavailable";
+}
+function renderStateStatus(
+  state: DocsProjectState,
+  catalog: DocsCatalog,
+): string {
+  const status = state.status;
+  return `<p>${escape(status.summary)}</p>${fieldList([
+    ["Project health", escape(label(status.health))],
+    ["Lifecycle", escape(label(status.lifecycle))],
+    ["Phase", escape(status.phase)],
+    ["State freshness", escape(stateFreshness(catalog))],
+    ["Last updated", escape(status.updated_at)],
+    ["Next update", escape(status.next_update_at ?? "Not scheduled")],
+  ])}<h3>Blockers</h3>${listItems(
+    status.blockers,
+    (blocker) =>
+      `<article class="item-card"><h4>${escape(blocker.title)}</h4>${fieldList([
+        ["ID", `<code>${escape(blocker.id)}</code>`],
+        ["Owner", escape(blocker.owner)],
+      ])}</article>`,
+    "No blockers recorded.",
+  )}<h3>Risks</h3>${listItems(
+    status.risks,
+    (risk) =>
+      `<article class="item-card"><h4>${escape(risk.title)}</h4>${fieldList([
+        ["ID", `<code>${escape(risk.id)}</code>`],
+        ["Owner", escape(risk.owner)],
+        ["Mitigation", escape(risk.mitigation)],
+      ])}</article>`,
+    "No risks recorded.",
+  )}<h3>Next actions</h3>${listItems(
+    status.next_actions,
+    (action) =>
+      `<article class="item-card"><h4>${escape(action.title)}</h4>${fieldList([
+        ["ID", `<code>${escape(action.id)}</code>`],
+        ["Owner", escape(action.owner)],
+        ["Due date", escape(action.due_date ?? "Not scheduled")],
+      ])}</article>`,
+    "No next actions recorded.",
+  )}`;
+}
+function renderStateSections(
+  state: DocsProjectState,
+  catalog: DocsCatalog,
+  projectRoute: string,
+): string {
+  return `<section id="project-status" class="card section-card"><h2>Project status</h2><p>${escape(state.project.summary)}</p>${fieldList(
+    [
+      ["Product type", escape(label(state.project.product_type))],
+      ["Declared lifecycle", escape(label(state.project.lifecycle))],
+      ["State schema version", escape(String(state.schema_version))],
+      ["State source", `<code>${escape(stateSource(catalog))}</code>`],
+      ["State freshness", escape(stateFreshness(catalog))],
+      ["Last updated", escape(stateUpdated(catalog))],
+    ],
+  )}${renderStateStatus(state, catalog)}</section>
+<section id="structure" class="card section-card"><h2>Structure</h2><h3>Roots</h3>${listItems(
+    state.structure.roots,
+    (root) =>
+      `<article class="item-card"><h4>${escape(root.path)}</h4>${fieldList([
+        ["ID", `<code>${escape(root.id)}</code>`],
+        ["Kind", escape(root.kind)],
+        ["Purpose", escape(root.purpose)],
+        ["Owner", escape(root.owner)],
+      ])}</article>`,
+    "No structure roots recorded.",
+  )}<h3>Dependencies</h3>${state.structure.dependencies.length ? `<ul class="compact-list">${state.structure.dependencies.map((dependency) => `<li><code>${escape(dependency.from)}</code> depends on <code>${escape(dependency.to)}</code> <span class="meta">(${escape(dependency.type)})</span></li>`).join("")}</ul>` : emptyState("No dependencies recorded.")}</section>
+<section id="roadmap" class="card section-card"><h2>Roadmap</h2>${listItems(
+    state.roadmap,
+    (item) =>
+      `<article class="item-card"><h3>${escape(item.title)}</h3>${fieldList([
+        ["ID", `<code>${escape(item.id)}</code>`],
+        ["Status", escape(label(item.status))],
+        ["Priority", escape(label(item.priority))],
+        ["Owner", escape(item.owner)],
+        ["Target date", escape(item.target_date ?? "Not scheduled")],
+        [
+          "Depends on",
+          item.depends_on.length
+            ? item.depends_on
+                .map((dependency) => `<code>${escape(dependency)}</code>`)
+                .join(", ")
+            : `<span class="empty-value">None</span>`,
+        ],
+        ["References", renderRefs(item.references, catalog, projectRoute)],
+      ])}</article>`,
+    "No roadmap items recorded.",
+  )}</section>
+<section id="flows" class="card section-card"><h2>Flows</h2>${listItems(
+    state.flows,
+    (flow) =>
+      `<article class="item-card"><h3>${escape(flow.title)}</h3>${fieldList([
+        ["ID", `<code>${escape(flow.id)}</code>`],
+        ["Status", escape(label(flow.status))],
+        ["Trigger", escape(flow.trigger)],
+      ])}${
+        flow.steps.length
+          ? `<ol class="flow-steps">${flow.steps
+              .map(
+                (step) =>
+                  `<li><h4>${escape(step.name)}</h4>${fieldList([
+                    ["ID", `<code>${escape(step.id)}</code>`],
+                    ["Actor", escape(step.actor)],
+                    ["Inputs", valuesList(step.inputs, "No inputs recorded.")],
+                    [
+                      "Outputs",
+                      valuesList(step.outputs, "No outputs recorded."),
+                    ],
+                    [
+                      "References",
+                      renderRefs(step.references, catalog, projectRoute),
+                    ],
+                  ])}</li>`,
+              )
+              .join("")}</ol>`
+          : emptyState("No ordered steps recorded.")
+      }</article>`,
+    "No flows recorded.",
+  )}</section>
+<section id="backlog" class="card section-card"><h2>Backlog</h2>${listItems(
+    state.backlog,
+    (item) =>
+      `<article class="item-card"><h3>${escape(item.title)}</h3>${fieldList([
+        ["ID", `<code>${escape(item.id)}</code>`],
+        ["Type", escape(label(item.type))],
+        ["Status", escape(label(item.status))],
+        ["Priority", escape(label(item.priority))],
+        ["Owner", escape(item.owner)],
+        [
+          "Acceptance",
+          valuesList(item.acceptance, "No acceptance criteria recorded."),
+        ],
+        ["References", renderRefs(item.references, catalog, projectRoute)],
+      ])}</article>`,
+    "No backlog items recorded.",
+  )}</section>`;
+}
+function renderUnavailableStateSections(): string {
+  return ["project-status", "structure", "roadmap", "flows", "backlog"]
+    .map(
+      (id) =>
+        `<section id="${id}" class="card section-card"><h2>${escape(label(id))}</h2>${stateUnavailable()}</section>`,
+    )
+    .join("");
+}
+function renderDiagnostics(catalog: DocsCatalog): string {
+  const diagnostics = catalog.diagnostics
+    .map(
+      (diagnostic) =>
+        `<li class="${diagnostic.severity}"><strong>${escape(diagnostic.severity)} · ${escape(diagnostic.code)}</strong> <span>${escape(diagnostic.projectId)}${diagnostic.path ? ` / ${escape(diagnostic.path)}` : ""}: ${escape(diagnostic.message)}</span>${diagnostic.suggestion ? `<p class="meta">Suggestion: ${escape(diagnostic.suggestion)}</p>` : ""}</li>`,
+    )
+    .join("");
+  return `<ul class="diagnostic-list">${diagnostics || '<li class="meta">No diagnostics recorded.</li>'}</ul>`;
 }
 function containedPath(outputDir: string, child: string): string {
   const root = resolve(outputDir);
@@ -231,17 +489,43 @@ export function renderStaticSite(
     writeFileSync(safePath, content, "utf8");
     files.push(safePath);
   };
+  const ownershipMetadata = {
+    schema: "forgewright-docs-hub",
+    schema_version: 1,
+    source_fingerprints: orderedCatalogs.map((catalog) => ({
+      project_id: catalog.project.id,
+      fingerprint: catalog.sourceFingerprint,
+    })),
+  };
   write(
     join(outputDir, ".forgewright-docs-hub"),
-    "Generated by `forge docs build`; do not edit.\n",
+    `${JSON.stringify(ownershipMetadata, null, 2)}\n`,
   );
   write(join(outputDir, "style.css"), CSS);
   write(join(outputDir, "app.js"), JS);
   const projectCards = orderedCatalogs
-    .map(
-      (catalog) =>
-        `<article class="card"><p class="eyebrow">${escape(catalog.project.scanStatus)}</p><h2><a href="${escape(`projects/${encodeURIComponent(catalog.project.id)}/index.html`)}">${escape(catalog.project.title)}</a></h2><p><span class="metric">${catalog.documents.length}</span> documents</p><p class="meta">${catalog.project.health.warnings} warnings · ${catalog.project.health.errors} errors</p></article>`,
-    )
+    .map((catalog) => {
+      const state = catalog.project.state;
+      const stateHealth = state?.status.health ?? null;
+      return `<article class="card"><p class="eyebrow">Documentation scan: ${escape(label(catalog.project.scanStatus))}</p><h2><a href="${escape(`projects/${encodeURIComponent(catalog.project.id)}/index.html`)}">${escape(catalog.project.title)}</a></h2><p><span class="metric">${catalog.documents.length}</span> documents</p>${fieldList(
+        [
+          ["Project health", escape(label(stateHealth))],
+          [
+            "Lifecycle",
+            escape(state ? label(state.status.lifecycle) : "Unavailable"),
+          ],
+          ["Phase", escape(state?.status.phase ?? "Unavailable")],
+          ["State freshness", escape(stateFreshness(catalog))],
+          ["Last updated", escape(stateUpdated(catalog))],
+          [
+            "Documentation health",
+            escape(
+              `${catalog.project.health.warnings} warnings, ${catalog.project.health.errors} errors, ${catalog.project.health.info} info`,
+            ),
+          ],
+        ],
+      )}</article>`;
+    })
     .join("");
   write(
     join(outputDir, "index.html"),
@@ -253,7 +537,20 @@ export function renderStaticSite(
   for (const catalog of orderedCatalogs) {
     const projectRoute = `projects/${encodeURIComponent(catalog.project.id)}/index.html`;
     const facts = catalog.project.facts;
-    const projectBody = `<p class="breadcrumbs"><a href="${escape(href(projectRoute, "index.html"))}">All projects</a></p><p class="eyebrow">${escape(catalog.project.scanStatus)}</p><h1>${escape(catalog.project.title)}</h1><div class="card-grid"><section class="card"><h2>Documentation</h2><p><span class="metric">${catalog.documents.length}</span> documents</p><p class="meta">${catalog.assets.length} assets · ${catalog.project.truthDocuments.length} truth documents</p></section><section class="card"><h2>Git</h2><p>${facts.git.available ? escape(facts.git.branch ?? "detached") : "Unavailable"}</p><p class="meta">${facts.git.commit ? escape(facts.git.commit.slice(0, 12)) : "No commit"}${facts.git.dirty ? " · dirty" : ""}</p></section><section class="card"><h2>GitNexus</h2><p>${escape(facts.gitnexus.status)}</p><p class="meta">${facts.gitnexus.symbols ?? 0} symbols · ${facts.gitnexus.processes ?? 0} processes</p></section></div><h2>Documents</h2><div class="card-grid">${catalog.documents.map((document) => `<article class="card"><h3><a href="${escape(href(projectRoute, document.route))}">${escape(document.title)}</a></h3><p class="meta">${escape(document.sourcePath)} · ${escape(document.type)}</p></article>`).join("") || '<p class="meta">No approved documents were found.</p>'}</div>`;
+    const stateSections = catalog.project.state
+      ? renderStateSections(catalog.project.state, catalog, projectRoute)
+      : renderUnavailableStateSections();
+    const projectBody = `<p class="breadcrumbs"><a href="${escape(href(projectRoute, "index.html"))}">All projects</a></p><p class="eyebrow">Documentation scan: ${escape(label(catalog.project.scanStatus))}</p><h1>${escape(catalog.project.title)}</h1><nav class="section-nav" aria-label="Project sections"><a href="#project-status">Project status</a><a href="#structure">Structure</a><a href="#roadmap">Roadmap</a><a href="#flows">Flows</a><a href="#backlog">Backlog</a><a href="#docs-health">Documentation health</a></nav>${stateSections}<section id="docs-health" class="card section-card"><h2>Documentation health</h2><div class="card-grid"><section class="card"><h3>Documentation</h3><p><span class="metric">${catalog.documents.length}</span> documents</p><p class="meta">${catalog.assets.length} assets · ${catalog.project.truthDocuments.length} truth documents</p></section><section class="card"><h3>Git</h3><p>${facts.git.available ? escape(facts.git.branch ?? "detached") : "Unavailable"}</p><p class="meta">${facts.git.commit ? escape(facts.git.commit.slice(0, 12)) : "No commit"}${facts.git.dirty ? " · dirty" : ""}</p></section><section class="card"><h3>GitNexus</h3><p>${escape(facts.gitnexus.status)}</p><p class="meta">${facts.gitnexus.symbols ?? 0} symbols · ${facts.gitnexus.processes ?? 0} processes</p></section></div><h3>Project state source</h3>${fieldList(
+      [
+        ["Source path", `<code>${escape(stateSource(catalog))}</code>`],
+        [
+          "Content fingerprint",
+          `<code>${escape(catalog.project.stateHash ?? "Unavailable")}</code>`,
+        ],
+        ["Last updated", escape(stateUpdated(catalog))],
+        ["Freshness", escape(stateFreshness(catalog))],
+      ],
+    )}<h3>Diagnostics</h3>${renderDiagnostics(catalog)}<h3>Documents</h3><div class="card-grid">${catalog.documents.map((document) => `<article class="card"><h4><a href="${escape(href(projectRoute, document.route))}">${escape(document.title)}</a></h4><p class="meta">${escape(document.sourcePath)} · ${escape(document.type)}</p></article>`).join("") || '<p class="empty-state">No approved documents were found.</p>'}</div></section>`;
     write(
       join(outputDir, projectRoute),
       page(catalog.project.title, projectBody, projectRoute),

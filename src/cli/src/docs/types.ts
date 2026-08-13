@@ -1,4 +1,5 @@
 export const DOCS_SCHEMA_VERSION = 1 as const;
+export const DOCS_PROJECT_STATE_SCHEMA_VERSION = 1 as const;
 
 export type DocsSourceType =
   | "documentation"
@@ -24,6 +25,11 @@ export interface DocsManifest {
     title: string;
   };
   sources: DocsSource[];
+  project_docs?: {
+    schema_version: typeof DOCS_PROJECT_STATE_SCHEMA_VERSION;
+    state: string;
+    max_stale_days?: number;
+  };
   truth?: string[];
   adapters?: {
     git?: boolean;
@@ -34,6 +40,110 @@ export interface DocsManifest {
     mode: "allowlist";
     allow?: string[];
     exclude?: string[];
+  };
+}
+
+export type DocsProductType =
+  "product" | "game" | "library" | "service" | "tooling" | "other";
+
+export type DocsProjectLifecycle =
+  "planning" | "active" | "paused" | "archived" | "completed";
+
+export type DocsRoadmapStatus =
+  "proposed" | "planned" | "in_progress" | "blocked" | "done" | "cancelled";
+
+export type DocsPriority = "low" | "medium" | "high" | "critical";
+
+export type DocsFlowStatus = "draft" | "active" | "deprecated";
+
+export type DocsBacklogType =
+  "feature" | "bug" | "task" | "research" | "technical_debt";
+
+export type DocsBacklogStatus =
+  "proposed" | "ready" | "in_progress" | "blocked" | "done" | "cancelled";
+
+export type DocsProjectHealth = "on_track" | "at_risk" | "blocked" | "unknown";
+
+export interface DocsRef {
+  path: string;
+  anchor?: string;
+}
+
+export interface DocsProjectState {
+  schema_version: typeof DOCS_PROJECT_STATE_SCHEMA_VERSION;
+  project: {
+    summary: string;
+    product_type: DocsProductType;
+    lifecycle: DocsProjectLifecycle;
+  };
+  structure: {
+    roots: Array<{
+      id: string;
+      path: string;
+      kind: string;
+      purpose: string;
+      owner: string;
+    }>;
+    dependencies: Array<{
+      from: string;
+      to: string;
+      type: string;
+    }>;
+  };
+  roadmap: Array<{
+    id: string;
+    title: string;
+    status: DocsRoadmapStatus;
+    priority: DocsPriority;
+    owner: string;
+    target_date: string | null;
+    depends_on: string[];
+    references: DocsRef[];
+  }>;
+  flows: Array<{
+    id: string;
+    title: string;
+    status: DocsFlowStatus;
+    trigger: string;
+    steps: Array<{
+      id: string;
+      name: string;
+      actor: string;
+      inputs: string[];
+      outputs: string[];
+      references: DocsRef[];
+    }>;
+  }>;
+  backlog: Array<{
+    id: string;
+    title: string;
+    type: DocsBacklogType;
+    status: DocsBacklogStatus;
+    priority: DocsPriority;
+    owner: string;
+    acceptance: string[];
+    references: DocsRef[];
+  }>;
+  status: {
+    lifecycle: DocsProjectLifecycle;
+    health: DocsProjectHealth;
+    phase: string;
+    summary: string;
+    updated_at: string;
+    blockers: Array<{ id: string; title: string; owner: string }>;
+    risks: Array<{
+      id: string;
+      title: string;
+      owner: string;
+      mitigation: string;
+    }>;
+    next_actions: Array<{
+      id: string;
+      title: string;
+      owner: string;
+      due_date: string | null;
+    }>;
+    next_update_at: string | null;
   };
 }
 
@@ -155,6 +265,9 @@ export interface DocsProjectRecord {
   title: string;
   root: string;
   manifestPath: string | null;
+  state?: DocsProjectState | null;
+  statePath?: string | null;
+  stateHash?: string | null;
   legacy: boolean;
   truthDocuments: string[];
   facts: ProjectFacts;

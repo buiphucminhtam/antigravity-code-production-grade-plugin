@@ -1,7 +1,7 @@
 """Regression tests for the Guardrail Protocol.
 
 Validates that:
-- guardrail.md exists and contains all 13 rule categories
+- guardrail.md exists and contains all 14 rule categories
 - Decision matrix is complete
 - All contradictions are fixed (no Vietnamese, fail-closed clarity)
 - Kernel files reference guardrail
@@ -86,6 +86,14 @@ def test_guardrail_has_supply_chain(guardrail_content):
     assert "### 13. Supply Chain Safety" in guardrail_content
 
 
+def test_guardrail_has_documentation_continuity(guardrail_content):
+    content = guardrail_content.lower()
+    assert "### 14. documentation continuity" in content
+    assert "project-state" in content
+    assert "forge docs gate" in content
+    assert "generated html/css must never be hand-edited" in content
+
+
 # --- Decision matrix is complete ---
 def test_guardrail_decision_matrix_has_new_rows(guardrail_content):
     for rule in [
@@ -96,6 +104,7 @@ def test_guardrail_decision_matrix_has_new_rows(guardrail_content):
         "Env persistence",
         "Network exfiltration",
         "Supply chain",
+        "Documentation continuity",
     ]:
         assert rule in guardrail_content, f"Decision matrix missing: {rule}"
 

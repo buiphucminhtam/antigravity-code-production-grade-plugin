@@ -165,25 +165,85 @@ if [[ "$OVERSIZED" -eq 1 ]]; then
   block_non_codex
 fi
 
-# Claude's native Stop payload names the response `last_assistant_message`.
-# Normalize it once so both downstream validators consume the same response.
-python3 - "$PAYLOAD_FILE" <<'PYEOF'
+# Claude/Codex native Stop payloads name the response
+# `last_assistant_message`. Normalize it once so both downstream validators
+# consume the same response. Codex's platform-native `turn_id` is routing
+# metadata, not necessarily the Forgewright evidence filename: retain it as an
+# exact selector only when it identifies a passing schema-v2 final record.
+python3 - "$PAYLOAD_FILE" "$PROJECT_ROOT" "$PLATFORM" "$SCRIPT_DIR" <<'PYEOF'
 import json
 import sys
 from pathlib import Path
 
 path = Path(sys.argv[1])
+project_root = Path(sys.argv[2]) if sys.argv[2] else None
+platform = sys.argv[3]
+sys.path.insert(0, sys.argv[4])
+from evidence_common import FINAL_PHASES, SCHEMA_VERSION, read_evidence_json
+from verify_gate import _find_evidence
+
 raw = path.read_text(encoding="utf-8")
 try:
     payload = json.loads(raw)
 except json.JSONDecodeError:
     raise SystemExit(0)
+changed = False
 if (
     isinstance(payload, dict)
     and not isinstance(payload.get("response_content"), str)
     and isinstance(payload.get("last_assistant_message"), str)
 ):
     payload["response_content"] = payload["last_assistant_message"]
+    changed = True
+
+if isinstance(payload, dict) and platform == "CODEX":
+    explicit_turn = payload.get("turn")
+    platform_turn = payload.get("turn_id")
+    if not (isinstance(explicit_turn, str) and explicit_turn.strip()):
+        selected = None
+        mapped_candidate = False
+        exact_final = False
+    if (
+        not (isinstance(explicit_turn, str) and explicit_turn.strip())
+        and isinstance(platform_turn, str)
+        and platform_turn.strip()
+    ):
+        turn_id = platform_turn.strip()
+        turn_path = Path(turn_id)
+        safe_id = (
+            turn_path.name == turn_id
+            and all(part not in {".", ".."} for part in turn_path.parts)
+        )
+        evidence = None
+        if safe_id and project_root is not None:
+            candidate = project_root / ".forgewright" / "verify" / f"{turn_id}.json"
+            mapped_candidate = candidate.exists() or candidate.is_symlink()
+            try:
+                evidence = read_evidence_json(project_root, candidate)
+            except ValueError:
+                evidence = None
+        exact_final = (
+            isinstance(evidence, dict)
+            and evidence.get("schema_version") == SCHEMA_VERSION
+            and evidence.get("phase") in FINAL_PHASES
+            and evidence.get("exit_code") == 0
+        )
+        if exact_final:
+            selected = turn_id
+        elif not mapped_candidate and safe_id and project_root is not None:
+            discovered = _find_evidence(project_root, "")
+            selected = discovered.stem if discovered is not None else None
+        if selected is not None:
+            payload["turn"] = selected
+            payload.pop("turn_id", None)
+            changed = True
+    elif not (isinstance(explicit_turn, str) and explicit_turn.strip()) and project_root is not None:
+        discovered = _find_evidence(project_root, "")
+        if discovered is not None:
+            payload["turn"] = discovered.stem
+            changed = True
+
+if changed:
     path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
 PYEOF
 

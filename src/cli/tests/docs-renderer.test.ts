@@ -13,7 +13,7 @@ import { renderMarkdown } from "../src/docs/markdown.js";
 import { exportObsidianVault } from "../src/docs/obsidian.js";
 import { buildDocsHub, renderStaticSite } from "../src/docs/render.js";
 import { buildSearchIndex, searchDocuments } from "../src/docs/search.js";
-import type { DocsCatalog } from "../src/docs/types.js";
+import type { DocsCatalog, DocsProjectState } from "../src/docs/types.js";
 
 function catalog(root: string): DocsCatalog {
   const doc = {
@@ -99,6 +99,130 @@ function catalogWithAsset(root: string): DocsCatalog {
   return value;
 }
 
+function catalogWithState(root: string): DocsCatalog {
+  const value = catalog(root);
+  const state: DocsProjectState = {
+    schema_version: 1,
+    project: {
+      summary: "State summary <script>alert(1)</script>",
+      product_type: "service",
+      lifecycle: "active",
+    },
+    structure: {
+      roots: [
+        {
+          id: "src",
+          path: "src",
+          kind: "directory",
+          purpose: "Runtime source",
+          owner: "Ada",
+        },
+      ],
+      dependencies: [{ from: "src", to: "docs", type: "publishes" }],
+    },
+    roadmap: [
+      {
+        id: "ship",
+        title: "Ship <feature>",
+        status: "in_progress",
+        priority: "high",
+        owner: "Ada",
+        target_date: "2026-09-01",
+        depends_on: ["src"],
+        references: [
+          { path: "Docs/Guide.md", anchor: "getting-started" },
+          {
+            path: "Docs/Guide.md",
+            anchor: '"><script>alert(1)</script>',
+          },
+          { path: "Docs/<missing>.md", anchor: "<unsafe>" },
+        ],
+      },
+    ],
+    flows: [
+      {
+        id: "publish",
+        title: "Publish flow",
+        status: "active",
+        trigger: "A document changes",
+        steps: [
+          {
+            id: "scan",
+            name: "Scan",
+            actor: "CLI",
+            inputs: ["source"],
+            outputs: ["catalog"],
+            references: [{ path: "Docs/Guide.md" }],
+          },
+          {
+            id: "publish-result",
+            name: "Publish result",
+            actor: "Renderer",
+            inputs: [],
+            outputs: [],
+            references: [],
+          },
+        ],
+      },
+    ],
+    backlog: [
+      {
+        id: "test",
+        title: "Add coverage",
+        type: "task",
+        status: "ready",
+        priority: "medium",
+        owner: "Lin",
+        acceptance: ["HTML is escaped"],
+        references: [{ path: "Docs/Guide.md", anchor: "Tests" }],
+      },
+    ],
+    status: {
+      lifecycle: "active",
+      health: "on_track",
+      phase: "implementation",
+      summary: "Ready to publish.",
+      updated_at: "2026-08-12T10:00:00+07:00",
+      blockers: [{ id: "block", title: "Await approval", owner: "Ada" }],
+      risks: [
+        {
+          id: "risk",
+          title: "Missing owner",
+          owner: "Lin",
+          mitigation: "Assign one",
+        },
+      ],
+      next_actions: [
+        {
+          id: "act",
+          title: "Review output",
+          owner: "Ada",
+          due_date: null,
+        },
+      ],
+      next_update_at: "2026-08-19T10:00:00+07:00",
+    },
+  };
+  value.project.state = state;
+  value.project.statePath = "docs/project-state.json";
+  value.project.stateHash = "state-hash";
+  return value;
+}
+
+function catalogWithEmptyState(root: string): DocsCatalog {
+  const value = catalogWithState(root);
+  const state = value.project.state!;
+  state.structure.dependencies = [];
+  state.roadmap = [];
+  state.flows = [];
+  state.backlog = [];
+  state.status.blockers = [];
+  state.status.risks = [];
+  state.status.next_actions = [];
+  state.status.next_update_at = null;
+  return value;
+}
+
 function readTree(root: string): Record<string, string> {
   const result: Record<string, string> = {};
   const visit = (directory: string): void => {
@@ -139,6 +263,9 @@ describe("Docs Hub static presentation", () => {
     const result = renderStaticSite([catalog(root)], { outputDir: output });
     const apiResult = buildDocsHub([catalog(root)], join(root, "api-site"));
     expect(readFileSync(join(output, "index.html"), "utf8")).toContain("Demo");
+    expect(readFileSync(join(output, "index.html"), "utf8")).toContain(
+      "Project health",
+    );
     expect(
       readFileSync(
         join(output, "projects/demo/docs/Docs/Guide.md.html"),
@@ -154,9 +281,15 @@ describe("Docs Hub static presentation", () => {
     expect(readFileSync(join(output, "404.html"), "utf8")).toContain(
       "Page not found",
     );
-    expect(
+    const ownership = JSON.parse(
       readFileSync(join(output, ".forgewright-docs-hub"), "utf8"),
-    ).toContain("forge docs build");
+    );
+    expect(ownership).toEqual({
+      schema: "forgewright-docs-hub",
+      schema_version: 1,
+      source_fingerprints: [{ project_id: "demo", fingerprint: "fingerprint" }],
+    });
+    expect(ownership).not.toHaveProperty("generated_at");
     expect(
       (
         readFileSync(
@@ -171,6 +304,126 @@ describe("Docs Hub static presentation", () => {
     ).toHaveLength(1);
     expect(apiResult.projects[0]?.id).toBe("demo");
     expect(apiResult.filesWritten).toBeGreaterThan(5);
+  });
+  it("renders project intelligence sections, values, safe refs, and empty states", () => {
+    const root = mkdtempSync(join(tmpdir(), "forgewright-state-renderer-"));
+    const output = join(root, "site");
+    renderStaticSite([catalogWithState(root)], { outputDir: output });
+    const project = readFileSync(
+      join(output, "projects/demo/index.html"),
+      "utf8",
+    );
+    const projects = readFileSync(join(output, "index.html"), "utf8");
+    expect(project).toContain('id="project-status"');
+    expect(project).toContain('id="structure"');
+    expect(project).toContain('id="roadmap"');
+    expect(project).toContain('id="flows"');
+    expect(project).toContain('id="backlog"');
+    expect(project).toContain('id="docs-health"');
+    expect(project).toContain("implementation");
+    expect(project).toContain("State schema version");
+    expect(project).toContain("Runtime source");
+    expect(project).toContain("publishes");
+    expect(project).toContain("Ship &lt;feature&gt;");
+    expect(project).toContain("In Progress");
+    expect(project).toContain("2026-09-01");
+    expect(project).toContain("A document changes");
+    expect(project).toContain("Publish flow");
+    expect(project).toContain("source");
+    expect(project).toContain("catalog");
+    expect(project.indexOf("Scan")).toBeLessThan(
+      project.indexOf("Publish result"),
+    );
+    expect(project).toContain("No inputs recorded.");
+    expect(project).toContain("No outputs recorded.");
+    expect(project).toContain("No references recorded.");
+    expect(project).toContain("HTML is escaped");
+    expect(project).toContain("Add coverage");
+    expect(project).toContain("Await approval");
+    expect(project).toContain("Missing owner");
+    expect(project).toContain("Review output");
+    expect(project).toContain("docs/project-state.json");
+    expect(project).toContain("2026-08-12T10:00:00+07:00");
+    expect(project).toContain('href="docs/Docs/Guide.md.html#getting-started"');
+    expect(project).toContain('href="docs/Docs/Guide.md.html#alert-1"');
+    expect(project).toContain("Docs/&lt;missing&gt;.md#&lt;unsafe&gt;");
+    expect(project).not.toContain('href="docs/&lt;missing&gt;');
+    expect(project).not.toContain(
+      'href="docs/Docs/Guide.md.html#&quot;&gt;&lt;script&gt;',
+    );
+    expect(project).toContain(
+      "State summary &lt;script&gt;alert(1)&lt;/script&gt;",
+    );
+    expect(project).not.toContain("<script");
+    expect(projects).toContain("Project health");
+    expect(projects).toContain("On Track");
+    expect(projects).toContain("Active");
+    expect(projects).toContain("implementation");
+    expect(projects).toContain("State freshness");
+    expect(projects).toContain("2026-08-12T10:00:00+07:00");
+  });
+  it("renders explicit messages for empty project-state collections", () => {
+    const root = mkdtempSync(join(tmpdir(), "forgewright-state-empty-"));
+    const output = join(root, "site");
+    renderStaticSite([catalogWithEmptyState(root)], { outputDir: output });
+    const project = readFileSync(
+      join(output, "projects/demo/index.html"),
+      "utf8",
+    );
+    expect(project).toContain("No dependencies recorded.");
+    expect(project).toContain("No roadmap items recorded.");
+    expect(project).toContain("No flows recorded.");
+    expect(project).toContain("No backlog items recorded.");
+    expect(project).toContain("No blockers recorded.");
+    expect(project).toContain("No risks recorded.");
+    expect(project).toContain("No next actions recorded.");
+    expect(project).toContain("Not scheduled");
+  });
+  it("renders unavailable state diagnostics and responsive deterministic safeguards", () => {
+    const root = mkdtempSync(join(tmpdir(), "forgewright-state-unavailable-"));
+    const output = join(root, "site");
+    const value = catalog(root);
+    value.diagnostics.push({
+      severity: "error",
+      code: "PROJECT_STATE_MISSING",
+      projectId: "demo",
+      path: "docs/project-state.json",
+      message: "Project state does not exist.",
+    });
+    renderStaticSite([value], { outputDir: output });
+    const project = readFileSync(
+      join(output, "projects/demo/index.html"),
+      "utf8",
+    );
+    const css = readFileSync(join(output, "style.css"), "utf8");
+    expect(project).toContain("Project state unavailable.");
+    expect(project).toContain("PROJECT_STATE_MISSING");
+    expect(css).toContain("@media (max-width: 360px)");
+    expect(css).toContain("overflow-x: clip");
+    expect(css).toContain(".state-grid, .field-list");
+    expect(css).toContain("min-width: 0; max-width: 100%");
+    expect(css).toContain("table-layout: fixed");
+    expect(css).toContain("prefers-reduced-motion");
+    expect(css).toContain("overflow-wrap: anywhere");
+  });
+  it("does not present a future project-state timestamp as current", () => {
+    const root = mkdtempSync(join(tmpdir(), "forgewright-state-future-"));
+    const output = join(root, "site");
+    const value = catalogWithState(root);
+    value.diagnostics.push({
+      severity: "error",
+      code: "PROJECT_STATE_FUTURE_TIMESTAMP",
+      projectId: "demo",
+      path: "docs/project-state.json",
+      message: "Project state timestamp is in the future.",
+    });
+    renderStaticSite([value], { outputDir: output });
+    const project = readFileSync(
+      join(output, "projects/demo/index.html"),
+      "utf8",
+    );
+    expect(project).toContain("Future timestamp");
+    expect(project).not.toContain("<dd>Current</dd>");
   });
   it("searches project-aware entries", () => {
     const root = mkdtempSync(join(tmpdir(), "forgewright-search-"));
@@ -365,6 +618,19 @@ describe("Docs Hub static presentation", () => {
     expect(() => buildDocsHub([catalog(root)], output)).toThrow(
       /unowned output directory/,
     );
+  });
+
+  it("recognizes and replaces an output directory with the JSON ownership marker", () => {
+    const root = mkdtempSync(join(tmpdir(), "forgewright-owned-json-"));
+    const output = join(root, "site");
+    buildDocsHub([catalog(root)], output);
+    writeFileSync(join(output, "obsolete.txt"), "replace me\n");
+
+    expect(() => buildDocsHub([catalog(root)], output)).not.toThrow();
+    expect(() => readFileSync(join(output, "obsolete.txt"), "utf8")).toThrow();
+    expect(
+      JSON.parse(readFileSync(join(output, ".forgewright-docs-hub"), "utf8")),
+    ).toMatchObject({ schema: "forgewright-docs-hub", schema_version: 1 });
   });
 
   it("produces byte-equivalent multi-project output regardless of input order", () => {

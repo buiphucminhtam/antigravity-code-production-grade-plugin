@@ -10,6 +10,9 @@ All modes share these behaviors:
 - Apply senior execution, sensitive-file protection, and runtime model-tier protocols.
 - `QUICK` work uses `ACTION | TARGET | CHECK`; `STANDARD`/`DEEP` use the applicable complexity-scaled plan threshold. Never force a universal 9/10 score.
 - Verification matches risk: use the smallest deterministic check that proves acceptance; add broader regression/security/reliability testing when the change warrants it.
+- Payment, billing, IAP/in-app purchase, receipt validation, entitlements,
+  subscription, and checkout are always `HARD` / `DEEP`, regardless of file
+  count; no mode shortcut may classify them as `QUICK`.
 - Emit status updates for substantial/long-running work, not as noise around trivial edits.
 - Use Antigravity planning only when durable multi-component/multi-team coordination or `DEEP` architecture work benefits from persistent planning artifacts.
 - Ask the user only when ambiguity materially changes the contract, safety, irreversible data, or expensive direction.

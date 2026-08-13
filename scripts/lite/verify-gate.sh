@@ -259,7 +259,6 @@ _SKIP_PATTERNS=(
   "*.md" "*.txt"
   ".gitignore" ".gitattributes" ".memignore" ".cursorignore"
   ".forgewright/*" "memory.db*" ".gitnexus/*" ".forgenexus/*"
-  "scripts/lite/*"
 )
 
 _is_skip() {
@@ -307,34 +306,21 @@ if [[ $GATE_RC -ne 0 ]]; then
   gate_block "Forgewright evidence validation failed. Review hook stderr for details."
 fi
 
-# ── check response content for a valid VERIFY block ──────────────────────────
-log_info "Checking response content for a valid VERIFY block..."
-
-_has_verify_block() {
-  local content="$1"
-  [[ -z "$content" ]] && return 1
-  if echo "$content" | grep -qEi '^[[:space:]]*CLAIM[[:space:]]*:'; then
-    printf '%s' "$content" | python3 "${SCRIPT_DIR}/rule-validator.py" --runtime \
-      >/dev/null 2>&1 && return 0
-  fi
-  echo "$content" | grep -qEi '```(verify|verification)' && return 0
-  echo "$content" | grep -qEi '(^|[[:space:]])VERIFY([[:space:]:]|$|###|#)' && return 0
-  echo "$content" | grep -qEi '(^|[[:space:]])VERIFICATION([[:space:]:]|$|###|#)' && return 0
-  echo "$content" | grep -qEi '###.*(verify|verification)' && return 0
-  return 1
-}
-
+# ── strict response/evidence correlation ─────────────────────────────────────
+# Do not accept marker-only VERIFY headings or fenced markers. The Python
+# validator loads the exact-turn v2 record and checks every acceptance, claim,
+# shlex-rendered command, output digest, exit code, and verdict.
 if [[ -z "$RESPONSE_CONTENT" ]]; then
   log_warn "No response content provided (stdin was empty / no payload)."
   log_error "VERIFY block REQUIRED when code changes exist."
   gate_block "VERIFY block required when code changes exist."
 fi
 
-if _has_verify_block "$RESPONSE_CONTENT"; then
-  log_info "Valid VERIFY block found — gate OPEN"
-  gate_continue
+log_info "Checking strict VERIFY response correlation..."
+if ! printf '%s' "$RESPONSE_CONTENT" | python3 "${SCRIPT_DIR}/rule-validator.py" --runtime >/dev/null; then
+  log_error "Strict VERIFY response correlation failed."
+  gate_block "Forgewright strict VERIFY validation failed."
 else
-  log_error "Missing VERIFY block in response."
-  log_error "Include a VERIFY section (e.g. \`VERIFY:\` or \`\`\`verify\`\`\` block) when modifying code."
-  gate_block "Missing VERIFY block in response after code changes."
+  log_info "Strict VERIFY response correlation passed — gate OPEN"
+  gate_continue
 fi

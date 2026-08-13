@@ -13,6 +13,21 @@ run_required() {
   "$@"
 }
 
+run_docs_continuity() {
+  local base_ref="${FORGEWRIGHT_DOCS_BASE_REF:-}"
+  if [[ -z "$base_ref" ]] \
+    && git rev-parse --verify --quiet origin/main >/dev/null \
+    && ! git diff --quiet origin/main...HEAD; then
+    base_ref="origin/main"
+  fi
+
+  if [[ -n "$base_ref" ]]; then
+    node src/cli/dist/index.js docs gate . --base-ref "$base_ref" --json
+  else
+    node src/cli/dist/index.js docs gate . --worktree --json
+  fi
+}
+
 run_required product-truth python3 scripts/ci/verify-product-truth.py
 run_required python-unit-tests python3 -m pytest tests/unit_tests/
 run_required adversarial-weak-model-rails python3 evals/adversarial-weak-model/run-evals.py --self-test
@@ -28,6 +43,8 @@ run_required mcp-setup bash tests/setup/test-forgewright-mcp-setup.sh
 run_required hook-installation bash tests/test_hooks.sh
 run_required runtime-lifecycle-guard bash scripts/ci/verify-runtime-leases.sh
 run_required cli-tests npm --prefix src/cli test
+run_required cli-build npm run build:cli
+run_required docs-continuity run_docs_continuity
 run_required cli-init-onboard-golden npm run test:golden
 run_required release-evidence-policy-tests node --test scripts/ci/release-evidence-policy.test.mjs
 run_required release-supply-chain-policy-tests node --test scripts/ci/release-supply-chain-policy.test.mjs

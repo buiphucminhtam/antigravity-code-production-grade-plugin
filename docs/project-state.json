@@ -1,0 +1,629 @@
+{
+  "schema_version": 1,
+  "project": {
+    "summary": "Forgewright is a local-first, provider-neutral engineering orchestration toolkit with an evidence-backed six-phase delivery pipeline and optional domain capability packs.",
+    "product_type": "tooling",
+    "lifecycle": "active"
+  },
+  "structure": {
+    "roots": [
+      {
+        "id": "kernel",
+        "path": "kernel",
+        "kind": "policy-kernel",
+        "purpose": "Canonical boot, solve, verification, clarification, audit, and escalation contracts.",
+        "owner": "Forgewright maintainers"
+      },
+      {
+        "id": "skills",
+        "path": "skills",
+        "kind": "capability-library",
+        "purpose": "Senior specialist skills and shared pipeline protocols used by routed roles.",
+        "owner": "Forgewright maintainers"
+      },
+      {
+        "id": "mcp",
+        "path": "mcp",
+        "kind": "runtime",
+        "purpose": "Canonical TypeScript MCP runtime, middleware, tools, and runtime tests.",
+        "owner": "Runtime maintainers"
+      },
+      {
+        "id": "cli",
+        "path": "src/cli",
+        "kind": "command-line-interface",
+        "purpose": "Project initialization, onboarding, Docs Hub, and local operator commands.",
+        "owner": "CLI maintainers"
+      },
+      {
+        "id": "scripts",
+        "path": "scripts",
+        "kind": "automation",
+        "purpose": "Provider-neutral local CI, release, setup, synchronization, and runtime automation.",
+        "owner": "DevOps maintainers"
+      },
+      {
+        "id": "schemas",
+        "path": "schemas",
+        "kind": "contracts",
+        "purpose": "Machine-readable public and internal data contracts.",
+        "owner": "Architecture maintainers"
+      },
+      {
+        "id": "docs",
+        "path": "docs",
+        "kind": "documentation",
+        "purpose": "Product, architecture, roadmap, workflow, operations, and migration sources rendered by Docs Hub.",
+        "owner": "Documentation maintainers"
+      },
+      {
+        "id": "tests",
+        "path": "tests",
+        "kind": "verification",
+        "purpose": "Repository-level deterministic unit, integration, contract, hook, and release verification.",
+        "owner": "QA maintainers"
+      },
+      {
+        "id": "templates",
+        "path": "templates",
+        "kind": "distribution",
+        "purpose": "Project-owned templates installed or synchronized into supported client workspaces.",
+        "owner": "Forgewright maintainers"
+      }
+    ],
+    "dependencies": [
+      {
+        "from": "skills",
+        "to": "kernel",
+        "type": "consumes pipeline policy"
+      },
+      {
+        "from": "mcp",
+        "to": "schemas",
+        "type": "validates runtime contracts"
+      },
+      {
+        "from": "cli",
+        "to": "schemas",
+        "type": "validates CLI data contracts"
+      },
+      {
+        "from": "scripts",
+        "to": "tests",
+        "type": "executes local verification"
+      },
+      {
+        "from": "templates",
+        "to": "kernel",
+        "type": "distributes generated entry contracts"
+      }
+    ]
+  },
+  "roadmap": [
+    {
+      "id": "docs-continuity",
+      "title": "Enforce continuously updated project intelligence and generated HTML/CSS documentation",
+      "status": "done",
+      "priority": "critical",
+      "owner": "Forgewright maintainers",
+      "target_date": null,
+      "depends_on": [],
+      "references": [
+        {
+          "path": "docs/adr/ADR-011-central-docs-hub.md"
+        },
+        {
+          "path": "docs/guides/docs-hub.md"
+        }
+      ]
+    },
+    {
+      "id": "bounded-peer-collaboration",
+      "title": "Provide parent-mediated bounded advisory exchange between specialist roles",
+      "status": "done",
+      "priority": "high",
+      "owner": "Orchestration maintainers",
+      "target_date": null,
+      "depends_on": [],
+      "references": [
+        {
+          "path": "docs/adr/ADR-012-bounded-peer-collaboration.md"
+        },
+        {
+          "path": "docs/guides/peer-collaboration.md"
+        }
+      ]
+    },
+    {
+      "id": "production-evidence",
+      "title": "Complete live provider/runtime evidence required by the active roadmap",
+      "status": "planned",
+      "priority": "high",
+      "owner": "Runtime maintainers",
+      "target_date": null,
+      "depends_on": [
+        "docs-continuity"
+      ],
+      "references": [
+        {
+          "path": "docs/active-roadmap.md"
+        }
+      ]
+    },
+    {
+      "id": "evidence-trust-boundary",
+      "title": "Harden completion evidence with exact acceptance/negative traceability, execution manifests, and signed review trust",
+      "status": "done",
+      "priority": "critical",
+      "owner": "Forgewright maintainers",
+      "target_date": null,
+      "depends_on": [
+        "docs-continuity"
+      ],
+      "references": [
+        {
+          "path": "docs/pipeline-reference.md",
+          "anchor": "evidence-schema-v2"
+        }
+      ]
+    }
+  ],
+  "flows": [
+    {
+      "id": "delivery-pipeline",
+      "title": "Canonical feature and change delivery",
+      "status": "active",
+      "trigger": "A user requests a project change, review, test, or release outcome.",
+      "steps": [
+        {
+          "id": "interpret",
+          "name": "INTERPRET",
+          "actor": "Parent orchestrator",
+          "inputs": [
+            "User objective",
+            "Current workspace evidence"
+          ],
+          "outputs": [
+            "Outcome",
+            "Constraints",
+            "Material ambiguity"
+          ],
+          "references": [
+            {
+              "path": "docs/pipeline-reference.md",
+              "anchor": "phase-reference"
+            }
+          ]
+        },
+        {
+          "id": "define",
+          "name": "DEFINE",
+          "actor": "Parent orchestrator",
+          "inputs": [
+            "Interpreted outcome",
+            "Impact and risk evidence"
+          ],
+          "outputs": [
+            "Acceptance criteria",
+            "Minimum safe plan",
+            "Role routing"
+          ],
+          "references": [
+            {
+              "path": "docs/pipeline-reference.md",
+              "anchor": "planning-and-optimization"
+            }
+          ]
+        },
+        {
+          "id": "build",
+          "name": "BUILD",
+          "actor": "Routed senior specialist or parent",
+          "inputs": [
+            "Accepted plan",
+            "Bounded project context"
+          ],
+          "outputs": [
+            "Smallest compatible implementation"
+          ],
+          "references": [
+            {
+              "path": "docs/pipeline-reference.md"
+            }
+          ]
+        },
+        {
+          "id": "harden",
+          "name": "HARDEN",
+          "actor": "QA, reviewer, and parent orchestrator",
+          "inputs": [
+            "Implementation",
+            "Acceptance criteria"
+          ],
+          "outputs": [
+            "Observed verification evidence",
+            "Risk findings"
+          ],
+          "references": [
+            {
+              "path": "docs/pipeline-reference.md",
+              "anchor": "evidence-hierarchy"
+            }
+          ]
+        },
+        {
+          "id": "ship",
+          "name": "SHIP",
+          "actor": "DevOps or release owner",
+          "inputs": [
+            "Verified deliverable",
+            "Release authority"
+          ],
+          "outputs": [
+            "Packaged or released artifact",
+            "Release evidence"
+          ],
+          "references": [
+            {
+              "path": "docs/process/release-readiness.md"
+            }
+          ]
+        },
+        {
+          "id": "sustain",
+          "name": "SUSTAIN",
+          "actor": "Product and operations owners",
+          "inputs": [
+            "Shipped outcome",
+            "Operational feedback"
+          ],
+          "outputs": [
+            "Status updates",
+            "Follow-up backlog",
+            "Measured learning"
+          ],
+          "references": [
+            {
+              "path": "docs/pipeline-reference.md"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "docs-continuity-gate",
+      "title": "Continuous project documentation gate",
+      "status": "active",
+      "trigger": "A material project file changes in the selected Git changeset.",
+      "steps": [
+        {
+          "id": "detect-change",
+          "name": "Detect material changes",
+          "actor": "Docs gate",
+          "inputs": [
+            "Git index snapshot, current worktree, or HEAD plus base-ref diff"
+          ],
+          "outputs": [
+            "Normalized changed paths including both rename sides",
+            "Material paths"
+          ],
+          "references": [
+            {
+              "path": "docs/guides/docs-hub.md"
+            }
+          ]
+        },
+        {
+          "id": "update-state",
+          "name": "Require current canonical state",
+          "actor": "Docs gate",
+          "inputs": [
+            "Material paths",
+            "Manifest project_docs contract"
+          ],
+          "outputs": [
+            "Validated project state",
+            "Fresh status timestamp"
+          ],
+          "references": [
+            {
+              "path": "docs/project-state.json"
+            }
+          ]
+        },
+        {
+          "id": "doctor",
+          "name": "Run strict doctor",
+          "actor": "Docs Hub",
+          "inputs": [
+            "Current in-memory catalog"
+          ],
+          "outputs": [
+            "Link, diagram, privacy, state, and staleness diagnostics"
+          ],
+          "references": [
+            {
+              "path": "docs/guides/docs-hub.md",
+              "anchor": "doctor-and-local-ci"
+            }
+          ]
+        },
+        {
+          "id": "build-portal",
+          "name": "Build and verify temporary portal",
+          "actor": "Docs Hub",
+          "inputs": [
+            "Strict catalog",
+            "Temporary output directory"
+          ],
+          "outputs": [
+            "Verified static HTML/CSS, search, and project pages"
+          ],
+          "references": [
+            {
+              "path": "docs/adr/ADR-011-central-docs-hub.md"
+            }
+          ]
+        },
+        {
+          "id": "decision",
+          "name": "Allow or block the changeset",
+          "actor": "Local CI",
+          "inputs": [
+            "State continuity",
+            "Doctor result",
+            "Portal verification"
+          ],
+          "outputs": [
+            "Machine-readable PASS or FAIL"
+          ],
+          "references": [
+            {
+              "path": "docs/guides/docs-hub.md",
+              "anchor": "safety-model"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "evidence-v2-gate",
+      "title": "Exact-turn completion evidence and high-risk fix chain",
+      "status": "active",
+      "trigger": "A code changeset requires a completion claim.",
+      "steps": [
+        {
+          "id": "map-acceptance",
+          "name": "Map acceptance to verifier",
+          "actor": "Implementer",
+          "inputs": [
+            "Exact acceptance IDs and claims",
+            "Project-owned test/check references"
+          ],
+          "outputs": [
+            "Schema-v2 acceptance mapping"
+          ],
+          "references": [
+            {
+              "path": "docs/pipeline-reference.md",
+              "anchor": "evidence-schema-v2"
+            }
+          ]
+        },
+        {
+          "id": "capture-tree",
+          "name": "Capture exact worktree",
+          "actor": "Evidence runner",
+          "inputs": [
+            "HEAD",
+            "Index",
+            "Tracked and untracked nonignored content"
+          ],
+          "outputs": [
+            "Exact TREE fingerprint",
+            "Command output digest"
+          ],
+          "references": [
+            {
+              "path": "docs/pipeline-reference.md",
+              "anchor": "evidence-schema-v2"
+            }
+          ]
+        },
+        {
+          "id": "prove-fix",
+          "name": "Prove RED and GREEN",
+          "actor": "Evidence gate",
+          "inputs": [
+            "Faulty-behavior RED",
+            "Unchanged verifier",
+            "Fixed-tree GREEN"
+          ],
+          "outputs": [
+            "Correlated regression evidence"
+          ],
+          "references": [
+            {
+              "path": "docs/pipeline-reference.md",
+              "anchor": "evidence-schema-v2"
+            }
+          ]
+        },
+        {
+          "id": "harden-risk",
+          "name": "Apply HARD evidence",
+          "actor": "Independent reviewer and evidence gate",
+          "inputs": [
+            "Payment or other HARD signal",
+            "Mutation backcheck",
+            "Contract/runtime/E2E records"
+          ],
+          "outputs": [
+            "Independent approval or blocking findings"
+          ],
+          "references": [
+            {
+              "path": "docs/pipeline-reference.md",
+              "anchor": "evidence-schema-v2"
+            }
+          ]
+        },
+        {
+          "id": "replay-final-checks",
+          "name": "Replay final-tree verifiers",
+          "actor": "Evidence gate",
+          "inputs": [
+            "Exact stored verifier argv",
+            "Final full-worktree fingerprint"
+          ],
+          "outputs": [
+            "Observed zero exit code",
+            "Unchanged final worktree"
+          ],
+          "references": [
+            {
+              "path": "docs/pipeline-reference.md",
+              "anchor": "evidence-schema-v2"
+            }
+          ]
+        },
+        {
+          "id": "correlate-response",
+          "name": "Correlate response",
+          "actor": "Rule validator",
+          "inputs": [
+            "Exact-turn record",
+            "Strict response fields"
+          ],
+          "outputs": [
+            "Allow or block completion claim"
+          ],
+          "references": [
+            {
+              "path": "docs/pipeline-reference.md",
+              "anchor": "evidence-schema-v2"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "backlog": [
+    {
+      "id": "wire-docs-gate",
+      "title": "Wire the change-aware Docs Hub gate into precommit, full local CI, and required release checks",
+      "type": "feature",
+      "status": "done",
+      "priority": "critical",
+      "owner": "Forgewright maintainers",
+      "acceptance": [
+        "Material code/config/runtime changes fail when the canonical state is absent from the same changeset.",
+        "Strict doctor and a fresh temporary HTML/CSS build pass without modifying source files.",
+        "Precommit and provider-neutral required checks invoke the same local gate."
+      ],
+      "references": [
+        {
+          "path": "docs/guides/docs-hub.md"
+        }
+      ]
+    },
+    {
+      "id": "render-project-intelligence",
+      "title": "Render structure, roadmap, flows, backlog, status, and freshness as accessible static HTML/CSS",
+      "type": "feature",
+      "status": "done",
+      "priority": "high",
+      "owner": "CLI maintainers",
+      "acceptance": [
+        "Every canonical project-state section is visible without JavaScript.",
+        "Missing, empty, stale, blocked, and unknown states remain explicit.",
+        "The portal is usable at mobile and desktop widths without horizontal viewport overflow."
+      ],
+      "references": [
+        {
+          "path": "docs/adr/ADR-011-central-docs-hub.md"
+        }
+      ]
+    },
+    {
+      "id": "reconcile-legacy-status",
+      "title": "Reconcile historical status documents with the canonical project-state contract",
+      "type": "technical_debt",
+      "status": "done",
+      "priority": "medium",
+      "owner": "Documentation maintainers",
+      "acceptance": [
+        "Historical task snapshots are clearly labeled or archived.",
+        "Current status readers are directed to docs/project-state.json and the generated portal."
+      ],
+      "references": [
+        {
+          "path": "docs/active-roadmap.md"
+        }
+      ]
+    },
+    {
+      "id": "expand-approved-docs-catalog",
+      "title": "Expand the strict approved catalog after resolving legacy link and anchor debt",
+      "type": "technical_debt",
+      "status": "ready",
+      "priority": "medium",
+      "owner": "Documentation maintainers",
+      "acceptance": [
+        "Every newly approved document passes strict link, anchor, diagram, privacy, and state-reference diagnostics.",
+        "The manifest allowlist expands without weakening fail-closed Docs Hub checks."
+      ],
+      "references": [
+        {
+          "path": "docs/guides/docs-hub.md",
+          "anchor": "safety-model"
+        }
+      ]
+    },
+    {
+      "id": "close-evidence-bypasses",
+      "title": "Close legacy evidence, traceability, payment routing, RED-GREEN, signed-review, and dirty-tree bypasses",
+      "type": "bug",
+      "status": "done",
+      "priority": "critical",
+      "owner": "Forgewright maintainers",
+      "acceptance": [
+        "Schema v1 and trivial or unrelated verifier evidence cannot complete code changes.",
+        "Every acceptance ID maps to exact concrete invoked test references and the machine-derived execution manifest matches the command.",
+        "Every negative_paths entry has an exact negative_path_bindings record with an ID, acceptance IDs, and invoked refs.",
+        "Every final-tree verifier is replayed from its exact stored argv; a nonzero, missing, timed-out, or worktree-mutating command blocks completion.",
+        "Payment, billing, IAP, receipt, entitlement, subscription, and checkout work is always HARD/DEEP and requires contract, runtime, E2E, and signed review-2 evidence.",
+        "Fixes require the same verifier RED to GREEN chain; HARD fixes also require pre-mutation GREEN, mutation failure, and exact final GREEN with tree restoration.",
+        "Only OpenSSH Ed25519 review-2 signatures trusted by external FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS or ~/.forgewright/reviewers.allowed_signers can approve HARD work; review-1/self-authored JSON is UNVERIFIED.",
+        "Any staged, unstaged, tracked, or untracked nonignored source change invalidates prior evidence; secrets and private keys stay outside the workspace.",
+        "Verifier-owned evidence and volatile runtime memory, session, telemetry, cache, and review-handoff state cannot invalidate evidence merely by operating; arbitrary ignored project content remains fingerprinted.",
+        "An opaque platform-native Codex turn_id cannot shadow current evidence; selection is frozen once, while mapped-but-invalid selectors and non-correlated responses block.",
+        "Evidence and linked review reads are bounded regular-file operations that reject symlinks, path escape, and schema-v2 turn-to-filename mismatches."
+      ],
+      "references": [
+        {
+          "path": "docs/pipeline-reference.md",
+          "anchor": "evidence-schema-v2"
+        }
+      ]
+    }
+  ],
+  "status": {
+    "lifecycle": "active",
+    "health": "on_track",
+    "phase": "SUSTAIN",
+    "summary": "Evidence schema v2 hardening is complete: exact acceptance and negative-path traceability, final-command replay, RED/GREEN mutation proof, selective full-worktree fingerprints, payment HARD routing, trusted signed review-2, bounded no-follow evidence reads, frozen Codex turn-metadata normalization, executable verification entrypoints, and current GitNexus index metadata are preserved without weakening strict completion correlation.",
+    "updated_at": "2026-08-13T11:31:00+07:00",
+    "blockers": [],
+    "risks": [],
+    "next_actions": [
+      {
+        "id": "production-evidence",
+        "title": "Complete the live provider and runtime evidence tracked by the active roadmap.",
+        "owner": "Runtime maintainers",
+        "due_date": null
+      }
+    ],
+    "next_update_at": null
+  }
+}

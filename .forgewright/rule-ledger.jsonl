@@ -56,3 +56,206 @@
 {"ts":"2026-08-03T09:05:08Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 1 VERDICT is not PASS"}
 {"ts":"2026-08-03T09:05:27Z","rule":"verify_contract","outcome":"violation","note":"source: user"}
 {"ts":"2026-08-10T05:31:52Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - VERIFY block 3 missing fields: OUTPUT"}
+{"ts":"2026-08-11T06:07:22Z","rule":"HR1-verify","outcome":"violation","note":"source: self-report"}
+{"ts":"2026-08-12T06:29:45Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - no VERIFY block found"}
+{"ts":"2026-08-12T06:40:34Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - no VERIFY block found"}
+{"ts":"2026-08-12T07:09:36Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'codex-native-turn' was not found"}
+{"ts":"2026-08-12T07:09:36Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 't_mutation' was not found"}
+{"ts":"2026-08-12T07:10:44Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'codex-native-turn' was not found"}
+{"ts":"2026-08-12T07:10:44Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 't_mutation' was not found"}
+{"ts":"2026-08-12T07:11:04Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'codex-native-turn' was not found"}
+{"ts":"2026-08-12T07:11:14Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'codex-native-turn' was not found"}
+{"ts":"2026-08-13T02:29:30Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - STALE: evidence is 59166s old (limit: 3600s); STALE: evidence is 59136s old (limit: 3600s); STALE: evidence is 59218s old (limit: 3600s); STALE: evidence is 59194s old (limit: 3600s); STALE: evidence is 59180s old (limit: 3600s); STALE: evidence is 59231s old (limit: 3600s); STALE: evidence is 59207s old (limit: 3600s)"}
+{"ts":"2026-08-13T02:30:34Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - STALE: evidence is 59234s old (limit: 3600s); STALE: evidence is 59203s old (limit: 3600s); STALE: evidence is 59285s old (limit: 3600s); STALE: evidence is 59261s old (limit: 3600s); STALE: evidence is 59248s old (limit: 3600s); STALE: evidence is 59299s old (limit: 3600s); STALE: evidence is 59274s old (limit: 3600s)"}
+{"ts":"2026-08-13T02:32:41Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response OUTPUT digest does not exactly match evidence output_sha256; MISMATCH: response OUTPUT digest does not exactly match evidence output_sha256; MISMATCH: response OUTPUT digest does not exactly match evidence output_sha256; MISMATCH: response OUTPUT digest does not exactly match evidence output_sha256; MISMATCH: response OUTPUT digest does not exactly match evidence output_sha256; MISMATCH: response OUTPUT digest does not exactly match evidence output_sha256"}
+{"ts":"2026-08-13T02:33:09Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response OUTPUT digest does not exactly match evidence output_sha256; MISMATCH: response OUTPUT digest does not exactly match evidence output_sha256; MISMATCH: response OUTPUT digest does not exactly match evidence output_sha256; MISMATCH: response OUTPUT digest does not exactly match evidence output_sha256; MISMATCH: response OUTPUT digest does not exactly match evidence output_sha256; MISMATCH: response OUTPUT digest does not exactly match evidence output_sha256"}
+{"ts":"2026-08-13T02:36:13Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence '019ff541-e365-7c90-8261-5e8cdf6074dc' was not found"}
+{"ts":"2026-08-13T02:36:34Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact evidence turn/turn_id is required"}
+{"ts":"2026-08-13T02:43:16Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence '019ff541-e365-7c90-8261-5e8cdf6074dc' was not found"}
+{"ts":"2026-08-13T02:47:48Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'codex-native-unmapped-uuid' was not found"}
+{"ts":"2026-08-13T02:49:24Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:49:25Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:50:14Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:50:14Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:51:22Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:51:22Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:51:35Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:51:36Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:51:49Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:51:50Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:52:04Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:52:04Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:52:20Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:52:20Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:52:36Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:52:36Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:54:12Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:54:13Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:55:27Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T02:55:27Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:03:02Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:03:03Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:03:03Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:03:04Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:03:35Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:03:36Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:03:36Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:03:37Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:04:51Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:04:52Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:04:52Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:04:53Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:09:51Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:09:52Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:09:52Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:09:52Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:10:06Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:10:07Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:10:07Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:10:08Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:10:22Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:10:22Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:10:23Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:10:23Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:10:28Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:10:28Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:10:29Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:10:29Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:10:39Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:10:39Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:10:40Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:10:40Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:10:57Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:10:58Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:10:58Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:10:58Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:11:14Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:11:15Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:11:15Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:11:16Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:12:26Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:12:26Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:12:27Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:12:27Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:15:19Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:15:46Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:15:47Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:15:47Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:15:47Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:15:48Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:16:02Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:16:03Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:16:03Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:16:03Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:16:04Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:16:11Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:16:18Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:16:18Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:16:19Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:16:19Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:16:20Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:16:33Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:16:34Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:16:34Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:16:34Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:16:35Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:16:51Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:16:51Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:16:52Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:16:52Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:16:53Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:17:08Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:17:10Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:17:10Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:17:11Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:17:11Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:18:20Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:18:20Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:18:21Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:18:21Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:18:22Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:18:44Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:18:45Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:18:45Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:18:46Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:18:47Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:18:56Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:18:57Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:18:57Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:18:57Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:18:58Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:19:06Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:19:07Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:19:07Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:19:08Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:19:08Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:19:29Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:19:30Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:19:30Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:19:31Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:19:31Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:19:53Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:19:54Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:19:54Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:19:54Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:19:55Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:19:55Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:19:55Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:19:56Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:19:56Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:19:57Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:20:20Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:20:21Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:20:21Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:20:22Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:20:23Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:20:57Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:20:58Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:20:58Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:20:59Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:20:59Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:21:54Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:21:55Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:21:55Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:21:55Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:21:56Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:22:23Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:22:24Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:22:24Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:22:25Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:22:26Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:22:33Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:22:33Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:22:34Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:22:34Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:22:35Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:22:44Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:22:45Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:22:45Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:22:45Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:22:46Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:22:54Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:22:55Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:22:56Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:22:56Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:22:57Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:23:14Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:23:15Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:23:15Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:23:16Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:23:16Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:25:33Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:25:34Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:25:34Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:25:34Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:25:35Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:25:57Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:25:58Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:25:58Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:25:58Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:25:59Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}
+{"ts":"2026-08-13T03:26:17Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:26:18Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISMATCH: response command does not exactly match shlex-rendered evidence command"}
+{"ts":"2026-08-13T03:26:18Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'symlink-turn' was not found"}
+{"ts":"2026-08-13T03:26:18Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'filename-turn' was not found"}
+{"ts":"2026-08-13T03:26:19Z","rule":"HR1-verify","outcome":"violation","note":"source: validator - MISSING: exact-turn evidence 'oversized-turn' was not found"}

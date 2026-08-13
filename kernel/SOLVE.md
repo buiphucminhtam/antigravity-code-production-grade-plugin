@@ -25,6 +25,10 @@ Ground material assumptions in current files, references, config, tests/build, a
 - `QUICK`: clear, local, reversible, no HARD signal → normally 1–3 actions, focused verification, no process artifacts.
 - `STANDARD`: normal bounded feature/debug/refactor → normally ≤7 actions, targeted regression checks/review.
 - `DEEP`: security/public contract/schema/concurrency/release/irreversible/high-blast/repeated-failure → normally ≤10 actions, stronger evidence, rollback/reviewer where relevant.
+- **Mandatory payment rule:** any task touching payment, billing, IAP/in-app
+  purchase, receipt validation, entitlements, subscription, or checkout is
+  `HARD` and `DEEP` regardless of file count. A small-file or documentation
+  shortcut cannot downgrade this classification.
 
 Optimization requires an explicit KPI/SLA, measured bottleneck, known resource/cost/platform constraint, or evident scale defect. Otherwise use the simplest adequate baseline. Do not create pipeline work after acceptance is met; optional work stays `Out of scope` / `Later`.
 

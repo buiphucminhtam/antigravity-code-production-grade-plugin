@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { extname, join, relative } from "node:path";
 import { loadManifest } from "./manifest.js";
+import { safeLoadProjectState } from "./project-state.js";
 import {
   canonicalProjectRoot,
   DocsPathError,
@@ -23,6 +24,7 @@ import {
   hashContent,
   normalizeAsset,
   normalizeTextDocument,
+  slugifyHeading,
 } from "./normalize.js";
 import { resolveCatalogLinks } from "./links.js";
 import {
@@ -32,6 +34,7 @@ import {
   type DocsDiagnostic,
   type DocsDocument,
   type DocsSource,
+  type DocsProjectState,
 } from "./types.js";
 
 const TEXT_EXTENSIONS = new Set([".md", ".markdown", ".json", ".yaml", ".yml"]);
@@ -67,6 +70,7 @@ function scanSource(input: {
   projectId: string;
   source: DocsSource;
   truth: string[];
+  projectStatePath: string | null;
   allow: string[];
   exclude: string[];
   documents: Map<string, DocsDocument>;
@@ -162,6 +166,12 @@ function scanSource(input: {
 
     if (!pathStat.isFile()) return;
     const relativePath = projectRelative(input.projectRoot, absolutePath);
+    if (
+      input.projectStatePath &&
+      input.projectStatePath.toLowerCase() === relativePath.toLowerCase()
+    ) {
+      return;
+    }
     const relativeToSource = sourceIsFile
       ? (relativePath.split("/").at(-1) ?? relativePath)
       : relative(sourcePath, relativePath).replace(/\\/g, "/");
@@ -241,6 +251,7 @@ function addCatalogDiagnostics(catalog: DocsCatalog): void {
   }
 
   for (const truthPath of catalog.project.truthDocuments) {
+    if (truthPath === catalog.project.statePath) continue;
     if (
       !catalog.documents.some((document) => document.sourcePath === truthPath)
     ) {
@@ -252,6 +263,70 @@ function addCatalogDiagnostics(catalog: DocsCatalog): void {
         message: "Declared source-of-truth document was not found in the scan.",
         suggestion: "Fix the truth path or add it to an approved source.",
       });
+    }
+  }
+
+  const projectState = catalog.project.state;
+  if (projectState) {
+    for (const root of projectState.structure.roots) {
+      try {
+        resolveWithinProject(catalog.project.root, root.path, {
+          mustExist: true,
+        });
+      } catch (error) {
+        catalog.diagnostics.push({
+          severity: "error",
+          code: "PROJECT_STRUCTURE_ROOT_UNAVAILABLE",
+          projectId: catalog.project.id,
+          path: root.path,
+          message: error instanceof Error ? error.message : String(error),
+          suggestion:
+            "Update structure.roots so every declared project area exists inside the project root.",
+        });
+      }
+    }
+
+    const references = [
+      ...projectState.roadmap.flatMap((item) => item.references),
+      ...projectState.flows.flatMap((flow) =>
+        flow.steps.flatMap((step) => step.references),
+      ),
+      ...projectState.backlog.flatMap((item) => item.references),
+    ];
+    for (const reference of references) {
+      if (reference.path === catalog.project.statePath) continue;
+      const document = catalog.documents.find(
+        (candidate) => candidate.sourcePath === reference.path,
+      );
+      if (!document) {
+        catalog.diagnostics.push({
+          severity: "warning",
+          code: "PROJECT_STATE_REFERENCE_UNAVAILABLE",
+          projectId: catalog.project.id,
+          path: reference.path,
+          message:
+            "Project state references a document that is not present in the approved catalog.",
+          suggestion:
+            "Add the document to approved sources or update the project-state reference.",
+        });
+        continue;
+      }
+      if (
+        reference.anchor &&
+        !document.headings.some(
+          (heading) => heading.slug === slugifyHeading(reference.anchor!),
+        )
+      ) {
+        catalog.diagnostics.push({
+          severity: "warning",
+          code: "PROJECT_STATE_REFERENCE_ANCHOR_MISSING",
+          projectId: catalog.project.id,
+          path: reference.path,
+          message: `Project state references missing anchor #${reference.anchor}.`,
+          suggestion:
+            "Use an existing normalized heading anchor or remove the anchor.",
+        });
+      }
     }
   }
 
@@ -336,6 +411,10 @@ export function refreshCatalogSummary(catalog: DocsCatalog): DocsCatalog {
       ]),
       git: catalog.project.facts.git.commit,
       gitnexus: catalog.project.facts.gitnexus.indexedCommit,
+      projectState: {
+        path: catalog.project.statePath,
+        hash: catalog.project.stateHash,
+      },
     }),
   );
   const counts = { errors: 0, warnings: 0, info: 0 };
@@ -362,6 +441,9 @@ export function scanProject(projectRootInput: string): DocsCatalog {
   const documents = new Map<string, DocsDocument>();
   const assets = new Map<string, DocsAsset>();
   const diagnostics = [...loaded.diagnostics];
+  let projectState: DocsProjectState | null = null;
+  let projectStatePath: string | null = null;
+  let projectStateHash: string | null = null;
 
   if (allow.length === 0) {
     diagnostics.push({
@@ -373,12 +455,89 @@ export function scanProject(projectRootInput: string): DocsCatalog {
     });
   }
 
+  if (loaded.legacy || !manifest.project_docs) {
+    diagnostics.push({
+      severity: "error",
+      code: "PROJECT_DOCS_CONTRACT_MISSING",
+      projectId: manifest.project.id,
+      message:
+        "The docs manifest does not declare a project_docs state contract.",
+      suggestion:
+        "Run `forge docs init` and keep project_docs.state in the manifest.",
+    });
+  } else {
+    projectStatePath = manifest.project_docs.state;
+    if (!isAllowedByPrivacy(projectStatePath, allow, exclude)) {
+      diagnostics.push({
+        severity: "error",
+        code: "PROJECT_STATE_NOT_ALLOWLISTED",
+        projectId: manifest.project.id,
+        path: projectStatePath,
+        message:
+          "The project state path is not allowed by the privacy allowlist.",
+        suggestion:
+          "Add the project state path to privacy.allow and remove it from privacy.exclude.",
+      });
+    } else {
+      const loadedState = safeLoadProjectState(projectRoot, projectStatePath);
+      projectStateHash = loadedState.contentHash;
+      if (loadedState.state) {
+        projectState = loadedState.state;
+        const maxStaleDays = manifest.project_docs.max_stale_days ?? 30;
+        const ageMs = Date.now() - Date.parse(projectState.status.updated_at);
+        if (ageMs < -5 * 60 * 1000) {
+          diagnostics.push({
+            severity: "error",
+            code: "PROJECT_STATE_FUTURE_TIMESTAMP",
+            projectId: manifest.project.id,
+            path: projectStatePath,
+            message:
+              "Project state status.updated_at is more than five minutes in the future.",
+            suggestion:
+              "Correct the timestamp using the current local or UTC time with an explicit offset.",
+          });
+        } else if (ageMs > maxStaleDays * 24 * 60 * 60 * 1000) {
+          diagnostics.push({
+            severity: "warning",
+            code: "PROJECT_STATE_STALE",
+            projectId: manifest.project.id,
+            path: projectStatePath,
+            message: `Project state is older than the configured ${maxStaleDays}-day freshness window.`,
+            suggestion:
+              "Update status.updated_at after reviewing the project state.",
+          });
+        }
+      } else if (loadedState.error?.code === "missing") {
+        diagnostics.push({
+          severity: "error",
+          code: "PROJECT_STATE_MISSING",
+          projectId: manifest.project.id,
+          path: projectStatePath,
+          message: loadedState.error.message,
+          suggestion: "Create the state file or run `forge docs init`.",
+        });
+      } else {
+        diagnostics.push({
+          severity: "error",
+          code: "PROJECT_STATE_INVALID",
+          projectId: manifest.project.id,
+          path: projectStatePath,
+          message:
+            loadedState.error?.message ?? "Project state could not be loaded.",
+          suggestion:
+            "Repair the JSON so it conforms to docs-project-state.schema.json.",
+        });
+      }
+    }
+  }
+
   for (const source of manifest.sources) {
     scanSource({
       projectRoot,
       projectId: manifest.project.id,
       source,
       truth,
+      projectStatePath,
       allow,
       exclude,
       documents,
@@ -394,6 +553,9 @@ export function scanProject(projectRootInput: string): DocsCatalog {
       title: manifest.project.title,
       root: projectRoot,
       manifestPath: loaded.manifestPath,
+      state: projectState,
+      statePath: projectStatePath,
+      stateHash: projectStateHash,
       legacy: loaded.legacy,
       truthDocuments: truth,
       facts: collectProjectFacts(projectRoot, manifest),

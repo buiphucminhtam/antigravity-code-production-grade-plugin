@@ -32,3 +32,5 @@ assets/!(donate)
 !active-roadmap.md
 !guides/docs-hub.md
 !guides/peer-collaboration.md
+!process/
+!process/release-readiness.md

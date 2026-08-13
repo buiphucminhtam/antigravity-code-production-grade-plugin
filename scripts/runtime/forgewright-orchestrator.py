@@ -41,6 +41,13 @@ def resolve_model(environ: dict[str, str] | None = None) -> str:
     return model
 
 
+def resolve_api_key(environ: dict[str, str] | None = None) -> str:
+    env = os.environ if environ is None else environ
+    return _first_nonempty(
+        env.get("FORGEWRIGHT_API_KEY"), env.get("NINEROUTER_API_KEY")
+    )
+
+
 def resolve_api_url(environ: dict[str, str] | None = None) -> str:
     env = os.environ if environ is None else environ
     exact_url = _first_nonempty(env.get("FORGEWRIGHT_API_URL"))
@@ -51,7 +58,9 @@ def resolve_api_url(environ: dict[str, str] | None = None) -> str:
         if legacy_base.endswith("/chat/completions"):
             return legacy_base
         return legacy_base.rstrip("/") + "/chat/completions"
-    return "https://api.minimax.io/v1/text/chatcompletion_v2"
+    raise ValueError(
+        "FORGEWRIGHT_API_URL or NINEROUTER_BASE_URL must be explicitly configured"
+    )
 
 
 def resolve_code_dir(value: str) -> str:
@@ -173,13 +182,11 @@ _MODEL = _first_nonempty(
     os.environ.get("FORGEWRIGHT_MODEL"), os.environ.get("NINEROUTER_MODEL")
 )
 
-# MiniMax-specific config is optional and only used when provider == "minimax".
-_API_KEY = _first_nonempty(
-    os.environ.get("FORGEWRIGHT_API_KEY"),
-    os.environ.get("NINEROUTER_API_KEY"),
-    os.environ.get("MINIMAX_API_KEY"),
-)
-_BASE_URL = resolve_api_url()
+_API_KEY = resolve_api_key()
+try:
+    _BASE_URL = resolve_api_url()
+except ValueError:
+    _BASE_URL = ""
 
 
 class ForgewrightAgent:
@@ -202,10 +209,11 @@ class ForgewrightAgent:
 
     def _call_api(self, tools: List[Dict]) -> Dict:
         """Call the Chat Completions API."""
+        if not _BASE_URL:
+            print("[!] FORGEWRIGHT_API_URL or NINEROUTER_BASE_URL env var is not set.")
+            sys.exit(1)
         if not _API_KEY:
-            print(
-                "[!] FORGEWRIGHT_API_KEY, NINEROUTER_API_KEY, or MINIMAX_API_KEY env var is not set."
-            )
+            print("[!] FORGEWRIGHT_API_KEY or NINEROUTER_API_KEY env var is not set.")
             sys.exit(1)
         if not _MODEL:
             print("[!] FORGEWRIGHT_MODEL env var is not set.")
@@ -602,7 +610,7 @@ Khi bạn nghĩ rằng mình ĐÃ THỰC THI XONG VÀ HOÀN CHỈNH CODE, hãy t
                     ):
                         raise RuntimeError("runtime budget exceeded: total runtime")
 
-                    # 2. ReAct reasoning with MiniMax
+                    # 2. Provider-neutral model reasoning
                     reply = self._call_api(tools_payload)
                     self.messages.append(reply)
 

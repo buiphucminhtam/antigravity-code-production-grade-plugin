@@ -31,6 +31,24 @@
         "$ref": "#/definitions/source"
       }
     },
+    "project_docs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "state"],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "state": {
+          "$ref": "#/definitions/relativePath"
+        },
+        "max_stale_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365
+        }
+      }
+    },
     "truth": {
       "type": "array",
       "uniqueItems": true,

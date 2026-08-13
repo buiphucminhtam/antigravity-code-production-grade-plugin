@@ -18,7 +18,7 @@
     "build:cli": "npm run build --workspace src/cli",
     "dev:cli": "cd src/cli && npm run dev",
     "typecheck:cli": "cd src/cli && npx tsc --noEmit",
-    "ci:docs": "npm run typecheck:cli && npm test --workspace src/cli -- --run docs && pytest -q tests/unit_tests/test_docs_manifest_schema.py",
+    "ci:docs": "npm run typecheck:cli && npm run build:cli && node src/cli/dist/index.js docs gate . --worktree --json && npm test --workspace src/cli -- --run docs && python3 -m pytest -q tests/unit_tests/test_docs_manifest_schema.py tests/unit_tests/test_docs_project_state_schema.py",
     "test:golden": "node tests/golden/forge-init-onboard.test.mjs",
     "verify:product-truth": "python3 scripts/ci/verify-product-truth.py",
     "ci:bootstrap": "node scripts/ci/local-ci.mjs bootstrap",

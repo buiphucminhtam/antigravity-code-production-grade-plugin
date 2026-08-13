@@ -236,6 +236,29 @@ WARN Rules:
   - Action: LOG warning + continue
 ```
 
+### 14. Documentation Continuity — DENY (fail-closed)
+
+The Docs Hub is a continuous project contract, not a manual publishing task.
+Project-owned Markdown and JSON are the source of truth. The canonical
+`project-state` JSON is the source for continuity checks. **Generated HTML/CSS must never be hand-edited.** It must never be accepted as a replacement for the source documents or the canonical project state.
+
+```
+DENY Rules:
+  - Pattern: material project change with no canonical project state in the same changeset
+  - Pattern: configured project_docs state missing, invalid, stale, or outside the project root
+  - Pattern: direct edit to generated Docs Hub HTML/CSS instead of rebuilding from source
+  - Required postcondition: run `forge docs gate [target]`
+  - Gate inputs: `--staged`, `--worktree`, or `--base-ref <ref>`
+  - Gate behavior: detect material changes, run an in-memory strict doctor,
+    build HTML/CSS in a temporary directory, verify the generated output, and
+    fail closed on any required check
+  - Enforcement: postcondition guard, local CI, precommit, or release gate
+  - Not enforcement: policy-check deny regexes or manual HTML/CSS edits
+  - Legacy scan/build remains readable, but strict gate fails until migrated
+  - Reason: "Documentation continuity contract not satisfied"
+  - Action: BLOCK + report the missing source/state/gate evidence
+```
+
 ## Decision Matrix
 
 | Rule Type | Read | Write | Execute | Delete |
@@ -254,6 +277,7 @@ WARN Rules:
 | **Env persistence** (Rule 11) | — | DENY | DENY | — |
 | **Network exfiltration** (Rule 12) | — | — | WARN | — |
 | **Supply chain** (Rule 13) | — | — | WARN | — |
+| **Documentation continuity** (Rule 14) | WARN | DENY if material change lacks canonical state or edits generated HTML/CSS | DENY if gate is missing or fails | DENY if generated output is treated as source |
 
 ## Response Format
 

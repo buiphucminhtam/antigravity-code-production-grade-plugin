@@ -38,6 +38,17 @@ def test_model_precedence_and_empty_fallback() -> None:
         orchestrator.resolve_model({})
 
 
+def test_api_key_precedence_and_minimax_key_is_not_accepted() -> None:
+    assert (
+        orchestrator.resolve_api_key(
+            {"FORGEWRIGHT_API_KEY": " configured ", "NINEROUTER_API_KEY": "legacy"}
+        )
+        == "configured"
+    )
+    assert orchestrator.resolve_api_key({"NINEROUTER_API_KEY": "legacy"}) == "legacy"
+    assert orchestrator.resolve_api_key({"MINIMAX_API_KEY": "provider-only"}) == ""
+
+
 @pytest.mark.parametrize(
     "url",
     [
@@ -57,6 +68,28 @@ def test_legacy_base_url_keeps_chat_completions_normalization() -> None:
         )
         == "https://openrouter.test/api/v1/chat/completions"
     )
+
+
+def test_api_url_requires_explicit_configuration() -> None:
+    with pytest.raises(
+        ValueError,
+        match="FORGEWRIGHT_API_URL or NINEROUTER_BASE_URL must be explicitly configured",
+    ):
+        orchestrator.resolve_api_url({})
+
+
+def test_call_api_fails_closed_without_configured_url(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(orchestrator, "_BASE_URL", "")
+    monkeypatch.setattr(orchestrator, "_API_KEY", "test-key")
+    monkeypatch.setattr(orchestrator, "_MODEL", "test-model")
+    agent = orchestrator.ForgewrightAgent("project", str(tmp_path))
+
+    with pytest.raises(SystemExit) as exit_info:
+        agent._call_api([])
+
+    assert exit_info.value.code == 1
 
 
 def test_code_dir_is_resolved_and_root_is_rejected(tmp_path: Path) -> None:
@@ -237,6 +270,7 @@ def test_call_api_sends_output_cap_and_preserves_exact_url(
 def test_call_api_rejects_oversized_response(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr(orchestrator, "_BASE_URL", "https://example.test/custom")
     monkeypatch.setattr(orchestrator, "_API_KEY", "test-key")
     monkeypatch.setattr(orchestrator, "_MODEL", "test-model")
     monkeypatch.setattr(
@@ -292,6 +326,7 @@ def test_runtime_source_wires_fail_closed_limits_and_workspace() -> None:
     assert 'FORGEWRIGHT_TOOL_SANDBOX"] = "false"' not in source
     assert '"/workspace"' not in source
     assert "tool_to_session_map[tool.name]" not in source
+    assert "MINIMAX" not in source
 
 
 def test_mcp_contexts_enter_without_spawning_timeout_tasks() -> None:

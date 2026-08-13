@@ -3,11 +3,19 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts" / "lite"))
+from evidence_common import (  # noqa: E402
+    command_text,
+    execution_manifest,
+    sha256_text,
+    worktree_fingerprint,
+)
 
 
 def run(
@@ -42,6 +50,78 @@ deny_patterns:
         encoding="utf-8",
     )
     return path
+
+
+def write_v2_evidence(tmp_path: Path, *, turn: str = "turn-1") -> tuple[dict, Path]:
+    output = "pytest-ref passed\n"
+    check_path = tmp_path / "evidence_contract_check.py"
+    check_path.write_text("print('pytest-ref passed')\n", encoding="utf-8")
+    command = ["python3", "evidence_contract_check.py"]
+    refs = ["evidence_contract_check.py"]
+    execution, errors = execution_manifest(tmp_path, command, refs)
+    assert not errors and execution is not None
+    evidence = {
+        "schema_version": "2",
+        "turn": turn,
+        "acceptance_criteria": [
+            {
+                "id": "acceptance-one",
+                "claim": "pytest-ref is verified",
+                "test_refs": ["evidence_contract_check.py"],
+            }
+        ],
+        "command": command,
+        "execution": execution,
+        "tier": "contract",
+        "test_refs": refs,
+        "negative_paths": ["the check fails when pytest-ref is absent"],
+        "negative_path_bindings": [
+            {
+                "id": "negative-path-1",
+                "claim": "the check fails when pytest-ref is absent",
+                "acceptance_ids": ["acceptance-one"],
+                "test_refs": ["evidence_contract_check.py"],
+            }
+        ],
+        "limitations": [],
+        "change_kind": "test",
+        "phase": "verification",
+        "implementer_id": "codex-implementer",
+        "reviewer": {"status": "not_required"},
+        "exit_code": 0,
+        "output": output,
+        "output_sha256": sha256_text(output),
+        "output_truncated": False,
+        "timestamp_utc": "2026-08-12T00:00:00Z",
+        "workspace": str(tmp_path.resolve()),
+        "tree_sha": worktree_fingerprint(tmp_path),
+    }
+    # Use a current timestamp so the test remains deterministic under the
+    # repository's one-hour staleness policy.
+    from datetime import datetime, timezone
+
+    evidence["timestamp_utc"] = datetime.now(timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+    path = tmp_path / ".forgewright" / "verify" / f"{turn}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(evidence), encoding="utf-8")
+    return evidence, path
+
+
+def strict_response(evidence: dict) -> str:
+    criterion = evidence["acceptance_criteria"][0]
+    return "\n".join(
+        [
+            "VERIFY:",
+            f"ACCEPTANCE: {criterion['id']}",
+            f"CLAIM: {criterion['claim']}",
+            f"COMMAND: {command_text(evidence['command'])}",
+            f"OUTPUT: sha256:{evidence['output_sha256']}",
+            "EXIT CODE: 0",
+            "VERDICT: PASS",
+        ]
+    )
 
 
 def test_policy_fails_closed_for_missing_empty_and_malformed_files(
@@ -108,38 +188,31 @@ def test_validator_requires_one_complete_adjacent_passing_verify_block(
 ) -> None:
     script = ROOT / "scripts/lite/rule-validator.py"
     ledger = tmp_path / "ledger.jsonl"
-    env = {"FORGEWRIGHT_RULE_LEDGER": str(ledger)}
-    valid = """Done.
-CLAIM: behavior is verified
-COMMAND: pytest -q
-OUTPUT: 1 passed
-continued output
-EXIT CODE: 0
-VERDICT: PASS
-"""
+    evidence, _ = write_v2_evidence(tmp_path)
+    env = {
+        "FORGEWRIGHT_RULE_LEDGER": str(ledger),
+        "FORGEWRIGHT_WORKSPACE": str(tmp_path),
+        "FORGEWRIGHT_TURN": evidence["turn"],
+    }
+    valid = strict_response(evidence)
     result = run("python3", str(script), "--runtime", env=env, stdin=valid)
     assert result.returncode == 0, result.stderr
 
-    valid_multiline_output = """Done.
-CLAIM: behavior is verified
-COMMAND: pytest -q
-OUTPUT:
-1 passed
-EXIT CODE: 0
-VERDICT: PASS
-"""
+    valid_multiline_output = valid.replace(
+        f"OUTPUT: sha256:{evidence['output_sha256']}",
+        f"OUTPUT: sha256:{evidence['output_sha256']}",
+    )
     result = run(
         "python3", str(script), "--runtime", env=env, stdin=valid_multiline_output
     )
     assert result.returncode == 0, result.stderr
 
     invalid_payloads = [
-        "CLAIM: behavior works\nVERDICT: PASS\n",
-        "CLAIM: behavior works\nCOMMAND: pytest\nOUTPUT: failed\nEXIT CODE: 1\nVERDICT: FAIL\n",
-        "CLAIM: behavior works\n\nCOMMAND: pytest\nOUTPUT: ok\nEXIT CODE: 0\nVERDICT: PASS\n",
-        "CLAIM: behavior works\nCOMMAND: pytest\nOUTPUT: ok\n\nEXIT CODE: 0\nVERDICT: PASS\n",
-        "CLAIM: behavior works\nCOMMAND: pytest\nOUTPUT: ok\nEXIT CODE: 0\n\nVERDICT: PASS\n",
-        "CLAIM: behavior works\nCOMMAND: pytest\nOUTPUT:\nEXIT CODE: 0\nVERDICT: PASS\n",
+        "VERIFY:\n",
+        "```verify\n" + valid + "\n```",
+        valid.replace("ACCEPTANCE: acceptance-one", "ACCEPTANCE: unrelated"),
+        valid.replace("CLAIM: pytest-ref is verified", "CLAIM: unrelated claim"),
+        valid.replace("OUTPUT: sha256:", "OUTPUT: sha256:" + ("0" * 64)),
         "",
     ]
     for payload in invalid_payloads:
@@ -151,13 +224,17 @@ def test_validator_accepts_json_hook_payload_and_propagates_ledger_failure(
     tmp_path: Path,
 ) -> None:
     script = ROOT / "scripts/lite/rule-validator.py"
-    response = "CLAIM: ok\nCOMMAND: true\nOUTPUT: ok\nEXIT CODE: 0\nVERDICT: PASS"
-    payload = json.dumps({"response_content": response})
+    evidence, _ = write_v2_evidence(tmp_path, turn="json-turn")
+    response = strict_response(evidence)
+    payload = json.dumps({"response_content": response, "turn": evidence["turn"]})
     ok = run(
         "python3",
         str(script),
         "--runtime",
-        env={"FORGEWRIGHT_RULE_LEDGER": str(tmp_path / "ledger.jsonl")},
+        env={
+            "FORGEWRIGHT_RULE_LEDGER": str(tmp_path / "ledger.jsonl"),
+            "FORGEWRIGHT_WORKSPACE": str(tmp_path),
+        },
         stdin=payload,
     )
     assert ok.returncode == 0, ok.stderr
@@ -169,7 +246,7 @@ def test_validator_accepts_json_hook_payload_and_propagates_ledger_failure(
         str(script),
         "--runtime",
         env={"FORGEWRIGHT_RULE_LEDGER": str(blocked_parent / "ledger.jsonl")},
-        stdin="CLAIM: bad\nVERDICT: PASS",
+        stdin="VERIFY:\n",
     )
     assert failed.returncode != 0
 

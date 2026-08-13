@@ -26,6 +26,29 @@ For project facts, prefer:
 
 A higher-tier model's statement is still a claim until checked.
 
+## Schema-v2 traceability and trust
+
+For completion, `acceptance_criteria[].id` and `claim` each map to exact
+concrete `test_refs`. The runner derives an `execution` manifest from the
+actual command (`runner`, `entrypoints`, and invoked `test_refs`); caller-
+declared or global-only refs do not count. `negative_paths` is required, and
+every entry requires a `negative_path_bindings` record containing a binding ID,
+acceptance IDs, and concrete refs that the manifest shows were invoked.
+
+Every fix uses the same command and mappings for observed RED → GREEN. HARD
+fixes additionally require `RED → pre-mutation GREEN → mutation fail → exact
+final GREEN`, with the clean pre-mutation target tree restored. Payment,
+billing, IAP/in-app purchase, receipt validation, entitlements, subscription,
+and checkout are always HARD/DEEP, regardless of file count.
+
+HARD approval is valid only as a separate, signed `review-2` using OpenSSH
+Ed25519. The review must include the canonical final-evidence digest and exact
+tree, turn, acceptance IDs, and negative bindings, verified against external
+`FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS` or
+`~/.forgewright/reviewers.allowed_signers`. Review-1 and self-authored JSON are
+`UNVERIFIED`. Keep the workflow local-first/provider-neutral; never store
+secrets or private keys in the workspace.
+
 ## Proportional Workflow
 
 1. Identify the **material claims** needed to close the current acceptance criteria. Do not enumerate every trivial assumption for ceremony.
@@ -79,15 +102,30 @@ A screenshot gate is not mandatory for every file that happens to touch UI; use 
 
 ## Evidence Report
 
-A completion report should be compact:
+For code changes, copy the strict block emitted by `run-check`; the runtime
+validator correlates every field to the exact-turn schema-v2 record:
 
 ```text
-CLAIM: <what is being asserted>
-EVIDENCE: <command/file/tool + relevant result>
-VERDICT: PASS | FAIL | UNVERIFIED
+ACCEPTANCE: <exact acceptance ID>
+CLAIM: <exact mapped claim>
+COMMAND: <exact shlex-rendered argv>
+OUTPUT: sha256:<exact stored-output digest>
+EXIT CODE: 0
+VERDICT: PASS
 ```
 
-For multiple claims, list only those that materially support acceptance or residual risk.
+Emit one block per material acceptance ID. Marker-only or narrative summaries
+cannot replace the machine record. Non-code `QUICK` reporting remains
+proportional to the verified fact/artifact.
+
+Example local attestation (both paths are external to the workspace):
+
+```sh
+FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS=/absolute/path/reviewers.allowed_signers \
+python3 scripts/lite/review_attest.py sign \
+  --evidence .forgewright/verify/<turn>.json \
+  --private-key /absolute/path/reviewer_ed25519
+```
 
 ---
 

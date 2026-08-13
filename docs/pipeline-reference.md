@@ -47,6 +47,67 @@ For project facts: current workspace/runtime evidence → executable tests/build
 
 A success claim must satisfy the kernel `VERIFY` contract. Higher-tier model output is still an unverified claim until checked.
 
+## Evidence schema v2
+
+Code-change completion is fail-closed and exact-turn correlated:
+
+1. Each material acceptance ID and claim maps to exact concrete project-owned
+   test/check refs. The runner derives `execution` (`runner`, `entrypoints`,
+   invoked `test_refs`) from the exact command; caller-declared manifests do not
+   count.
+2. `negative_paths` is required. Every entry has a required
+   `negative_path_bindings` record: binding ID, exact claim, acceptance IDs, and
+   concrete refs that the execution manifest shows were invoked.
+3. The record preserves tier, exact argv/output digest, limitations, phase,
+   reviewer state, and a full-worktree fingerprint over HEAD, index, tracked
+   and untracked project files including ignored content. A narrow explicit
+   allowlist excludes only verifier-owned evidence and volatile runtime memory,
+   session, telemetry, cache, and review-handoff state so verification cannot
+   stale its own record; project configuration and arbitrary ignored files stay
+   covered.
+   The response must match this exact
+   machine record; marker-only output and schema v1 cannot complete code.
+4. Before completion, the gate replays every final-tree verifier from its exact
+   stored argv with a bounded timeout and reduced environment. The observed
+   exit code must be zero and the full-worktree fingerprint must remain
+   unchanged, so hand-authored PASS records and mutating checks fail closed.
+   When a hook provides no Forgewright evidence turn, discovery considers only
+   structurally valid, fresh, current-workspace/current-tree schema-v2 final
+   records; newer review, RED, mutation, malformed, stale, wrong-workspace, or
+   legacy JSON cannot shadow the completion record. A Codex platform-native
+   `turn_id` is treated as routing metadata unless it names an existing
+   evidence record. An opaque ID is replaced once with the discovered evidence
+   turn, freezing both validators onto the same record; a mapped-but-invalid ID
+   blocks. Removing unrelated routing metadata does not open the gate: the
+   response must still correlate exactly with the selected current record.
+   Every evidence read is size-bounded, uses no-follow file descriptors, rejects
+   symlinked directories/files, and binds schema-v2 `turn` to the filename.
+5. Every fix proves RED → GREEN with the same command, refs, tier, manifest,
+   acceptance IDs, and negative bindings. A HARD fix proves
+   `RED → pre-mutation GREEN → mutation fail → exact final GREEN`, restoring the
+   clean pre-mutation target tree without discarding unrelated changes.
+6. Payment, billing, IAP/in-app purchase, receipt validation, entitlements,
+   subscription, and checkout are always `HARD` / `DEEP`, regardless of file
+   count. Completion requires contract, runtime, and E2E evidence plus a
+   separate signed `review-2` using OpenSSH Ed25519.
+7. `review-2` must bind the canonical SHA-256 digest of final evidence, exact
+   final tree, turn, acceptance IDs, and `negative_path_bindings`. Trust comes
+   only from external `FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS`, or fallback
+   `~/.forgewright/reviewers.allowed_signers`; review-1/self-authored JSON is
+   `UNVERIFIED`.
+
+Local-first/provider-neutral operation is the default. Keep private keys and
+other secrets outside the workspace. Attest a final record with:
+
+```sh
+FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS=/absolute/path/reviewers.allowed_signers \
+python3 scripts/lite/review_attest.py sign \
+  --evidence .forgewright/verify/<turn>.json \
+  --private-key /absolute/path/reviewer_ed25519
+```
+
+Generated evidence files are local runtime artifacts. Project source, tests, and this documented contract remain the durable source of truth.
+
 ---
 
-*Updated: 2026-08-08*
+*Updated: 2026-08-12*

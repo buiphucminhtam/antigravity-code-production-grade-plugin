@@ -57,6 +57,27 @@ def test_local_ci_dry_run_can_plan_without_hosted_provider() -> None:
     assert "forgewright-local-ci/v1" in text
 
 
+def test_precommit_runs_mandatory_docs_continuity_gate() -> None:
+    module = _module()
+    runner = module.LocalCI(dry_run=True, keep_going=False, timeout=1, base_ref=None)
+    runner._require_node_dependencies = lambda: None
+    runner._require_python_dependencies = lambda *packages: None
+    runner.review = lambda: None
+    runner._format_staged = lambda: None
+    runner.primary_node = "/tmp/fake-node/bin/node"
+    runner._node_bin = lambda component, name: f"/{component}/{name}"
+    runner._node_module_file = lambda component, relative: Path(
+        f"/{component}/{relative}"
+    )
+
+    runner.precommit()
+
+    steps = {result.name: result.argv for result in runner.results}
+    assert steps["cli-build"][-2:] == ["run", "build:cli"]
+    assert steps["docs-continuity"][-2:] == ["--staged", "--json"]
+    assert "src/cli/dist/index.js" in steps["docs-continuity"]
+
+
 def test_timeout_terminates_spawned_process_tree(tmp_path: Path) -> None:
     module = _module()
     runner = module.LocalCI(dry_run=False, keep_going=True, timeout=1, base_ref=None)

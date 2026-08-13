@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import type { Command } from "commander";
 import pc from "picocolors";
 import { doctorCatalog } from "../docs/doctor.js";
+import { runDocsGate, type DocsGateResult } from "../docs/change-gate.js";
 import { initManifest } from "../docs/manifest.js";
 import { exportObsidianVault } from "../docs/obsidian.js";
 import {
@@ -27,10 +28,13 @@ import { VERSION } from "../version.js";
 
 type DocsOptions = {
   all?: boolean;
+  baseRef?: string;
   force?: boolean;
   json?: boolean;
   output?: string;
+  staged?: boolean;
   strict?: boolean;
+  worktree?: boolean;
   write?: boolean;
 };
 
@@ -88,6 +92,20 @@ function writeFailure(
     process.stderr.write(`${pc.red("Error:")} ${message}\n`);
   }
   process.exitCode = exitCode;
+}
+
+function writeGateSuccess(
+  result: DocsGateResult,
+  json: boolean,
+  startedAt: number,
+): void {
+  if (json) {
+    writeSuccess("forge.docs.gate", result, true, startedAt);
+    return;
+  }
+  process.stdout.write(
+    `${pc.green("✓")} forge.docs.gate (${result.mode}): ${result.changedPaths.length} changed, ${result.materialPaths.length} material, ${result.verifiedOutputPaths.length} outputs verified\n`,
+  );
 }
 
 function resolveProjectRoots(
@@ -192,6 +210,52 @@ export function registerDocsCommands(program: Command): void {
     .description(
       "Build a privacy-safe, local-first multi-project documentation hub",
     );
+
+  docs
+    .command("gate [target]")
+    .description("Require docs continuity for the selected Git change view")
+    .option("--staged", "Check staged Git changes")
+    .option("--worktree", "Check staged, unstaged, and untracked changes")
+    .option("--base-ref <ref>", "Check changes from <ref> to HEAD")
+    .option("-j, --json", "Output as JSON")
+    .action((target: string | undefined, options: DocsOptions) => {
+      const startedAt = Date.now();
+      const json = useJson(program, options);
+      try {
+        const result = runDocsGate(target ?? process.cwd(), {
+          staged: options.staged,
+          worktree: options.worktree,
+          baseRef: options.baseRef,
+        });
+        if (result.status === "fail") {
+          const blockingDiagnostic =
+            result.doctor.diagnostics.find(
+              (diagnostic) => diagnostic.severity === "error",
+            ) ?? result.doctor.diagnostics[0];
+          writeFailure(
+            "forge.docs.gate",
+            blockingDiagnostic
+              ? `Documentation continuity gate failed (${blockingDiagnostic.code}): ${blockingDiagnostic.message}`
+              : "Documentation continuity gate failed.",
+            result,
+            json,
+            startedAt,
+            EXIT_CODES.TOOL_ERROR,
+          );
+          return;
+        }
+        writeGateSuccess(result, json, startedAt);
+      } catch (error) {
+        writeFailure(
+          "forge.docs.gate",
+          error instanceof Error ? error.message : String(error),
+          null,
+          json,
+          startedAt,
+          EXIT_CODES.TOOL_ERROR,
+        );
+      }
+    });
 
   docs
     .command("init [target]")

@@ -1,5 +1,11 @@
 # Forgewright — Roadmap Task Status
 
+> **Historical snapshot:** this document records an earlier implementation
+> session and is not the current project status. Use
+> [`docs/project-state.json`](project-state.json) or the generated Docs Hub
+> project page for the canonical structure, roadmap, flows, backlog, and live
+> status.
+
 > Last updated: 2026-04-21
 > Session: Token Efficiency Roadmap Implementation
 > Commit: `HEAD` — `feat(setup): token-savior detection (p5-t3, i-new-6)`

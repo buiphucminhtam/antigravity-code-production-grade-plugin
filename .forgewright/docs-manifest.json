@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "project": {
+    "id": "forgewright",
+    "title": "Forgewright"
+  },
+  "sources": [
+    {
+      "path": "docs/project-state.json",
+      "type": "metadata"
+    },
+    {
+      "path": "docs/pipeline-reference.md",
+      "type": "architecture"
+    },
+    {
+      "path": "docs/active-roadmap.md",
+      "type": "product"
+    },
+    {
+      "path": "docs/adr/ADR-011-central-docs-hub.md",
+      "type": "architecture"
+    },
+    {
+      "path": "docs/guides/docs-hub.md",
+      "type": "operations"
+    },
+    {
+      "path": "docs/adr/ADR-012-bounded-peer-collaboration.md",
+      "type": "architecture"
+    },
+    {
+      "path": "docs/guides/peer-collaboration.md",
+      "type": "operations"
+    },
+    {
+      "path": "skills/_shared/protocols/peer-collaboration.md",
+      "type": "operations"
+    },
+    {
+      "path": "docs/process/release-readiness.md",
+      "type": "operations"
+    },
+    {
+      "path": "product-manifest.json",
+      "type": "metadata"
+    }
+  ],
+  "project_docs": {
+    "schema_version": 1,
+    "state": "docs/project-state.json",
+    "max_stale_days": 14
+  },
+  "truth": [
+    "product-manifest.json",
+    "docs/project-state.json",
+    "docs/pipeline-reference.md",
+    "docs/active-roadmap.md",
+    "docs/adr/ADR-011-central-docs-hub.md",
+    "docs/adr/ADR-012-bounded-peer-collaboration.md"
+  ],
+  "adapters": {
+    "git": true,
+    "gitnexus": false,
+    "evidence_summary": false
+  },
+  "privacy": {
+    "mode": "allowlist",
+    "allow": [
+      "docs/project-state.json",
+      "docs/pipeline-reference.md",
+      "docs/active-roadmap.md",
+      "docs/adr/ADR-011-central-docs-hub.md",
+      "docs/guides/docs-hub.md",
+      "docs/adr/ADR-012-bounded-peer-collaboration.md",
+      "docs/guides/peer-collaboration.md",
+      "skills/_shared/protocols/peer-collaboration.md",
+      "docs/process/release-readiness.md",
+      "product-manifest.json"
+    ],
+    "exclude": [
+      "docs/archive/**",
+      "**/.env*",
+      "**/credentials/**",
+      "**/secrets/**",
+      "**/node_modules/**",
+      "**/.worktrees/**"
+    ]
+  }
+}
