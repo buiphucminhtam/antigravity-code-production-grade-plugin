@@ -581,6 +581,26 @@
       ]
     },
     {
+      "id": "lock-test-oracles-to-requirements",
+      "title": "Keep behavioral test oracles locked to explicit current requirements",
+      "type": "bug",
+      "status": "done",
+      "priority": "critical",
+      "owner": "Forgewright maintainers",
+      "acceptance": [
+        "A red test, green-suite goal, or current implementation cannot authorize weakening, deleting, skipping, regenerating, or rewriting behavioral expectations.",
+        "When expected behavior is missing, ambiguous, or contradictory, execution blocks and asks the user or product owner instead of inventing a test oracle.",
+        "Behavioral tests change only after an explicit current requirement or acceptance-criteria change; test infrastructure repairs must preserve the behavioral oracle and coverage.",
+        "Deterministic adversarial replay rejects test-oracle hacking and an empirical weak-model run preserves the test while reporting REQUIREMENT_BLOCKED."
+      ],
+      "references": [
+        {
+          "path": "docs/pipeline-reference.md",
+          "anchor": "requirement-locked-test-oracles"
+        }
+      ]
+    },
+    {
       "id": "close-evidence-bypasses",
       "title": "Close legacy evidence, traceability, payment routing, RED-GREEN, signed-review, and dirty-tree bypasses",
       "type": "bug",
@@ -612,8 +632,8 @@
     "lifecycle": "active",
     "health": "on_track",
     "phase": "SUSTAIN",
-    "summary": "Evidence schema v2 hardening is complete: exact acceptance and negative-path traceability, final-command replay, RED/GREEN mutation proof, selective full-worktree fingerprints, payment HARD routing, trusted signed review-2, bounded no-follow evidence reads, frozen Codex turn-metadata normalization, executable verification entrypoints, and current GitNexus index metadata are preserved without weakening strict completion correlation.",
-    "updated_at": "2026-08-13T11:31:00+07:00",
+    "summary": "Requirement-locked test-oracle enforcement is active across the kernel, pipeline, QA, autonomous testing, goal-driven execution, and documentation surfaces. Missing or contradictory expected behavior now blocks for user/product-owner clarification instead of allowing tests to be weakened for a green suite; deterministic adversarial replay and a live weak-model smoke both preserve the behavioral test. Audit follow-ups also hardened bounded trusted-host deadline enforcement without changing its existing test contract and made clean-install evidence model a real Git checkout before root prepare hooks run.",
+    "updated_at": "2026-08-18T11:38:00+07:00",
     "blockers": [],
     "risks": [],
     "next_actions": [

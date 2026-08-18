@@ -129,6 +129,47 @@ def test_recovery_policy_preserves_unrelated_work_and_stuck_rule() -> None:
     assert 'git commit -am "Pre-healing checkpoint"' not in healing
 
 
+def test_behavioral_test_oracles_are_requirement_locked() -> None:
+    senior = _normalized(_read("skills/_shared/protocols/senior-execution-contract.md"))
+    pipeline = _normalized(
+        _read("skills/_shared/protocols/pipeline-operating-contract.md")
+    )
+    qa = _normalized(_read("skills/_shared/protocols/qa-test-protocol.md"))
+    healing = _normalized(_read("skills/_shared/protocols/self-healing-execution.md"))
+    autonomous = _normalized(_read("skills/autonomous-testing/LITE.md"))
+    autonomous_full = _normalized(_read("skills/autonomous-testing/SKILL.md"))
+    qa_lite = _normalized(_read("skills/qa-engineer/LITE.md"))
+    qa_full = _normalized(_read("skills/qa-engineer/SKILL.md"))
+    eval_full = _normalized(_read("skills/eval-engineer/SKILL.md"))
+    harden = _normalized(_read("skills/production-grade/phases/harden.md"))
+
+    assert "Test oracles are requirement-locked" in senior
+    assert (
+        "A failing test, the current implementation, or a desire for a green suite is never authority"
+        in senior
+    )
+    assert "Requirement-locked test oracle" in pipeline
+    assert "TEST-ORACLE LOCK" in pipeline
+    assert "Test Oracle Integrity — Requirement Lock" in qa
+    assert "Requirement thiếu hoặc mâu thuẫn => BLOCKED, hỏi người dùng/PO" in qa
+    assert "keep the test oracle read-only and fix the implementation" in healing
+    assert "Green-suite goal hacking" in autonomous
+    assert "Test-oracle lock" in qa_lite
+    assert "behavioral oracle remains unchanged" in autonomous_full
+    assert "explicit current requirement/rubric change" in eval_full
+    assert "An apparent test-oracle defect is not fixed immediately" in harden
+
+    assert "Test assertion typos - wrong expected value" not in autonomous_full
+    assert "approveNewBaseline" not in autonomous_full
+    assert "Fix or delete" not in qa_full
+    assert "Fix the skill or update the eval" not in eval_full
+    assert "test bugs (fix immediately)" not in harden
+
+    combined = " ".join((senior, pipeline, qa, healing, autonomous, qa_lite)).lower()
+    assert "ask the user/product owner" in combined or "hỏi người dùng/po" in combined
+    assert "A failing test or changed implementation is not such evidence" in pipeline
+
+
 def test_routing_contract_is_local_first_provider_neutral_and_unpinned() -> None:
     senior = _read("skills/_shared/protocols/senior-execution-contract.md")
     escalate = _read("kernel/ESCALATE.md")

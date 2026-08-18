@@ -946,7 +946,7 @@ docs/
 | Existing users | Skill names change | Medium | Backward compatibility aliases |
 | Mode routing | Skills merged | Medium | Update orchestrator routing table |
 | GitNexus | Symbol references | Low | Re-index after changes |
-| CI/CD | Test suites | Low | Update test expectations |
+| CI/CD | Test suites | Low | Keep existing behavioral expectations unless the requirement changes; otherwise fix implementation/routing |
 | Documentation | Skill references | Medium | Update all skill links |
 
 **Target Metrics:**
@@ -1124,7 +1124,7 @@ docs/
 | User Type | Impact | Risk Level | Mitigation |
 |-----------|--------|------------|------------|
 | **Existing project owners** | Skill names may change | Medium | Maintain aliases for deprecated names |
-| **CI/CD pipelines** | Test expectations may change | Low | Update test baselines in PR |
+| **CI/CD pipelines** | Verification may expose requirement/routing changes | Low | Change test baselines only when the approved requirement changes; otherwise keep oracles read-only |
 | **GitNexus users** | Index may be stale | Low | Run `npx gitnexus analyze` after changes |
 | **Custom skill users** | Referenced skills may merge | Medium | Add skill alias loader to all projects |
 | **Documentation contributors** | Need to update links | Medium | Automated link checker in CI |

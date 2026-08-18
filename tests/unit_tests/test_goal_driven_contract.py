@@ -14,6 +14,19 @@ def test_goal_contract_has_no_default_turn_quota() -> None:
     assert "Turns elapsed / max turns" not in content
 
 
+def test_goal_contract_locks_test_oracles_to_requirements() -> None:
+    full = SKILL.read_text(encoding="utf-8")
+    lite = LITE.read_text(encoding="utf-8")
+
+    assert "Rule 5: Requirement-Locked Verification" in full
+    assert "Existing behavioral test cases" in full
+    assert "ask the user/product owner" in full
+    assert "Green-suite goal hacking" in lite
+    assert "Unclear requirement | Make assumption, document it" not in full
+    assert "Update test expectations" not in full
+    assert "Fix failing test" not in full
+
+
 def test_goal_contract_rejects_sentinel_budget_fallback() -> None:
     full = SKILL.read_text(encoding="utf-8")
     lite = LITE.read_text(encoding="utf-8")

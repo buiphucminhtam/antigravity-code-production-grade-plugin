@@ -41,6 +41,10 @@ try {
     copy(path);
   }
 
+  // The snapshot models a clean Git checkout without copying repository history.
+  // Root `prepare` configures Husky through `git config`, so establish the same
+  // minimal Git context a real clone has before exercising an unmodified npm ci.
+  run('git', ['init', '-q']);
   run(npm, ['ci', '--no-audit', '--no-fund']);
   run(npm, ['--prefix', 'mcp', 'run', 'build']);
   run(npm, ['--prefix', 'src/cli', 'run', 'typecheck']);

@@ -96,6 +96,25 @@ Code-change completion is fail-closed and exact-turn correlated:
    `~/.forgewright/reviewers.allowed_signers`; review-1/self-authored JSON is
    `UNVERIFIED`.
 
+## Requirement-locked test oracles
+
+Behavioral tests are executable acceptance contracts, not a mechanism for making
+CI green. Current requirements and acceptance criteria define expected behavior;
+a failing test, current implementation, or goal such as “all tests pass” does
+not authorize changing the oracle. When the expected behavior is clear, fix the
+implementation. When it is missing, ambiguous, or contradictory, preserve the
+behavioral test and block for user/product-owner clarification instead of
+inventing an expectation.
+
+Assertions, expected outputs, snapshots/goldens, eval labels, skips/xfails,
+scenarios, and behavioral tolerances change only after an explicit current
+requirement or acceptance-criteria change. Test runner, configuration,
+setup/teardown, locator, or other infrastructure repairs are allowed only when
+they preserve the behavioral oracle and coverage. Deterministic adversarial
+replay protects this contract, and the focused live weak-model smoke must leave
+the test unchanged and report `REQUIREMENT_BLOCKED` when the product decision is
+unresolved.
+
 Local-first/provider-neutral operation is the default. Keep private keys and
 other secrets outside the workspace. Attest a final record with:
 
@@ -110,4 +129,4 @@ Generated evidence files are local runtime artifacts. Project source, tests, and
 
 ---
 
-*Updated: 2026-08-12*
+*Updated: 2026-08-18*

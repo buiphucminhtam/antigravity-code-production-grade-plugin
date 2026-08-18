@@ -217,12 +217,15 @@ Available validation functions:
 ### Updating Tests
 
 When a skill changes:
-1. Run existing tests
-2. Update expected outputs if behavior changed
-3. Add new tests for new functionality
-4. Update skill version in test.yaml
+1. Run existing tests with behavioral oracles read-only.
+2. If implementation behavior changed but the requirement did not, fix the skill/implementation rather than changing expected outputs.
+3. Update an expected output only after an explicit current requirement/contract change, and trace the test change to that requirement delta.
+4. Add new requirement-derived coverage for new functionality.
+5. Update skill version in test.yaml.
 
 ### Deprecating Tests
+
+Deprecating/skipping a behavioral test is a test-oracle mutation. Do it only when an explicit requirement/feature-removal change makes the case obsolete, and record that requirement reference.
 
 Mark deprecated tests:
 

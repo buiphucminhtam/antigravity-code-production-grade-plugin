@@ -22,6 +22,7 @@ Format: `n. ACTION | TARGET | CHECK`
 4. REFACTOR | Intercept execution bottlenecks and refactor the remaining plan | If a subtask fails twice, trigger the mandatory Research Gate fallback to update local lessons.
 
 ## Common Mistakes Checklist
+- **Green-suite goal hacking**: Treating "all tests pass" as permission to rewrite the tests. A green suite is only a verifier; behavioral test cases stay requirement-locked and may change only after an explicit current requirement change. Missing/ambiguous expected behavior blocks the step and requires user/product-owner clarification.
 - **Unverified Progress Checkpoints**: Proceeding to downstream planning steps after an intermediate task fails, compounding errors and polluting the workspace.
 - **Amorphous Definition of Done**: Specifying subtasks with vague, non-testable descriptions (e.g., "make it work") instead of explicit CLI/assertion verifications.
 - **Infinite Loop Brute-Forcing**: Retrying a failing implementation path more than twice without triggering the mandatory Research Gate and updating `.forgewright/lessons.md`.

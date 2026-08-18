@@ -37,6 +37,35 @@ Các chỉ số quy trình nội bộ (Internal Metrics) chỉ thực sự có g
 | Mức độ đầu tư kiểm thử (Test LOC / Source LOC) | Mật độ lỗi thực tế (Defect Density - số lỗi/KLOC) |
 | Phát hiện lỗi sớm trong giai đoạn phát triển | Khả năng dễ bảo trì (Maintainability) |
 
+### 1.5 Test Oracle Integrity — Requirement Lock
+
+Test case là **executable contract của requirement đã được chấp nhận**, không phải
+cơ chế để hợp thức hóa implementation hiện tại. Quy tắc này áp dụng cho unit,
+integration, E2E, visual snapshots/goldens, eval datasets, expected outputs và
+mọi assertion/oracle tương đương.
+
+1. **Requirement owns expected behavior.** Trước khi viết hoặc thay đổi expected
+   behavior, phải xác định requirement/acceptance criterion hiện hành làm nguồn.
+   Test đang fail, code hiện tại, hoặc mục tiêu "all tests pass" không được xem là
+   bằng chứng requirement đã đổi.
+2. **Existing behavioral test cases are read-only unless the requirement changes.**
+   Không sửa expected value, assertion, snapshot/golden baseline, eval label,
+   tolerance, skip/xfail, hoặc xóa scenario chỉ để làm test pass.
+3. **Requirement thiếu hoặc mâu thuẫn => BLOCKED, hỏi người dùng/PO.** Không dùng
+   assumption/default để tự quyết expected behavior. Nếu test có vẻ sai hoặc cũ
+   nhưng requirement chưa đổi, báo contradiction và yêu cầu xác nhận/cập nhật
+   requirement trước khi sửa test case.
+4. **Requirement đổi => update requirement first, tests second.** Test mutation
+   phải trace được tới requirement/acceptance delta hiện tại; sau đó mới propagate
+   thay đổi vào test và implementation.
+5. **Infrastructure-only repair is allowed without requirement change** khi chỉ
+   sửa runner/config/setup/teardown/deterministic plumbing và chứng minh scenario,
+   assertions, expected behavior và coverage không đổi.
+
+Failure triage mặc định: requirement rõ + test fail => sửa product code; requirement
+không đủ rõ => hỏi; requirement đã thay đổi rõ ràng => cập nhật requirement-linked
+test rồi mới dùng nó để verify implementation.
+
 ---
 
 ## 2. Các Kỹ thuật Thiết kế Test Case Nâng cao
@@ -130,7 +159,7 @@ SHIFT-LEFT (Phòng ngừa lỗi sớm) ◄─── [ PHÁT TRIỂN / CI ] ─�
 *   **Mô hình cảnh báo sớm STREW:** Theo dõi tỷ lệ giữa Code kiểm thử / Code logic nghiệp vụ, tỷ lệ cảnh báo biên dịch mẫu (pattern warnings), và cấu trúc kiểu dữ liệu để dự báo mật độ lỗi trước khi release.
 
 ### 5.2 Tối ưu hóa Bộ kiểm thử Hồi quy (Regression Suite Optimization)
-1.  **Thu nhỏ bộ test (Test Suite Minimization):** Loại bỏ các test case trùng lặp hành vi dựa trên mô hình toán học **Hitting Set** (chọn tập test case nhỏ nhất phủ toàn bộ yêu cầu).
+1.  **Thu nhỏ bộ test (Test Suite Minimization):** Tối ưu **tập test được chọn để chạy** bằng Hitting Set mà không tự xóa hay thay đổi các test case requirement-linked đang tồn tại. Xóa/merge/đổi behavioral test case trong repository vẫn là test-oracle mutation và chỉ được phép sau explicit requirement change.
 2.  **Lựa chọn test case thông minh (Regression Test Selection - RTS):** Chỉ chọn chạy các test case đi qua các phân vùng mã nguồn có sự thay đổi (được chỉnh sửa, thêm mới hoặc xóa bỏ) thông qua giải thuật Graph-Walk.
 3.  **Sắp xếp thứ tự ưu tiên (Test Case Prioritization):** Sắp xếp thứ tự chạy test case để đạt chỉ số **APFD (Average Percentage of Fault Detection)** cao nhất, giúp phát hiện lỗi nhanh nhất có thể trong quá trình chạy CI.
 

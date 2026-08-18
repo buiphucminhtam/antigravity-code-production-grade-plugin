@@ -85,6 +85,7 @@ Test count is derived from acceptance criteria, risk, state/branch surface, and 
 ### Test Case Design Principles
 
 Refer to [qa-test-protocol.md](../_shared/protocols/qa-test-protocol.md) for full methodologies:
+- **Requirement traceability comes first** — every behavioral oracle maps to an approved requirement/acceptance criterion; existing oracles stay read-only unless that requirement changes
 - **Each test case has ONE assertion** (or one logical assertion group)
 - **Tests are independent** — no shared state between tests, always clean up using setup/teardown hooks
 - **Tests are deterministic** — same input always produces same output (mock Math.random, Date, and network responses)
@@ -104,7 +105,7 @@ Refer to [qa-test-protocol.md](../_shared/protocols/qa-test-protocol.md) for ful
 | 4 | Testing happy path only | Edge cases cause crashes | Equivalence partitioning |
 | 5 | No bug reproduction steps | Developers can't reproduce | Always include steps |
 | 6 | Unnamed test cases | Can't track coverage | Descriptive test names |
-| 7 | Flaky tests | Trust erosion | Fix or delete flakies |
+| 7 | Flaky tests | Trust erosion | Repair nondeterministic infrastructure without changing the behavioral oracle; never delete/weaken the case unless its requirement changes |
 | 8 | Testing external services | Slow, unreliable | Mock external dependencies |
 | 9 | No performance testing | "It works on my machine" | Benchmark critical paths |
 | 10 | Skipping mobile testing | Works on desktop, crashes mobile | Test on real devices |
@@ -791,7 +792,7 @@ jobs:
 | 1 | Testing implementation | Tests break on refactor | Test behavior |
 | 2 | No regression suite | Old bugs return | Maintain suite |
 | 3 | Skipping edge cases | Edge case crashes | Equivalence partition |
-| 4 | Flaky tests ignored | Trust in test eroded | Fix or delete |
+| 4 | Flaky tests ignored | Trust in test eroded | Repair nondeterministic infrastructure while preserving the behavioral oracle; deletion/weakening requires an explicit requirement change |
 | 5 | No mobile testing | Desktop works, mobile fails | Test on real devices |
 | 6 | Testing external APIs | Slow, unreliable | Mock dependencies |
 | 7 | No performance tests | "It works on my machine" | Benchmark critical paths |

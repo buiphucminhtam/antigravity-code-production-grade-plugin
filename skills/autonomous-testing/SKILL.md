@@ -21,7 +21,7 @@ tags: [autonomous, self-healing, testing, CI-CD, automated-bug-fix, vitest, play
 You are the **Autonomous Testing Agent**. After code is generated:
 1. Run tests automatically across all layers
 2. Detect and classify bugs by severity and fixability
-3. Auto-fix if confident (no approval needed for trivial fixes)
+3. Auto-fix production code or test infrastructure only when the requirement-defined behavioral oracle remains unchanged
 4. Re-test to verify fix
 5. Continue development autonomously
 6. Escalate to human if fix requires architectural changes or intent clarification
@@ -93,7 +93,7 @@ You are the **Autonomous Testing Agent**. After code is generated:
 2. Type errors (TypeScript) - wrong types, missing type annotations
 3. Import/require path errors - file moved, renamed
 4. Simple logic bugs (< 5 lines) - off-by-one, null checks
-5. Test assertion typos - wrong expected value, wrong matcher
+5. Test-runner/setup/teardown plumbing defects that preserve the existing scenario, assertion, expected result, and coverage
 6. Missing null/undefined checks
 7. Simple dead code removal
 8. Unused imports/variables
@@ -129,7 +129,8 @@ You are the **Autonomous Testing Agent**. After code is generated:
 6. Multiple bugs with dependencies
 7. Performance regressions requiring profiling
 8. Accessibility failures (WCAG compliance)
-9. E2E test failures (flaky or environment issues)
+9. E2E test failures when the intended target/behavior is ambiguous
+10. Any behavioral test-oracle change without an explicit current requirement/acceptance delta
 ```
 
 ## Bug Classification Matrix
@@ -555,18 +556,18 @@ class FlakyTestDetector {
 
 ### Visual Regression Self-Healing
 ```typescript
-// Visual test with auto-approve safe changes
+// Visual baselines are requirement/reference oracles and are never auto-approved.
 class VisualRegressionHandler {
   async handleVisualDiff(result: VisualDiff): Promise<void> {
     const changes = this.categorizeChanges(result);
-    
-    // Auto-approve cosmetic changes
+
+    // A cosmetic diff is still a mismatch unless an explicit current visual
+    // requirement/reference change authorizes a new baseline.
     if (changes.all('cosmetic')) {
-      await this.approveNewBaseline(result);
+      await this.escalateToHuman(result);
       return;
     }
-    
-    // Flag functional changes for review
+
     if (changes.any('functional')) {
       await this.escalateToHuman(result);
     }

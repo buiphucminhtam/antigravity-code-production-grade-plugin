@@ -34,10 +34,14 @@ loop at most twice for the same step, as required by `kernel/SOLVE.md`:
    - A missing dependency (e.g., `Module not found`, `ImportError`).
    - A syntax/type error (e.g., `TS2322`, `SyntaxError`).
    - A configuration mismatch (e.g., `wrong Node version`, `missing environment variable`).
+   - A behavioral test failure against a known requirement/acceptance criterion.
 3. **Formulate a Fix:**
    - If missing dependency: run `npm install <package>`, `pip install <package>`, etc.
-   - If code error: use file editing tools to patch the specific lines directly.
+   - If code error: patch production/source code that violates the established requirement.
    - If config issue: create or modify the necessary config files (e.g., `.env`, `tsconfig.json`).
+   - If a behavioral test fails and the requirement is clear: keep the test oracle read-only and fix the implementation.
+   - If the requirement is missing, ambiguous, or contradicts the test: stop that healing branch, mark it blocked, and ask the user/product owner. Do not autonomously rewrite the assertion/expected output.
+   - A behavioral test case may change only after an explicit current requirement change is established. Test-runner/setup plumbing may be repaired only when expected behavior and coverage are unchanged.
 4. **Retry Execution:** Run the exact same command that failed originally.
 5. **Verify:** If the exact command succeeds, proceed. If the same step fails
    twice, stop retrying and follow the kernel Stuck/escalation protocol.
@@ -50,5 +54,8 @@ loop at most twice for the same step, as required by `kernel/SOLVE.md`:
   prove unrelated status/diff is unchanged.
 - **Transparent blocker:** report the bounded evidence-backed blocker when safe
   autonomous progress is no longer possible; do not hide material diagnostics.
+- **Test-oracle integrity:** never turn a red behavioral test green by weakening,
+  skipping, deleting, regenerating, or rewriting its expected result unless an
+  explicit current requirement/acceptance change authorizes that mutation.
 - **Isolation when available:** use an authorized worktree or temporary fixture
   for destructive experiments, but do not assume one exists.

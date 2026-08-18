@@ -131,7 +131,9 @@ class HealingEngine {
     // 3. Find best match in updated UI
     const match = await this.findMatch(fingerprints);
     
-    // 4. Update test with new locator
+    // 4. Locator-only healing is allowed only when the match proves the same
+    // requirement-defined target. Ambiguous target identity must escalate; never
+    // change assertions/expected behavior as part of locator healing.
     const healed = await this.updateLocator(test, match);
     
     // 5. Validate fix
@@ -279,12 +281,12 @@ forge test red-team                  # AI Red Teamer
 forge test audit                     # Full audit report
 
 # Visual
-forge test update-baseline           # Update visual baselines
+forge test update-baseline           # Only after explicit current visual requirement/reference change
 forge test compare --baseline v1     # Compare versions
 
 # Fix Mode
-forge test fix                      # Auto-fix failures
-forge test fix --strategy aggressive # Aggressive fix attempt
+forge test fix                      # Auto-fix implementation/infrastructure; behavioral oracles stay read-only
+forge test fix --strategy aggressive # Aggressive implementation repair; never weakens test expectations
 
 # CI/CD
 forge ci run                        # Full CI pipeline
@@ -394,7 +396,7 @@ autonomous:
 1. **Fast Feedback Loop**: Unit tests < 10s
 2. **Isolate Tests**: Each test independent
 3. **Clear Assertions**: Descriptive test names
-4. **Update Baselines**: Weekly visual baseline updates
+4. **Update Baselines**: Only when an explicit current visual requirement/reference change authorizes a new baseline; never on a calendar or merely to clear a diff
 5. **Human Review**: Security & critical paths
 6. **Monitor Flakiness**: Track and fix flaky tests
 

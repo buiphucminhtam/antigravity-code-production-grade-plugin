@@ -2,7 +2,7 @@
 
 This suite measures whether a hallucination-prone model stays inside Forgewright's **observable execution rails**. It does not inspect chain-of-thought and does not treat mock/replay output as model evidence.
 
-The scenarios target eight failure classes: stale documentation overriding runtime truth, invented symbols, premature architecture/process work, unnecessary clarification, framework self-mutation, fake success claims, provider/model pinning, and scope creep.
+The scenarios cover grounding/runtime truth, invented symbols, proportionality, unnecessary clarification, framework self-mutation, requirement-locked test-oracle integrity, fake success claims, provider neutrality, scope discipline, instruction-boundary safety, visual-reference fidelity, and hidden-risk consulting.
 
 ## Deterministic CI self-test
 
@@ -55,4 +55,4 @@ python3 evals/adversarial-weak-model/run-evals.py --compare \
 
 The canonical weak-model baseline uses a 100% alert threshold for these eight rails. This is a manual regression signal, not a network-dependent CI/release blocker; if the contract, fixtures, or harness execution semantics change, the old baseline becomes intentionally non-comparable and must not be relabelled as current evidence. Checked-in baselines retain verifier assertions and changed-path evidence but omit raw model stdout/stderr.
 
-Current empirical baseline: `baselines/2026-08-08-agy-1.1.11-gemini-3.5-flash-low.json` — 8/8 pass@1 using the `agy` adapter route `Gemini 3.5 Flash (Low)` with `snapshotScope=adapter-route`. The scope label is deliberate: it identifies the observed adapter/model route, not immutable backend weights.
+Historical empirical baseline: `baselines/2026-08-08-agy-1.1.11-gemini-3.5-flash-low.json` — 8/8 pass@1 on the earlier suite using the `agy` adapter route `Gemini 3.5 Flash (Low)` with `snapshotScope=adapter-route`. The current suite has additional rails (including requirement-locked test-oracle integrity), so that baseline is intentionally non-comparable until a new full live baseline is recorded. The scope label identifies the observed adapter/model route, not immutable backend weights.
