@@ -151,7 +151,7 @@ Add a feature to an existing codebase. Lightweight DEFINE → BUILD → TEST.
 2. **BA pre-flight (conditional)** — Assess the user's feature description for information gaps using 6W1H. If requirements score < 6/7 completeness → run BA (Express depth) to elicit missing info. If clear → skip. Log: `✓ Requirements complete — skipping BA` or `⧖ Information gaps detected — running BA elicitation`
 3. **PM (Express depth)** — 2-3 questions to scope the feature. Write a mini-BRD (user stories + acceptance criteria for this feature only). If BA ran, use `ba-package.md` to reduce questions.
 4. **Architect (scoped)** — design how this feature fits the existing architecture. New endpoints, schema changes, component additions. NOT a full system redesign.
-5. **Test Cases/Stubs Preparation** — QA Engineer writes test stubs based on BDD/Gherkin spec from the BA package (Mandatory for medium/large features; optional for simple fixes).
+5. **Test Cases/Stubs Preparation** — QA Engineer writes test stubs from the approved BDD/Gherkin requirement. Existing behavioral test oracles stay read-only unless the approved requirement changes; ambiguous expected behavior goes back to the user/PO instead of being guessed. (Mandatory for medium/large features; optional for simple fixes.)
 6. **Build** — Software Engineer and/or Frontend Engineer implement the feature code to satisfy requirements and test cases.
 7. **⚠️ Test Verification (AUTO-RUN)** — Run and verify tests. DO NOT WAIT for user to ask. Sequence: Given/When/Then (BA) → Write Tests/Stubs (QA) → Code (Dev) → Run Tests → Pass ✓.
 8. **Optional: Review** — Code Reviewer checks the new code against existing patterns

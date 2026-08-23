@@ -58,7 +58,7 @@ Context:
 - Write tests to project root: tests/
 - Write workspace artifacts to: .forgewright/qa-engineer/
 - Run integration, e2e, and performance tests.
-- Distinguish test bugs (fix immediately) from implementation bugs (log as findings).
+- Distinguish test-infrastructure defects from implementation defects. Repair runner/setup/teardown plumbing only when the behavioral oracle is unchanged. An apparent test-oracle defect is not fixed immediately: if the requirement is unchanged, keep the oracle read-only; if requirement intent is missing or contradictory, ask the user/PO and block that mutation.
 
 Update task.md: T5 status → completed
 ```

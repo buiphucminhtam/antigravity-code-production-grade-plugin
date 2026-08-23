@@ -804,6 +804,7 @@ class _HostInvocationTimeout(TimeoutError):
 
 
 _CANCEL_ALLOWANCE_SECONDS = 0.20
+_THREAD_JOIN_GUARD_SECONDS = 0.25
 
 
 def _invoke_host_bounded(
@@ -860,9 +861,19 @@ def _invoke_host_bounded(
         target=invoke, name="forgewright-trusted-host", daemon=True
     )
     thread.start()
-    thread.join(timeout_seconds)
-    if thread.is_alive():
-        raise _HostInvocationTimeout("trusted host callback exceeded its deadline")
+
+    # `Thread.join(timeout)` is not a hard wall-clock deadline on every host;
+    # scheduler/timer coalescing can overshoot the requested timeout materially.
+    # Use join only for the coarse portion, then yield-spin against an absolute
+    # monotonic deadline so the control plane fails closed at the policy bound.
+    deadline = time.monotonic() + timeout_seconds
+    coarse_wait = max(0.0, timeout_seconds - _THREAD_JOIN_GUARD_SECONDS)
+    if coarse_wait:
+        thread.join(coarse_wait)
+    while thread.is_alive():
+        if time.monotonic() >= deadline:
+            raise _HostInvocationTimeout("trusted host callback exceeded its deadline")
+        time.sleep(0)
     try:
         status, value = result_queue.get_nowait()
     except queue.Empty as error:

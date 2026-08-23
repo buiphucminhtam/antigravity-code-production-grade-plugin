@@ -20,6 +20,7 @@ Format: `n. ACTION | TARGET | CHECK`
 3. EXECUTE | Run local unit, integration, visual regression, or E2E mobile test suites | Confirm clean test passes on all endpoints, verify zero visual drift, and track execution status in the session graph.
 
 ## Common Mistakes Checklist
+- **Green-suite goal hacking**: Rewriting assertions, expected outputs, snapshots/goldens, eval labels, skips, or scenarios to match the current implementation. Behavioral test oracles are requirement-locked; if the requirement is insufficient or contradictory, ask the user/product owner instead of changing the test.
 - **Testing implementation details instead of BDD specifications**: Writing fragile unit tests that couple tightly to private class internals instead of verifying functional BDD acceptance criteria.
 - **Ignoring Mutation or PBT verification**: Relying solely on raw code line coverage without running property-based or mutation testing, allowing low-assertion test cases to pass.
 - **Dangling test runner ports**: Failing to close headless browser contexts or database socket handles on test cleanup, leading to port collisions or memory leaks.

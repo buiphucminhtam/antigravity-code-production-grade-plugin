@@ -35,6 +35,16 @@ The pipeline enforces the cross-cutting operating invariants in `pipeline-operat
     require provider or model pins, quota, or `budget_limited` state to establish
     completion; capability selection comes from the current runtime, and
     caller-supplied limits are not acceptance evidence.
+13. **Test oracles are requirement-locked.** Behavioral tests, assertions,
+    snapshots/goldens, eval labels, and expected outputs derive from the current
+    approved requirement/acceptance criteria. A failing test, the current
+    implementation, or a desire for a green suite is never authority to weaken,
+    rewrite, skip, or delete a test case. Change a behavioral test case only after
+    an explicit current requirement change is established. If expected behavior
+    is missing, ambiguous, or conflicts with the test, ask the user/product owner
+    and mark the step blocked instead of inventing the answer. Test-runner,
+    setup/teardown, or fixture plumbing may be repaired without a requirement
+    change only when the behavioral oracle and coverage remain unchanged.
 
 ## Effort Classes
 

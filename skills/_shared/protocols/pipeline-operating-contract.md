@@ -27,6 +27,12 @@ The four elite-team criteria are **pipeline invariants**, not responsibilities t
    and apply `forge docs gate [target]` as a postcondition. The gate, not a
    policy-check deny regex and not manual generated HTML/CSS editing, proves
    documentation continuity.
+6. **Requirement-locked test oracle** — test scenarios and expected outcomes are
+   downstream executable contracts, not knobs for making CI green. Any behavioral
+   test mutation must trace to an explicit current requirement/acceptance change.
+   A failing test or changed implementation is not such evidence. If the expected
+   behavior is missing, ambiguous, or contradictory, the pipeline records the
+   decision as unresolved and asks the user/product owner before changing tests.
 
 These invariants apply even when no domain skill is loaded. A skill therefore cannot be the only place that makes them true.
 
@@ -61,6 +67,8 @@ project_docs:
   state_hash: <observed hash or unknown>
   material_change: true | false | unknown
   postcondition: <required | not_required | unverified>
+requirement_basis: <approved requirement/acceptance refs; missing if unresolved>
+test_oracle_change: <none or explicit requirement-change ref>
 unresolved_decisions: <only decisions still capable of changing the contract>
 ```
 
@@ -144,6 +152,12 @@ Domain overlap is valid only when it is genuinely part of the specialty: prompt 
    checkout, classify it as mandatory `HARD` / `DEEP` regardless of file count
    and pass the independent-review plus contract/runtime/E2E evidence
    requirements to every relevant specialist.
+8. **TEST-ORACLE LOCK** — before creating a plan that changes an existing test
+   scenario, assertion, snapshot/golden, eval label, or expected output, bind the
+   change to an explicit current requirement/acceptance delta. If no such delta
+   exists, keep the oracle read-only. If the requirement is insufficient or
+   contradictory, add it to `unresolved_decisions`, ask the user/product owner,
+   and stop that behavior-changing test mutation.
 
 `QUICK` work compresses these steps to the minimum observable evidence. They are invariants, not mandatory documents.
 
@@ -163,7 +177,7 @@ Domain overlap is valid only when it is genuinely part of the specialty: prompt 
    independent-approved reviewer and contract/runtime/E2E evidence.
 5. **RISK CLOSURE** — every material `risk_signal` is resolved, explicitly accepted, or blocking.
 6. **VISUAL CONFORMANCE** — when applicable, compare rendered output to `visual_basis`; a concrete mismatch outranks a subjective score.
-7. **CRITICAL AUDIT** — requirement coverage, contradictions, cross-entry consistency, and domain handoff consistency.
+7. **CRITICAL AUDIT** — requirement coverage, contradictions, cross-entry consistency, domain handoff consistency, and proof that no behavioral test oracle changed without an explicit requirement delta.
 8. **LEARN** — record only validated reusable project-local lessons; do not mutate shared skills as a normal delivery side effect.
 
 If the audit changes the plan, rerun only the affected specialist/gate. Do not restart the entire pipeline without evidence that the scope changed.
@@ -179,6 +193,7 @@ The pipeline may claim completion only when:
   scan/build output is not completion evidence while the strict gate remains
   blocking;
 - each invoked skill passed its own domain verifier;
+- every behavioral test mutation, if any, is traceable to an explicit current requirement/acceptance change; a green suite alone is not completion evidence for this condition;
 - visual work, when material, has an inspected basis and conformance evidence or is explicitly `UNVERIFIED`;
 - project-local learning is captured when it has future reuse value.
 

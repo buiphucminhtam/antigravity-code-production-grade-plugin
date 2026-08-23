@@ -449,11 +449,12 @@ Forgewright:
 **Use when:** Autonomous task completion
 
 ```
-User: "Set goal: Fix all failing tests until CI passes"
+User: "Set goal: Implement the accepted requirement and keep CI green"
 Forgewright:
-  → Autonomous execution
-  → Auto-evaluates after each fix
-  → Continues until condition met
+  → Locks behavioral test oracles to the accepted requirement
+  → Auto-evaluates after each implementation/infrastructure fix
+  → If expected behavior is ambiguous, blocks and asks the user/PO instead of editing tests
+  → Continues until requirement + verification condition are met
 ```
 
 ---

@@ -141,9 +141,7 @@
       "priority": "critical",
       "owner": "Forgewright maintainers",
       "target_date": null,
-      "depends_on": [
-        "docs-continuity"
-      ],
+      "depends_on": ["docs-continuity"],
       "references": [
         {
           "path": "docs/active-roadmap.md"
@@ -157,9 +155,7 @@
       "priority": "critical",
       "owner": "Runtime maintainers",
       "target_date": null,
-      "depends_on": [
-        "roadmap-truth-reset"
-      ],
+      "depends_on": ["roadmap-truth-reset"],
       "references": [
         {
           "path": "docs/active-roadmap.md"
@@ -173,9 +169,7 @@
       "priority": "critical",
       "owner": "Runtime maintainers",
       "target_date": null,
-      "depends_on": [
-        "harness-host-contract"
-      ],
+      "depends_on": ["harness-host-contract"],
       "references": [
         {
           "path": "docs/active-roadmap.md"
@@ -189,10 +183,7 @@
       "priority": "critical",
       "owner": "Runtime maintainers",
       "target_date": null,
-      "depends_on": [
-        "harness-host-contract",
-        "trajectory-lifecycle"
-      ],
+      "depends_on": ["harness-host-contract", "trajectory-lifecycle"],
       "references": [
         {
           "path": "docs/active-roadmap.md"
@@ -206,10 +197,7 @@
       "priority": "high",
       "owner": "Runtime maintainers",
       "target_date": null,
-      "depends_on": [
-        "trajectory-lifecycle",
-        "execution-containment"
-      ],
+      "depends_on": ["trajectory-lifecycle", "execution-containment"],
       "references": [
         {
           "path": "docs/active-roadmap.md"
@@ -223,9 +211,7 @@
       "priority": "high",
       "owner": "Runtime maintainers",
       "target_date": null,
-      "depends_on": [
-        "record-replay"
-      ],
+      "depends_on": ["record-replay"],
       "references": [
         {
           "path": "docs/active-roadmap.md"
@@ -239,9 +225,7 @@
       "priority": "medium",
       "owner": "Runtime maintainers",
       "target_date": null,
-      "depends_on": [
-        "production-evidence"
-      ],
+      "depends_on": ["production-evidence"],
       "references": [
         {
           "path": "docs/active-roadmap.md"
@@ -255,9 +239,7 @@
       "priority": "critical",
       "owner": "Forgewright maintainers",
       "target_date": null,
-      "depends_on": [
-        "docs-continuity"
-      ],
+      "depends_on": ["docs-continuity"],
       "references": [
         {
           "path": "docs/pipeline-reference.md",
@@ -277,15 +259,8 @@
           "id": "interpret",
           "name": "INTERPRET",
           "actor": "Parent orchestrator",
-          "inputs": [
-            "User objective",
-            "Current workspace evidence"
-          ],
-          "outputs": [
-            "Outcome",
-            "Constraints",
-            "Material ambiguity"
-          ],
+          "inputs": ["User objective", "Current workspace evidence"],
+          "outputs": ["Outcome", "Constraints", "Material ambiguity"],
           "references": [
             {
               "path": "docs/pipeline-reference.md",
@@ -297,10 +272,7 @@
           "id": "define",
           "name": "DEFINE",
           "actor": "Parent orchestrator",
-          "inputs": [
-            "Interpreted outcome",
-            "Impact and risk evidence"
-          ],
+          "inputs": ["Interpreted outcome", "Impact and risk evidence"],
           "outputs": [
             "Acceptance criteria",
             "Minimum safe plan",
@@ -317,13 +289,8 @@
           "id": "build",
           "name": "BUILD",
           "actor": "Routed senior specialist or parent",
-          "inputs": [
-            "Accepted plan",
-            "Bounded project context"
-          ],
-          "outputs": [
-            "Smallest compatible implementation"
-          ],
+          "inputs": ["Accepted plan", "Bounded project context"],
+          "outputs": ["Smallest compatible implementation"],
           "references": [
             {
               "path": "docs/pipeline-reference.md"
@@ -334,14 +301,8 @@
           "id": "harden",
           "name": "HARDEN",
           "actor": "QA, reviewer, and parent orchestrator",
-          "inputs": [
-            "Implementation",
-            "Acceptance criteria"
-          ],
-          "outputs": [
-            "Observed verification evidence",
-            "Risk findings"
-          ],
+          "inputs": ["Implementation", "Acceptance criteria"],
+          "outputs": ["Observed verification evidence", "Risk findings"],
           "references": [
             {
               "path": "docs/pipeline-reference.md",
@@ -353,14 +314,8 @@
           "id": "ship",
           "name": "SHIP",
           "actor": "DevOps or release owner",
-          "inputs": [
-            "Verified deliverable",
-            "Release authority"
-          ],
-          "outputs": [
-            "Packaged or released artifact",
-            "Release evidence"
-          ],
+          "inputs": ["Verified deliverable", "Release authority"],
+          "outputs": ["Packaged or released artifact", "Release evidence"],
           "references": [
             {
               "path": "docs/process/release-readiness.md"
@@ -371,10 +326,7 @@
           "id": "sustain",
           "name": "SUSTAIN",
           "actor": "Product and operations owners",
-          "inputs": [
-            "Shipped outcome",
-            "Operational feedback"
-          ],
+          "inputs": ["Shipped outcome", "Operational feedback"],
           "outputs": [
             "Status updates",
             "Follow-up backlog",
@@ -415,14 +367,8 @@
           "id": "update-state",
           "name": "Require current canonical state",
           "actor": "Docs gate",
-          "inputs": [
-            "Material paths",
-            "Manifest project_docs contract"
-          ],
-          "outputs": [
-            "Validated project state",
-            "Fresh status timestamp"
-          ],
+          "inputs": ["Material paths", "Manifest project_docs contract"],
+          "outputs": ["Validated project state", "Fresh status timestamp"],
           "references": [
             {
               "path": "docs/project-state.json"
@@ -433,9 +379,7 @@
           "id": "doctor",
           "name": "Run strict doctor",
           "actor": "Docs Hub",
-          "inputs": [
-            "Current in-memory catalog"
-          ],
+          "inputs": ["Current in-memory catalog"],
           "outputs": [
             "Link, diagram, privacy, state, and staleness diagnostics"
           ],
@@ -450,13 +394,8 @@
           "id": "build-portal",
           "name": "Build and verify temporary portal",
           "actor": "Docs Hub",
-          "inputs": [
-            "Strict catalog",
-            "Temporary output directory"
-          ],
-          "outputs": [
-            "Verified static HTML/CSS, search, and project pages"
-          ],
+          "inputs": ["Strict catalog", "Temporary output directory"],
+          "outputs": ["Verified static HTML/CSS, search, and project pages"],
           "references": [
             {
               "path": "docs/adr/ADR-011-central-docs-hub.md"
@@ -472,9 +411,7 @@
             "Doctor result",
             "Portal verification"
           ],
-          "outputs": [
-            "Machine-readable PASS or FAIL"
-          ],
+          "outputs": ["Machine-readable PASS or FAIL"],
           "references": [
             {
               "path": "docs/guides/docs-hub.md",
@@ -498,9 +435,7 @@
             "Exact acceptance IDs and claims",
             "Project-owned test/check references"
           ],
-          "outputs": [
-            "Schema-v2 acceptance mapping"
-          ],
+          "outputs": ["Schema-v2 acceptance mapping"],
           "references": [
             {
               "path": "docs/pipeline-reference.md",
@@ -517,10 +452,7 @@
             "Index",
             "Tracked and untracked nonignored content"
           ],
-          "outputs": [
-            "Exact TREE fingerprint",
-            "Command output digest"
-          ],
+          "outputs": ["Exact TREE fingerprint", "Command output digest"],
           "references": [
             {
               "path": "docs/pipeline-reference.md",
@@ -537,9 +469,7 @@
             "Unchanged verifier",
             "Fixed-tree GREEN"
           ],
-          "outputs": [
-            "Correlated regression evidence"
-          ],
+          "outputs": ["Correlated regression evidence"],
           "references": [
             {
               "path": "docs/pipeline-reference.md",
@@ -556,9 +486,7 @@
             "Mutation backcheck",
             "Contract/runtime/E2E records"
           ],
-          "outputs": [
-            "Independent approval or blocking findings"
-          ],
+          "outputs": ["Independent approval or blocking findings"],
           "references": [
             {
               "path": "docs/pipeline-reference.md",
@@ -574,10 +502,7 @@
             "Exact stored verifier argv",
             "Final full-worktree fingerprint"
           ],
-          "outputs": [
-            "Observed zero exit code",
-            "Unchanged final worktree"
-          ],
+          "outputs": ["Observed zero exit code", "Unchanged final worktree"],
           "references": [
             {
               "path": "docs/pipeline-reference.md",
@@ -589,13 +514,8 @@
           "id": "correlate-response",
           "name": "Correlate response",
           "actor": "Rule validator",
-          "inputs": [
-            "Exact-turn record",
-            "Strict response fields"
-          ],
-          "outputs": [
-            "Allow or block completion claim"
-          ],
+          "inputs": ["Exact-turn record", "Strict response fields"],
+          "outputs": ["Allow or block completion claim"],
           "references": [
             {
               "path": "docs/pipeline-reference.md",
@@ -679,6 +599,26 @@
       ]
     },
     {
+      "id": "lock-test-oracles-to-requirements",
+      "title": "Keep behavioral test oracles locked to explicit current requirements",
+      "type": "bug",
+      "status": "done",
+      "priority": "critical",
+      "owner": "Forgewright maintainers",
+      "acceptance": [
+        "A red test, green-suite goal, or current implementation cannot authorize weakening, deleting, skipping, regenerating, or rewriting behavioral expectations.",
+        "When expected behavior is missing, ambiguous, or contradictory, execution blocks and asks the user or product owner instead of inventing a test oracle.",
+        "Behavioral tests change only after an explicit current requirement or acceptance-criteria change; test infrastructure repairs must preserve the behavioral oracle and coverage.",
+        "Deterministic adversarial replay rejects test-oracle hacking and an empirical weak-model run preserves the test while reporting REQUIREMENT_BLOCKED."
+      ],
+      "references": [
+        {
+          "path": "docs/pipeline-reference.md",
+          "anchor": "requirement-locked-test-oracles"
+        }
+      ]
+    },
+    {
       "id": "close-evidence-bypasses",
       "title": "Close legacy evidence, traceability, payment routing, RED-GREEN, signed-review, and dirty-tree bypasses",
       "type": "bug",
@@ -710,7 +650,7 @@
     "lifecycle": "active",
     "health": "on_track",
     "phase": "SUSTAIN",
-    "summary": "H0 and the H1 HarnessAdapter compatibility contract are complete locally. Bounded Stop re-entry/single replay, exact MCP ownership leases, and project/session continuity are integrated safety controls; they do not complete the still-planned H2 TrajectoryLedger, H3 containment, H4 full replay, H5 live provider evidence, or H6 fresh-evaluator handoff.",
+    "summary": "Requirement-locked test-oracle enforcement is active across the delivery pipeline. H0 and the H1 HarnessAdapter compatibility contract are complete locally, with bounded Stop re-entry/single replay, exact MCP ownership leases, and project/session continuity integrated as safety controls; these controls do not complete the still-planned H2 TrajectoryLedger, H3 containment, H4 full replay, H5 live provider evidence, or H6 fresh-evaluator handoff.",
     "updated_at": "2026-08-23T00:07:44+07:00",
     "blockers": [
       {

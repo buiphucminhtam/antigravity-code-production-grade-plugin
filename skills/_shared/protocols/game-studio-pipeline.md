@@ -371,7 +371,7 @@ READY -> IN PROGRESS -> REVIEW -> QA -> PLAYTEST (when needed) -> DONE
 ```
 
 1. **READY** — validate design-ready and implementation-ready handoffs.
-2. **IN PROGRESS** — implement only the accepted scope and update tests.
+2. **IN PROGRESS** — implement only the accepted scope. Add/update behavioral tests only when propagating an explicit accepted requirement change; otherwise keep existing test oracles read-only.
 3. **REVIEW** — check architecture, design fidelity, cross-domain effects, and
    unintended changes.
 4. **QA** — execute `game-test-protocol.md` at the appropriate engine layer.

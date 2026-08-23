@@ -219,10 +219,10 @@ The framework automatically compares results against the latest baseline:
 ```
 
 **When regression is detected:**
-1. Review the failing tasks
-2. Identify the root cause
-3. Fix the skill or update the eval
-4. Re-run to verify
+1. Review the failing tasks and the requirement/rubric that owns expected behavior.
+2. Identify the root cause.
+3. If the requirement/rubric is unchanged, keep eval cases/labels/expected outputs read-only and fix the skill/implementation. Update an eval oracle only after an explicit current requirement/rubric change; if intent is ambiguous, ask the user/owner first.
+4. Re-run to verify.
 
 ### pass@k Interpretation
 

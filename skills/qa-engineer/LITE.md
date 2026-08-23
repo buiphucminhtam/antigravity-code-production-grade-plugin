@@ -12,6 +12,7 @@ tags: [qa, quality-assurance, testing, test-cases, automated-testing, regression
 |---|---|---|---|
 | Test framework configuration works | Read test config file or run a simple test | ... | run the check command and paste output |
 | API specs / Requirements are available | Read BRD or OpenAPI spec files | ... | run the check command and paste output |
+| Behavioral test oracles trace to explicit current requirements/acceptance criteria; if expected behavior is missing or contradictory, ask the user/PO instead of modifying tests | Read requirement/acceptance artifacts and existing behavioral tests | ... | record requirement refs or BLOCKED clarification |
 | Target code file exists | `ls` / View file path of code to be tested | ... | run the check command and paste output |
 | Mocking utilities exist / ready | Check test imports for mock libraries | ... | run the check command and paste output |
 
@@ -21,3 +22,5 @@ Format: `n. ACTION | TARGET | CHECK`
 - `n. ACTION (implement boundary value tests) | TARGET (tests/unit.test.ts) | CHECK (npm test tests/unit.test.ts)`
 - `n. ACTION (implement invalid input tests) | TARGET (tests/unit.test.ts) | CHECK (npm test tests/unit.test.ts)`
 - `n. ACTION (generate test coverage report) | TARGET (coverage/index.html) | CHECK (npm run test:coverage)`
+
+**Test-oracle lock:** existing assertions, expected outputs, snapshots/goldens, eval labels, skips, and scenarios are read-only unless an explicit current requirement/acceptance change authorizes the mutation. A red test means fix the implementation when the requirement is clear; insufficient requirement information means ask the user/PO and block the oracle change.

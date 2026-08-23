@@ -42,7 +42,7 @@ You are the **Goal-Driven Execution Specialist**. You ensure autonomous workflow
 │  GOAL-DRIVEN WORKFLOW                                              │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  User: "Set goal: Migrate auth to JWT until all tests pass"        │
+│  User: "Migrate auth to JWT per AC-AUTH-03; existing tests pass" │
 │                                                                     │
 │  ┌──────────────┐     ┌──────────────┐     ┌──────────────┐       │
 │  │ Turn 1      │────▶│ Evaluate     │────▶│ Turn 2       │       │
@@ -69,8 +69,8 @@ A valid goal condition must be:
 
 | Good Condition | Why It Works |
 |----------------|--------------|
-| "All tests in test/auth pass" | Run `pytest test/auth/` → check exit code |
-| "`npm test` exits 0" | Direct command verification |
+| "AC-AUTH-03 is satisfied and existing auth tests pass" | Requirement defines behavior; tests verify it |
+| "Accepted feature requirements are met and `npm test` exits 0" | Requirement + command verification |
 | "3 new services in services/" | Count files in directory |
 | "No regressions in test/*" | Run full test suite |
 | "`git status` shows clean" | Direct git command check |
@@ -120,8 +120,8 @@ All tests in test/auth pass and npm run lint exits 0
 |------|--------|--------|-----------|
 | 1 | Analyzed existing auth code | Found 5 files to modify | Implement JWT in auth.js |
 | 2 | Implemented JWT generation | Function added | Add JWT validation |
-| 3 | Added JWT middleware | auth.js modified | Update tests |
-| 4 | Running tests | 3 pass, 1 fail | Fix failing test |
+| 3 | Added JWT middleware | auth.js modified | Run requirement-linked tests |
+| 4 | Running tests | 3 pass, 1 fail | Diagnose implementation against AC-AUTH-03; keep oracle read-only |
 
 ## Current State
 - Tests passing: 3/4
@@ -129,8 +129,19 @@ All tests in test/auth pass and npm run lint exits 0
 - Last command output: [summary]
 
 ## Next Action
-Fix test_jwt.py line 45 assertion
+Fix the auth implementation if it violates AC-AUTH-03; if expected behavior is unclear, ask the user/product owner
 ```
+
+### Rule 5: Requirement-Locked Verification
+A goal such as "all tests pass" is a **verification condition**, not authority to
+rewrite the verifier. Existing behavioral test cases, assertions, snapshots,
+goldens, eval labels, and expected outputs remain read-only unless an explicit
+current requirement/acceptance change is established. If the requirement needed
+to interpret a failure is missing, ambiguous, or contradictory, set the goal
+step to `blocked` and ask the user/product owner. Do not make a "reasonable
+assumption" about expected behavior and do not weaken tests to satisfy the goal.
+Infrastructure-only test-runner repairs are allowed only when the behavioral
+oracle and coverage stay unchanged.
 
 ---
 
@@ -143,19 +154,21 @@ Fix test_jwt.py line 45 assertion
 **Actions:**
 1. **Parse Goal Condition:**
 ```markdown
-Input: "Implement user authentication until all tests pass"
+Input: "Implement JWT authentication per AC-AUTH-03 and verify existing auth tests pass"
 
 Breakdown:
-1. Measurable: "all tests pass" → `npm test`
-2. Constraint: "until" implies stop when met
-3. Scope: "user authentication" → files in auth/, test/auth/
+1. Requirement: `AC-AUTH-03` defines the expected JWT behavior
+2. Measurable verifier: existing auth tests → `npm test -- test/auth/`
+3. Constraint: existing test oracles stay read-only unless AC-AUTH-03 changes
+4. Scope: implementation files in auth/; test/auth/ is verification evidence unless a requirement delta explicitly requires test propagation
 
 Verification Command:
 npm test -- test/auth/
 
 Success Criteria:
+- AC-AUTH-03 is satisfied
 - Exit code 0
-- All tests in test/auth/ pass
+- All existing tests in test/auth/ pass without weakening/changing their behavioral expectations
 ```
 
 2. **Validate Feasibility:**
@@ -176,8 +189,8 @@ Feasibility: HIGH — Ready to proceed
 ```json
 {
   "goal_id": "goal-20260524-1335",
-  "condition": "All tests in test/auth pass",
-  "scope": ["auth/login.js", "auth/register.js", "test/auth/"],
+  "condition": "AC-AUTH-03 is satisfied and all existing tests in test/auth pass",
+  "scope": ["auth/login.js", "auth/register.js"],
   "verification": "npm test -- test/auth/",
   "created_at": "2026-05-24T13:35:00+07:00",
   "turns": 0,
@@ -208,12 +221,12 @@ Current State:
 |----------|--------|------|------------------|
 | P1 | Fix login token storage | auth/login.js | LocalStorage → JWT |
 | P2 | Implement JWT in register | auth/register.js | Add token response |
-| P3 | Create jwt.test.js | test/auth/jwt.test.js | Pending → Passing |
+| P3 | Add requirement-derived JWT coverage if AC-AUTH-03 is a new/changed requirement | test/auth/jwt.test.js | Requirement delta → New coverage |
 
 ## Implementation Order
-1. auth/login.js: Add JWT generation
-2. auth/register.js: Return JWT on success
-3. Update test expectations
+1. auth/login.js: Add JWT generation required by AC-AUTH-03
+2. auth/register.js: Return JWT on success as required by AC-AUTH-03
+3. Add/update tests only when propagating the explicit AC-AUTH-03 requirement delta; never change an oracle merely because code is red
 4. Run tests to verify
 ```
 
@@ -227,7 +240,7 @@ Turn 1:
 
 Turn 2:
 - Update auth/register.js to return JWT
-- Update tests to expect JWT
+- If AC-AUTH-03 is a newly changed requirement, add the requirement-derived JWT test coverage; otherwise leave existing test expectations unchanged
 
 Turn 3:
 - Run tests
@@ -279,7 +292,7 @@ If a turn encounters a blocker:
 
 1. **Assess**: Can I work around it?
    - Missing dependency → Install it
-   - Unclear requirement → Make reasonable assumption, document
+   - Unclear requirement that changes expected behavior → Mark blocked and ask the user/product owner
 
 2. **If blocked**: 
    - Log: "BLOCKED: [reason]"
@@ -294,7 +307,7 @@ If a turn encounters a blocker:
 |---------|----------|
 | Missing dependency | Install it: `npm install <pkg>` |
 | Test data unavailable | Create mock data |
-| Unclear requirement | Make assumption, document it |
+| Unclear requirement | Ask the user/product owner; do not change behavioral test expectations until the requirement is explicit |
 | Permission denied | Escalate to user |
 | Build failing | Fix compilation errors first |
 ```
@@ -310,13 +323,13 @@ If a turn encounters a blocker:
 ### Completed
 ✅ auth/login.js: JWT generation added
 ✅ auth/register.js: Returns JWT on success
-✅ Test expectations updated
+✅ Requirement-derived JWT coverage added only for the explicit AC-AUTH-03 delta
 
 ### In Progress
 🔄 Running test suite...
 
 ### Remaining
-⬜ Fix any test failures
+⬜ Fix implementation failures against AC-AUTH-03; keep existing behavioral test oracles read-only
 
 ### Next Action
 Run: npm test -- test/auth/
@@ -363,8 +376,8 @@ npm run lint
 ### Summary
 - Turns taken: 4
 - Files modified: 3
-- Tests added: 1
-- Tests fixed: 2
+- Tests added: 1 (requirement-derived)
+- Existing behavioral test expectations changed: 0
 ```
 
 3. **Complete & Clean Up:**
