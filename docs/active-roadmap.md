@@ -2,7 +2,7 @@
 
 > **North star:** cost per verified, accepted engineering task.
 > **Scope:** the core engineering loop first; game, XR, research, and growth remain optional capability packs until the core loop has production evidence.
-> **Status date:** 2026-07-13.
+> **Status date:** 2026-08-23.
 
 ## Product Goal
 
@@ -30,12 +30,12 @@ The product promise is:
 |---|---|---|
 | Product truth | `product-manifest.json`, deterministic validator, required aggregate gate, and an explicit five-document claim inventory cover core public facts plus high-risk testing, GitNexus, ADR, and historical marketing claims | Remaining legacy/status and domain-specific documentation inventory is pending |
 | Runtime | The TypeScript MCP stdio server is declared as the canonical locally-tested production path; CLI and Python/shell paths coexist | Live provider/MCP smoke and legacy-path equivalence evidence are pending |
-| Safety controls | MiddlewareChain tests pass, but production construction was not found outside tests | Safety claims are not proven on the production path |
+| Safety controls | Registered canonical MCP tools traverse `ToolExecutionGateway` authorization, sanitization, offload, quality, verification, and telemetry hooks | Production identity/policy, CLI/external-tool traversal, and filesystem/network containment are not wired |
 | Legacy agent loop | Local hardening now caches a bounded namespaced tool catalog and enforces turn, tool-call, context, output, response, and timeout limits | Live MCP/provider smoke evidence and legacy-path enforcement equivalence remain pending |
-| Model selection | Provider-specific static tier guidance and several unrelated model environment variables | No capability/risk router or startup capability probe |
+| Model selection | A deterministic `ModelCallGateway` foundation implements injected capability probing and risk-tier selection in library tests | The canonical MCP path does not originate live provider calls or run the probe at startup |
 | Evaluation | Schema-v2 local validator rejects mock/incomplete/mismatched reports; a frozen 100-task routing corpus covers all required roadmap categories and reports per-category Wilson 95% confidence intervals | No reproducible paired live baseline or live provider evidence |
-| Cost control | Token budgets and reports exist | Budget is not enforced at a single model-call gateway |
-| State | File state persistence can log a failed write while the caller reports success | No fail-closed error propagation or concurrency control |
+| Cost control | The model-gateway library atomically reserves and settles in-process task/account budgets | It is not integrated into canonical live provider calls, so operational overshoot/cost evidence is missing |
+| State | Canonical MCP state uses typed fail-closed persistence, schema validation, lock-backed transactions, and bounded history | Production recovery and cross-process operational evidence remain missing |
 | CI/release | A required provider-neutral local control plane invokes product truth, Python units, MCP lint/format/build/test/coverage, CLI tests, production dependency audit, compatibility checks, package smoke checks, review, and clean-install evidence | Runtime smoke remains opt-in; hosted CI is not part of the canonical PASS/FAIL contract |
 | Memory | Boot injection is capped at 500 tokens | Retrieval quality, staleness, and non-ASCII query behavior lack release KPIs |
 
@@ -53,11 +53,25 @@ Compatibility fallback order must come from the selected provider's live capabil
 
 Every route decision must log: task class, risk signals, selected model and snapshot, reason, input/output/cached tokens, latency, estimated cost, verifier result, retry count, and escalation count. Prompts, secrets, and full diffs must not be stored in process arguments or telemetry.
 
-## Delivery Phases
+## Completion Semantics
+
+Roadmap completion is recorded on five independent axes in `docs/roadmap-completion.json`:
+
+| Axis | Question answered | Does not imply |
+|---|---|---|
+| Implementation | Does the declared artifact exist? | Canonical integration, enablement, production use, or outcome |
+| Integration | Is it on the canonical path, partially connected, or isolated? | Activation or production evidence |
+| Activation | Where is it enabled: local, opt-in, library-only, canonical MCP, or not enabled? | Production use or outcome |
+| Production evidence | Is current provider/production evidence verified, missing, or not required for the bounded local claim? | KPI attainment outside the measured evidence |
+| Outcome | Is the intended result measured, met only locally, partial, unmeasured, or not met? | Completion of any other axis |
+
+There is no aggregate `implemented` status. The P0–P3 tables below inventory the historical foundation and its intended target outcomes; their prose labels cannot override the machine-readable axes. Each local evidence claim declares exact verifier argv, acceptance IDs, concrete test refs, negative paths, and the report producer. `npm run verify:roadmap` replays those commands fail-closed and rejects a verifier that fails, times out, or mutates the worktree.
+
+## Historical Foundation Phases
 
 ### Phase 0 — Truth and Runtime Safety
 
-**Outcome:** published claims match an enforced, bounded production path.
+**Target outcome:** published claims match an enforced, bounded production path.
 
 | ID | Deliverable | Owner / model tier | Dependencies | Exit evidence |
 |---|---|---|---|---|
@@ -71,7 +85,7 @@ Every route decision must log: task class, risk signals, selected model and snap
 
 ### Phase 1 — Unified Execution and Cost Control
 
-**Outcome:** every production model and tool call is governed, observable, and budgeted.
+**Target outcome:** every production model and tool call is governed, observable, and budgeted.
 
 | ID | Deliverable | Owner / model tier | Dependencies | Exit evidence |
 |---|---|---|---|---|
@@ -85,7 +99,7 @@ Every route decision must log: task class, risk signals, selected model and snap
 
 ### Phase 2 — Evidence-Driven GPT Routing
 
-**Outcome:** smaller models handle most work without material quality regression.
+**Target outcome:** smaller models handle most work without material quality regression.
 
 | ID | Deliverable | Owner / model tier | Dependencies | Exit evidence |
 |---|---|---|---|---|
@@ -99,7 +113,7 @@ Every route decision must log: task class, risk signals, selected model and snap
 
 ### Phase 3 — Release and Product Credibility
 
-**Outcome:** a release is locally reproducible, auditable, zero-hosting-cost, and understandable by a new user.
+**Target outcome:** a release is locally reproducible, auditable, zero-hosting-cost, and understandable by a new user.
 
 | ID | Deliverable | Owner / model tier | Dependencies | Exit evidence |
 |---|---|---|---|---|
@@ -130,16 +144,38 @@ A phase is complete only when all of the following are true:
 5. Quality and cost are reported together; savings without comparable verifier quality do not count.
 6. Documentation, package metadata, generated rule files, and release artifacts agree with the canonical product manifest.
 
+## Harness Upgrade Sequence
+
+This dependency order supersedes the old priority of building live provider adapters first. A live routing result is not accepted until the host lifecycle, trajectory, containment, and replay boundaries it depends on are mechanically verifiable.
+
+Current local status (2026-08-23): H0 and the H1 compatibility contract have
+executable evidence. The same safety tranche also delivers bounded Stop
+re-entry/single replay, exact MCP ownership leases, and context-only continuity.
+Those supporting controls do **not** complete H2 or H6: there is not yet a
+canonical `TrajectoryLedger`, full disposer/quiescence contract, or fresh
+evaluator for resumed long-running work.
+
+| ID | Deliverable | Dependencies | Exit evidence |
+|---|---|---|---|
+| H0 | Roadmap truth reset: independent completion axes, exact executable verifier contracts, and cross-document status alignment | None | Manifest v2 contract passes; all declared verifier argv replay green; Docs Hub gate passes; independent diff/evidence review approves the exact tree |
+| H1 | `HarnessAdapter v1` with explicit `forgewright-owned-loop` and `native-host-loop` modes plus typed start/resume/fork/steer/interrupt capability negotiation | H0 | Contract tests reject unsupported lifecycle operations and prevent provider-specific model IDs from leaking into the core contract |
+| H2 | Canonical append-only `TrajectoryLedger` plus reversible lifecycle/disposers, cancellation propagation, and quiescence receipts | H1 | Deterministic reconstruction, disposer idempotency, cancellation, timeout, and no-post-terminal-event tests pass |
+| H3 | Execution containment and trust boundary: retain output filtering as a named firewall, add real filesystem/network containment, production identity/policy hooks, and explicit trust gates | H1, H2 | Escape, unauthorized tool, network-deny, filesystem-deny, and trust-boundary negative tests pass on the canonical path |
+| H4 | Record → normalize → replay the real agent loop without provider keys, with strict consumption checks | H2, H3 | Full-loop fixture replay reproduces lifecycle/model/tool/approval/evidence events and fails on missing, extra, or reordered events |
+| H5 | Provider adapters and paired live routing evidence inside one selected provider ecosystem | H4 | Capability probe, resolved snapshot, usage receipt, verifier quality, shadow/canary comparison, and rollback receipt are present |
+| H6 | Optional long-running handoff mode with structured checkpoint and fresh evaluator | H5 | Interrupted work resumes from a bounded handoff, and a fresh evaluator independently accepts or rejects the final evidence |
+
 ## Current Blockers
 
 | Blocker | Impact | Required action |
 |---|---|---|
-| Live provider credentials are unavailable in the current reviewer runtime | Independent model review cannot be claimed from a failed dispatch | Restore provider credentials and rerun the requirements/diff/evidence review packet |
+| Live provider credentials are unavailable for H5 paired routing evidence | Paired live routing, usage, canary, and rollback receipts cannot be collected | Provision credentials when H5 begins; keep activation and production-evidence axes false until then |
 | An existing canonical MCP runtime without a valid ownership marker cannot be adopted when its dependency-lock digest differs from the repository | Automated migration must preserve the foreign runtime rather than manufacture ownership proof | Perform a user-authorized clean reinstall or supply independently verified ownership evidence |
 
 ## Next Execution Slice
 
-1. Add provider-native adapters only when their capability probe, resolved snapshots, usage receipts, and verifier contract can be proven locally.
-2. Produce paired live reports inside one selected provider ecosystem before using lower-cost model results to justify routing.
-3. Keep provider/MCP runtime smoke opt-in and local; do not add paid hosted CI as a release dependency.
-4. Run the full local regression matrix, GitNexus `detect_changes`, independent diff review, and release audit.
+1. Implement H2 `TrajectoryLedger`, cancellation/disposer semantics, and quiescence receipts on top of the completed H1 contract.
+2. Implement H3 after H2; do not treat output filtering or ownership leases as filesystem/network containment.
+3. Build H4 only after lifecycle and containment events have canonical typed forms.
+4. Begin H5 paired live routing only after H4 replay consumes the full fixture with no missing or extra events.
+5. Keep H6 optional until the single-run harness path has production evidence; reuse the continuity schema as context, not as completion authority.

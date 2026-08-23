@@ -243,14 +243,31 @@ def test_codex_stop_gate_emits_one_parseable_continue_json(tmp_path: Path) -> No
     result = run_stop_gate(tmp_path, "CODEX", "No code changes were made.")
 
     assert result.returncode == 0
-    assert json.loads(result.stdout) == {"continue": True}
+    assert json.loads(result.stdout) == {
+        "continue": True,
+        "forgewright": {
+            "schema": "forgewright-stop-decision/v1",
+            "host_action": "allow_stop",
+            "completion_state": "verified",
+            "retry_suppressed": False,
+            "reason_code": "no_code_changes",
+        },
+    }
 
 
 def test_codex_plain_no_code_response_emits_continue_json(tmp_path: Path) -> None:
     result = run_stop_gate(tmp_path, "CODEX", "Waiting for the requested log file.")
 
     assert result.returncode == 0
-    assert json.loads(result.stdout) == {"continue": True}
+    payload = json.loads(result.stdout)
+    assert payload["continue"] is True
+    assert payload["forgewright"] == {
+        "schema": "forgewright-stop-decision/v1",
+        "host_action": "allow_stop",
+        "completion_state": "verified",
+        "retry_suppressed": False,
+        "reason_code": "no_code_changes",
+    }
 
 
 def test_codex_stop_gate_emits_one_parseable_block_json(tmp_path: Path) -> None:

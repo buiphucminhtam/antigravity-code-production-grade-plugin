@@ -6,7 +6,9 @@ import { dirname, join } from 'node:path';
 const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const script = join(root, 'scripts', 'ci', 'verify-runtime-smoke.mjs');
 
-execFileSync('npm', ['--prefix', 'mcp', 'run', 'build'], { cwd: root, stdio: 'pipe' });
+if (!process.argv.includes('--skip-build')) {
+  execFileSync('npm', ['--prefix', 'mcp', 'run', 'build'], { cwd: root, stdio: 'pipe' });
+}
 const mcpOnly = spawnSync(process.execPath, [script, '--mcp-only'], { cwd: root, encoding: 'utf8' });
 assert.equal(mcpOnly.status, 0, mcpOnly.stderr);
 assert.equal(JSON.parse(mcpOnly.stdout).mcp.nonMutatingTool, 'fw_get_current_phase');

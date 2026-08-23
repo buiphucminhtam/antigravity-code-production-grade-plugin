@@ -15,6 +15,10 @@ OPERATOR_HOME="${HOME:-}"
 export HOME="$TEST_HOME"
 export XDG_CONFIG_HOME="$TEST_HOME/.config"
 TEMPLATE_DIR="$FORGEWRIGHT_DIR/scripts/templates"
+JSONC_PARSER_MODULE="$FORGEWRIGHT_DIR/mcp/node_modules/jsonc-parser"
+if [[ ! -f "$JSONC_PARSER_MODULE/lib/umd/main.js" ]]; then
+    JSONC_PARSER_MODULE="$FORGEWRIGHT_DIR/node_modules/jsonc-parser"
+fi
 
 # ─── Colors ──────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -1258,7 +1262,7 @@ EOF
     mark_owned_test_runtime "$uninstall_home"
     local uninstall_ledger="$uninstall_home/.forgewright/.mcp-config-ledger.json"
     node - "$uninstall_ledger" "$uninstall_home" "$opencode_root" "$zed_config" \
-        "$desktop_config" "$FORGEWRIGHT_DIR/mcp/node_modules/jsonc-parser" <<'NODE'
+        "$desktop_config" "$JSONC_PARSER_MODULE" <<'NODE'
 const fs = require('fs');
 const crypto = require('crypto');
 const [ledgerPath, home, opencodeRoot, zedPath, desktopPath, parserModule] = process.argv.slice(2);
@@ -1322,7 +1326,7 @@ PY
     if HOME="$uninstall_home" XDG_CONFIG_HOME="$uninstall_xdg" \
         bash "$fresh_script" --uninstall  && \
         node - "$uninstall_home" "$opencode_root" "$zed_config" "$desktop_config" \
-            "$FORGEWRIGHT_DIR/mcp/node_modules/jsonc-parser" <<'NODE' &&
+            "$JSONC_PARSER_MODULE" <<'NODE' &&
 const fs = require('fs');
 const [home, opencodeRoot, zedPath, desktopPath, parserModule] = process.argv.slice(2);
 for (const path of [`${home}/.cursor/mcp.json`, `${home}/.claude.json`,

@@ -1952,6 +1952,29 @@ class TestVerifyGateSh:
         assert r.returncode == 0, r.stderr
         assert "No code changes" in r.stdout
 
+    def test_codex_typed_stop_no_code_returns_verified_decision(self):
+        """A clean native Stop still exposes its typed completion state."""
+        result = self._stop_gate(
+            {
+                "hook_event_name": "Stop",
+                "session_id": "clean-stop-session",
+                "turn": "clean-stop-turn",
+                "last_assistant_message": "No verification claim is being made.",
+            }
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert json.loads(result.stdout) == {
+            "continue": True,
+            "forgewright": {
+                "schema": "forgewright-stop-decision/v1",
+                "host_action": "allow_stop",
+                "completion_state": "verified",
+                "retry_suppressed": False,
+                "reason_code": "no_code_changes",
+            },
+        }
+
     def test_invalid_platform_blocked(self):
         """Unknown platform name → gate blocks with error."""
         r = subprocess.run(
@@ -2050,7 +2073,10 @@ class TestVerifyGateSh:
 
         accepted = self._stop_gate(payload)
         assert accepted.returncode == 0, accepted.stderr
-        assert json.loads(accepted.stdout) == {"continue": True}
+        accepted_payload = json.loads(accepted.stdout)
+        assert accepted_payload["continue"] is True
+        assert accepted_payload["forgewright"]["completion_state"] == "verified"
+        assert accepted_payload["forgewright"]["host_action"] == "allow_stop"
 
         payload["last_assistant_message"] = response.replace(
             "COMMAND:", "COMMAND: unrelated ", 1
@@ -2058,6 +2084,185 @@ class TestVerifyGateSh:
         rejected = self._stop_gate(payload)
         assert rejected.returncode == 0, rejected.stderr
         assert json.loads(rejected.stdout)["decision"] == "block"
+
+    def test_codex_unmapped_platform_turn_field_discovers_correlated_final_evidence(
+        self,
+    ):
+        """Codex may put its routing UUID in `turn`, not only in `turn_id`."""
+        source = self.tmp / "fixture.py"
+        source.write_text("print('changed')\n")
+        evidence = _make_evidence(self.tmp, turn="internal-evidence-for-opaque-turn")
+        response = _strict_response(evidence)
+        payload = {
+            "hook_event_name": "Stop",
+            "last_assistant_message": response,
+            "turn": "codex-platform-routing-uuid",
+            "session_id": "opaque-turn-session",
+            "stop_hook_active": True,
+        }
+
+        accepted = self._stop_gate(payload)
+
+        assert accepted.returncode == 0, accepted.stderr
+        parsed = json.loads(accepted.stdout)
+        assert parsed["continue"] is True
+        assert parsed["forgewright"]["completion_state"] == "verified"
+        assert parsed["forgewright"]["host_action"] == "allow_stop"
+
+    def test_codex_identical_invalid_stop_reentry_is_bounded(self):
+        """The first invalid Stop retries; its identical re-entry must terminate."""
+        source = self.tmp / "fixture.py"
+        source.write_text("print('changed')\n")
+        evidence = _make_evidence(self.tmp, turn="bounded-reentry-evidence")
+        payload = {
+            "hook_event_name": "Stop",
+            "last_assistant_message": _strict_response(evidence).replace(
+                "COMMAND:", "COMMAND: mismatched ", 1
+            ),
+            "turn": "codex-routing-reentry",
+            "session_id": "bounded-reentry-session",
+            "stop_hook_active": True,
+        }
+        state_dir = self.tmp / ".forgewright" / "runtime" / "stop-attempts"
+        env = {**os.environ, "FORGEWRIGHT_STOP_STATE_DIR": str(state_dir)}
+
+        first = subprocess.run(
+            ["bash", str(STOP_SH), "--platform", "codex"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=str(self.tmp),
+            env=env,
+            input=json.dumps(payload),
+        )
+        second = subprocess.run(
+            ["bash", str(STOP_SH), "--platform", "codex"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=str(self.tmp),
+            env=env,
+            input=json.dumps(payload),
+        )
+
+        first_payload = json.loads(first.stdout)
+        second_payload = json.loads(second.stdout)
+        assert first_payload["decision"] == "block"
+        assert first_payload["forgewright"] == {
+            "schema": "forgewright-stop-decision/v1",
+            "host_action": "request_retry",
+            "completion_state": "unverified",
+            "retry_suppressed": False,
+            "reason_code": "validation_failed",
+        }
+        assert second_payload["continue"] is True
+        assert second_payload["forgewright"]["host_action"] == "allow_stop"
+        assert second_payload["forgewright"]["completion_state"] == "unverified"
+        assert second_payload["forgewright"]["retry_suppressed"] is True
+        assert second_payload["forgewright"]["reason_code"] == "duplicate_invalid_stop"
+
+    @pytest.mark.parametrize(
+        ("platform", "first_returncode"),
+        [("claude", 2), ("gemini", 2), ("cursor", 1)],
+    )
+    def test_non_codex_identical_invalid_stop_reentry_is_bounded(
+        self, platform: str, first_returncode: int
+    ):
+        """Every supported Stop host must share the same bounded retry state."""
+        source = self.tmp / "fixture.py"
+        source.write_text("print('changed')\n")
+        evidence = _make_evidence(self.tmp, turn=f"{platform}-bounded-evidence")
+        payload = {
+            "hook_event_name": "Stop",
+            "last_assistant_message": _strict_response(evidence).replace(
+                "COMMAND:", "COMMAND: mismatched ", 1
+            ),
+            "turn": f"{platform}-routing-reentry",
+            "session_id": f"{platform}-bounded-session",
+            "stop_hook_active": True,
+        }
+        state_dir = self.tmp / ".forgewright" / "runtime" / "stop-attempts"
+        env = {**os.environ, "FORGEWRIGHT_STOP_STATE_DIR": str(state_dir)}
+        command = ["bash", str(STOP_SH), "--platform", platform]
+
+        first = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=str(self.tmp),
+            env=env,
+            input=json.dumps(payload),
+        )
+        second = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=str(self.tmp),
+            env=env,
+            input=json.dumps(payload),
+        )
+
+        assert first.returncode == first_returncode
+        assert second.returncode == 0
+        records = list(state_dir.glob("*.json"))
+        assert len(records) == 1
+        state = json.loads(records[0].read_text(encoding="utf-8"))
+        assert state["attempts"] == 1
+        assert len(state["keys"]) == 1
+
+    def test_codex_stop_replays_canonical_evidence_once(self):
+        """One Stop invocation must execute the evidence command exactly once."""
+        source = self.tmp / "fixture.py"
+        source.write_text("print('changed')\n")
+        counter_script = self.tmp / "tests" / "replay_counter.py"
+        counter_script.write_text(
+            "import os\n"
+            "from pathlib import Path\n"
+            "counter = Path(os.environ['FORGEWRIGHT_TEST_REPLAY_COUNTER'])\n"
+            "value = int(counter.read_text()) if counter.exists() else 0\n"
+            "counter.write_text(str(value + 1))\n"
+            "print('ok')\n",
+            encoding="utf-8",
+        )
+        counter = self.tmp.parent / f"{self.tmp.name}-replay-count"
+        counter.unlink(missing_ok=True)
+        evidence = _make_evidence(
+            self.tmp,
+            turn="single-replay-evidence",
+            command=[sys.executable, "tests/replay_counter.py"],
+            output="ok\n",
+            test_refs=["tests/replay_counter.py"],
+        )
+        payload = {
+            "hook_event_name": "Stop",
+            "last_assistant_message": _strict_response(evidence),
+            "turn": "codex-routing-single-replay",
+            "session_id": "single-replay-session",
+        }
+        env = {
+            **os.environ,
+            "FORGEWRIGHT_TEST_REPLAY_COUNTER": str(counter),
+            "FORGEWRIGHT_STOP_STATE_DIR": str(
+                self.tmp / ".forgewright" / "runtime" / "stop-attempts"
+            ),
+        }
+
+        result = subprocess.run(
+            ["bash", str(STOP_SH), "--platform", "codex"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=str(self.tmp),
+            env=env,
+            input=json.dumps(payload),
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert json.loads(result.stdout)["continue"] is True
+        assert counter.read_text(encoding="utf-8") == "1"
+        counter.unlink(missing_ok=True)
 
     def test_codex_mapped_symlink_evidence_is_blocked_without_fallback(self):
         """Mapped evidence must remain a bounded regular file inside the workspace."""

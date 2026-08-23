@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { dirname, join, basename } from 'path';
+import { dirname, join, basename, relative, isAbsolute, sep } from 'path';
 import { fileURLToPath } from 'url';
 import * as jsyaml from 'js-yaml';
 import { z } from 'zod';
@@ -44,35 +44,86 @@ function parseFrontmatter(content) {
         return { data: {}, body: content };
     }
 }
-function findAllSkillFiles(dir, fileList = []) {
-    if (!fs.existsSync(dir))
+function isWithinRoot(root, candidate) {
+    const relativePath = relative(root, candidate);
+    return (relativePath === '' ||
+        (!relativePath.startsWith(`..${sep}`) && relativePath !== '..' && !isAbsolute(relativePath)));
+}
+function resolveContainedPath(filePath, root) {
+    try {
+        const realPath = fs.realpathSync(filePath);
+        return isWithinRoot(root, realPath) ? realPath : null;
+    }
+    catch {
+        return null;
+    }
+}
+function findAllSkillFiles(dir, root, fileList = []) {
+    let files;
+    try {
+        files = fs.readdirSync(dir, { withFileTypes: true });
+    }
+    catch {
         return fileList;
-    const files = fs.readdirSync(dir);
+    }
     for (const file of files) {
-        const filePath = join(dir, file);
-        if (fs.statSync(filePath).isDirectory()) {
-            findAllSkillFiles(filePath, fileList);
+        const filePath = join(dir, file.name);
+        let stats;
+        try {
+            stats = fs.lstatSync(filePath);
         }
-        else if (file === 'SKILL.md') {
-            fileList.push(filePath);
+        catch {
+            continue;
+        }
+        if (stats.isSymbolicLink())
+            continue;
+        if (stats.isDirectory()) {
+            findAllSkillFiles(filePath, root, fileList);
+        }
+        else if (file.name === 'SKILL.md') {
+            const realPath = resolveContainedPath(filePath, root);
+            if (realPath)
+                fileList.push(realPath);
         }
     }
     return fileList;
 }
+function resolveSkillsRoot() {
+    try {
+        const expectedRootStats = fs.lstatSync(resolvedRoot);
+        if (expectedRootStats.isSymbolicLink())
+            return null;
+        const expectedRoot = fs.realpathSync(resolvedRoot);
+        const rootStats = fs.lstatSync(SKILLS_DIR);
+        if (rootStats.isSymbolicLink() || !rootStats.isDirectory())
+            return null;
+        const realPath = fs.realpathSync(SKILLS_DIR);
+        return isWithinRoot(expectedRoot, realPath) ? realPath : null;
+    }
+    catch {
+        return null;
+    }
+}
 export function getAllSkills() {
-    if (!fs.existsSync(SKILLS_DIR)) {
+    const skillsRoot = resolveSkillsRoot();
+    if (!skillsRoot) {
         console.error(`[Forgewright Global MCP] Skills directory not found: ${SKILLS_DIR}`);
         return [];
     }
-    const skillFiles = findAllSkillFiles(SKILLS_DIR);
+    const skillFiles = findAllSkillFiles(skillsRoot, skillsRoot);
     const skills = [];
     for (const filePath of skillFiles) {
         if (filePath.includes('_shared/protocols'))
             continue;
         try {
-            const content = fs.readFileSync(filePath, 'utf-8');
+            if (fs.lstatSync(filePath).isSymbolicLink())
+                continue;
+            const safeFilePath = resolveContainedPath(filePath, skillsRoot);
+            if (!safeFilePath)
+                continue;
+            const content = fs.readFileSync(safeFilePath, 'utf-8');
             const { data } = parseFrontmatter(content);
-            const folderName = basename(dirname(filePath));
+            const folderName = basename(dirname(safeFilePath));
             const name = data.name || folderName;
             const description = data.description || `Forgewright Skill: ${name}`;
             skills.push({
@@ -80,7 +131,7 @@ export function getAllSkills() {
                 description,
                 version: data.version,
                 tags: data.tags,
-                filePath,
+                filePath: safeFilePath,
                 content,
             });
         }
@@ -91,15 +142,31 @@ export function getAllSkills() {
     return skills;
 }
 export function getSharedProtocols() {
-    const protocolsDir = join(SKILLS_DIR, '_shared', 'protocols');
-    if (!fs.existsSync(protocolsDir))
+    const skillsRoot = resolveSkillsRoot();
+    if (!skillsRoot)
         return [];
+    const protocolsPath = join(skillsRoot, '_shared', 'protocols');
+    const protocolsDir = resolveContainedPath(protocolsPath, skillsRoot);
+    if (!protocolsDir)
+        return [];
+    try {
+        if (fs.lstatSync(protocolsPath).isSymbolicLink())
+            return [];
+    }
+    catch {
+        return [];
+    }
     const files = fs.readdirSync(protocolsDir).filter((f) => f.endsWith('.md'));
     const protocols = [];
     for (const file of files) {
         const filePath = join(protocolsDir, file);
         try {
-            const content = fs.readFileSync(filePath, 'utf-8');
+            if (fs.lstatSync(filePath).isSymbolicLink())
+                continue;
+            const safeFilePath = resolveContainedPath(filePath, skillsRoot);
+            if (!safeFilePath)
+                continue;
+            const content = fs.readFileSync(safeFilePath, 'utf-8');
             const protocolId = file.replace('.md', '');
             protocols.push({
                 name: `protocol-${protocolId}`,

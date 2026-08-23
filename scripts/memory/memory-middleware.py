@@ -6,9 +6,10 @@ Automatic memory checkpoint system for cross-IDE compatibility.
 Works with Claude Code, Cursor, VS Code, JetBrains, etc.
 
 Triggers:
-  - Every N messages (configurable)
-  - Token threshold reached (WARN: 80%, CRITICAL: 95%)
-  - Before long operations
+  - Material scope or decision change
+  - Material verifier result
+  - Supported pre-compaction event or handoff
+  - Stuck/block or terminal boundary
   - Manual trigger
 
 Usage:
@@ -68,18 +69,28 @@ def _resolve_workspace_root() -> Path:
 WORKSPACE_ROOT = Path(
     os.environ.get("FORGEWRIGHT_WORKSPACE", str(_resolve_workspace_root()))
 )
-MEMORY_DB_DIR = Path(os.environ.get("MEMORY_DB_DIR", f"{HOME}/.forgewright/sessions"))
+_MEMORY_DB_OVERRIDE = os.environ.get("MEMORY_DB_DIR", "").strip()
+_WORKSPACE_MEMORY_ROOT = WORKSPACE_ROOT / ".forgewright" / "runtime" / "memory"
+MEMORY_DB_DIR = (
+    Path(_MEMORY_DB_OVERRIDE).expanduser()
+    if _MEMORY_DB_OVERRIDE
+    else _WORKSPACE_MEMORY_ROOT
+)
 SESSION_FILE = MEMORY_DB_DIR / "current-session.json"
 
 # Canonical absolute paths for workspace-relative files
 SUMMARY_FILE = (
     WORKSPACE_ROOT / ".forgewright" / "subagent-context" / "CONVERSATION_SUMMARY.md"
 )
-HANDOVER_DIR = MEMORY_DB_DIR.parent / "memory-bank"
+HANDOVER_DIR = (
+    MEMORY_DB_DIR.parent / "memory-bank"
+    if _MEMORY_DB_OVERRIDE
+    else MEMORY_DB_DIR / "memory-bank"
+)
 HANDOVER_FILE = HANDOVER_DIR / "HANDOVER.md"
 
 # session-log.json path resolution
-# Resolution: FORGEWRIGHT_SESSION_LOG env > ~/.forgewright/session-log.json > .forgewright/session-log.json
+# Resolution: FORGEWRIGHT_SESSION_LOG env > project-local runtime state.
 FORGEWRIGHT_SESSION_LOG = os.environ.get("FORGEWRIGHT_SESSION_LOG", "")
 
 
@@ -88,19 +99,12 @@ def get_session_log_path() -> Path:
 
     Resolution order:
       1. FORGEWRIGHT_SESSION_LOG env var (highest priority)
-      2. ~/.forgewright/session-log.json (home-relative, if exists)
-      3. .forgewright/session-log.json (repo-relative, DEFAULT)
+      2. project-local .forgewright/runtime/memory/session-log.json
     """
     if FORGEWRIGHT_SESSION_LOG:
         return Path(FORGEWRIGHT_SESSION_LOG)
 
-    home_path = HOME / ".forgewright" / "session-log.json"
-    repo_path = WORKSPACE_ROOT / ".forgewright" / "session-log.json"
-
-    # Prefer home if it exists, otherwise repo (default)
-    if home_path.exists():
-        return home_path
-    return repo_path
+    return MEMORY_DB_DIR / "session-log.json"
 
 
 SESSION_LOG = get_session_log_path()
@@ -1160,8 +1164,9 @@ def generate_summary(reason: str) -> str:
     Extracts semantic context: intent, file categories, decision context.
     Falls back to simple git diff if extraction fails.
     """
-    script_dir = Path(__file__).parent
-    extract_script = script_dir / "checkpoint-extract.sh"
+    extract_script = (
+        Path(__file__).resolve().parents[1] / "runtime" / "checkpoint-extract.sh"
+    )
 
     if extract_script.exists():
         try:
@@ -1234,6 +1239,56 @@ def do_checkpoint(reason: str = "manual") -> Optional[str]:
 
     summary = generate_summary(reason)
 
+    # The continuity ledger is the canonical durable handoff. Legacy mem0 and
+    # markdown artifacts below remain optional context and cannot authorize a
+    # resume, a tool call, or a completion claim.
+    continuity_script = Path(__file__).parent / "continuity.py"
+    safe_reason = re.sub(r"[^A-Za-z0-9._-]+", "-", reason).strip("-") or "manual"
+    turn_id = os.environ.get("FORGEWRIGHT_TURN", "").strip() or checkpoint_id
+    turn_id = re.sub(r"[^A-Za-z0-9._-]+", "-", turn_id).strip("-") or checkpoint_id
+    continuity_payload = {
+        "objective": summary,
+        "acceptance_ids": session.get("acceptance_ids", []),
+        "non_goals": session.get("non_goals", []),
+        "plan": session.get("plan", []),
+        "verified_facts": session.get("verified_facts", []),
+        "assumptions": session.get("assumptions", []),
+        "limitations": [
+            "Checkpoint is context-only and requires current workspace re-grounding",
+            "Malicious tampering by the same OS user is outside the integrity model",
+        ],
+        "change_refs": session.get("change_refs", []),
+        "command_refs": session.get("command_refs", []),
+        "evidence_refs": session.get("evidence_refs", []),
+        "blockers": session.get("blockers", []),
+        "next_action": session.get(
+            "next_action", "Re-ground the current workspace before continuing"
+        ),
+        "owned_process_leases": session.get("owned_process_leases", []),
+    }
+    continuity = subprocess.run(
+        [
+            sys.executable,
+            str(continuity_script),
+            "checkpoint",
+            "--session",
+            session["session_id"],
+            "--turn",
+            turn_id,
+            "--reason",
+            safe_reason,
+        ],
+        cwd=WORKSPACE_ROOT,
+        input=json.dumps(continuity_payload),
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    if continuity.returncode != 0:
+        warn("Canonical continuity checkpoint failed; legacy memory was not advanced")
+        return None
+
     # Non-blocking mem0 save
     save_to_mem0(summary, checkpoint_id)
 
@@ -1261,49 +1316,8 @@ def do_checkpoint(reason: str = "manual") -> Optional[str]:
 
 
 def increment_message():
-    """Increment message counter, trigger checkpoint if needed."""
-    session = load_session()
-
-    # Passive Idle Checkpoint Trigger:
-    # If 10 minutes (600s) have passed since the last checkpoint and there are uncommitted messages,
-    # save an 'idle' checkpoint first before registering the new prompt.
-    last_checkpoint_str = session.get("last_checkpoint_at")
-    if last_checkpoint_str:
-        try:
-            last_checkpoint = parse_iso_datetime(last_checkpoint_str)
-            now = datetime.now(timezone.utc)
-            elapsed = (now - last_checkpoint).total_seconds()
-            if elapsed >= 600 and session.get("message_count", 0) > 0:
-                log(
-                    f"Idle time detected ({elapsed / 60:.1f}m) — triggering idle checkpoint",
-                    Colors.YELLOW,
-                )
-                do_checkpoint("idle")
-                session = load_session()
-        except Exception as e:
-            warn(f"Could not check idle time: {e}")
-
-    session["message_count"] = session.get("message_count", 0) + 1
-    save_session(session)
-
-    msg_count = session["message_count"]
-
-    # Check token thresholds
-    should_warn, should_handover_flag = check_token_threshold()
-    if should_handover_flag:
-        log("⧖ Token threshold CRITICAL — generating handover", Colors.RED)
-        generate_handover(next_steps="Continue from handover")
-        do_checkpoint("token_critical")
-    elif should_warn:
-        log_token_warning()
-
-    # Check interval trigger
-    if msg_count % CHECKPOINT_INTERVAL == 0:
-        do_checkpoint(f"interval:{CHECKPOINT_INTERVAL}")
-    else:
-        log(
-            f"Message count: {msg_count} (next checkpoint in {CHECKPOINT_INTERVAL - (msg_count % CHECKPOINT_INTERVAL)})"
-        )
+    """Observe a hook tick without treating counts or simulated tokens as truth."""
+    log("Event-driven continuity active; tick observed without writing a checkpoint.")
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -1315,7 +1329,7 @@ def cmd_start(args=None):
     """Initialize session tracking."""
     init_session()
     log("Memory middleware ready")
-    log(f"Checkpoint interval: every {CHECKPOINT_INTERVAL} messages")
+    log("Checkpoint mode: event-driven material boundaries")
 
 
 def cmd_tick(args=None):
@@ -1394,6 +1408,31 @@ def cmd_resume(args=None):
     session = load_session()
     print(f"\nSession: {session['session_id']}")
     print(f"Project: {session['project']}")
+
+    continuity_script = Path(__file__).parent / "continuity.py"
+    continuity = subprocess.run(
+        [
+            sys.executable,
+            str(continuity_script),
+            "resume",
+            "--session",
+            session["session_id"],
+        ],
+        cwd=WORKSPACE_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    if continuity.returncode == 0:
+        try:
+            continuity_state = json.loads(continuity.stdout)
+        except json.JSONDecodeError:
+            continuity_state = {"status": "fresh-start", "reasons": ["invalid_output"]}
+        print("\n=== Canonical Continuity State ===")
+        print(json.dumps(continuity_state, ensure_ascii=False, indent=2))
+    else:
+        warn("Canonical continuity state could not be loaded; start fresh")
 
     # Load handover document
     handover = load_handover()

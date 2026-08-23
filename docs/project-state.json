@@ -135,14 +135,112 @@
       ]
     },
     {
-      "id": "production-evidence",
-      "title": "Complete live provider/runtime evidence required by the active roadmap",
+      "id": "roadmap-truth-reset",
+      "title": "Separate roadmap completion axes and replay exact local verifier contracts",
+      "status": "done",
+      "priority": "critical",
+      "owner": "Forgewright maintainers",
+      "target_date": null,
+      "depends_on": [
+        "docs-continuity"
+      ],
+      "references": [
+        {
+          "path": "docs/active-roadmap.md"
+        }
+      ]
+    },
+    {
+      "id": "harness-host-contract",
+      "title": "Specify and contract-test HarnessAdapter v1 lifecycle modes",
+      "status": "done",
+      "priority": "critical",
+      "owner": "Runtime maintainers",
+      "target_date": null,
+      "depends_on": [
+        "roadmap-truth-reset"
+      ],
+      "references": [
+        {
+          "path": "docs/active-roadmap.md"
+        }
+      ]
+    },
+    {
+      "id": "trajectory-lifecycle",
+      "title": "Add the canonical trajectory ledger and reversible lifecycle receipts",
+      "status": "planned",
+      "priority": "critical",
+      "owner": "Runtime maintainers",
+      "target_date": null,
+      "depends_on": [
+        "harness-host-contract"
+      ],
+      "references": [
+        {
+          "path": "docs/active-roadmap.md"
+        }
+      ]
+    },
+    {
+      "id": "execution-containment",
+      "title": "Add filesystem, network, identity, and trust-boundary containment",
+      "status": "planned",
+      "priority": "critical",
+      "owner": "Runtime maintainers",
+      "target_date": null,
+      "depends_on": [
+        "harness-host-contract",
+        "trajectory-lifecycle"
+      ],
+      "references": [
+        {
+          "path": "docs/active-roadmap.md"
+        }
+      ]
+    },
+    {
+      "id": "record-replay",
+      "title": "Record, normalize, and strictly replay the full agent loop",
       "status": "planned",
       "priority": "high",
       "owner": "Runtime maintainers",
       "target_date": null,
       "depends_on": [
-        "docs-continuity"
+        "trajectory-lifecycle",
+        "execution-containment"
+      ],
+      "references": [
+        {
+          "path": "docs/active-roadmap.md"
+        }
+      ]
+    },
+    {
+      "id": "production-evidence",
+      "title": "Add provider adapters and complete paired live routing evidence",
+      "status": "planned",
+      "priority": "high",
+      "owner": "Runtime maintainers",
+      "target_date": null,
+      "depends_on": [
+        "record-replay"
+      ],
+      "references": [
+        {
+          "path": "docs/active-roadmap.md"
+        }
+      ]
+    },
+    {
+      "id": "long-running-handoff",
+      "title": "Add optional structured long-running handoff and fresh evaluation",
+      "status": "planned",
+      "priority": "medium",
+      "owner": "Runtime maintainers",
+      "target_date": null,
+      "depends_on": [
+        "production-evidence"
       ],
       "references": [
         {
@@ -612,14 +710,25 @@
     "lifecycle": "active",
     "health": "on_track",
     "phase": "SUSTAIN",
-    "summary": "Evidence schema v2 hardening is complete: exact acceptance and negative-path traceability, final-command replay, RED/GREEN mutation proof, selective full-worktree fingerprints, payment HARD routing, trusted signed review-2, bounded no-follow evidence reads, frozen Codex turn-metadata normalization, executable verification entrypoints, and current GitNexus index metadata are preserved without weakening strict completion correlation.",
-    "updated_at": "2026-08-13T11:31:00+07:00",
-    "blockers": [],
+    "summary": "H0 and the H1 HarnessAdapter compatibility contract are complete locally. Bounded Stop re-entry/single replay, exact MCP ownership leases, and project/session continuity are integrated safety controls; they do not complete the still-planned H2 TrajectoryLedger, H3 containment, H4 full replay, H5 live provider evidence, or H6 fresh-evaluator handoff.",
+    "updated_at": "2026-08-23T00:07:44+07:00",
+    "blockers": [
+      {
+        "id": "live-provider-credentials",
+        "title": "Live provider credentials are unavailable for H5 paired routing evidence.",
+        "owner": "Runtime maintainers"
+      },
+      {
+        "id": "foreign-runtime-ownership",
+        "title": "A foreign canonical MCP runtime with a mismatched lock digest cannot be adopted without verified ownership.",
+        "owner": "Runtime maintainers"
+      }
+    ],
     "risks": [],
     "next_actions": [
       {
-        "id": "production-evidence",
-        "title": "Complete the live provider and runtime evidence tracked by the active roadmap.",
+        "id": "trajectory-lifecycle",
+        "title": "Implement the H2 TrajectoryLedger, cancellation/disposer semantics, and quiescence receipts.",
         "owner": "Runtime maintainers",
         "due_date": null
       }

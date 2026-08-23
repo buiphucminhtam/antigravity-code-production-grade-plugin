@@ -1,6 +1,6 @@
 # Forgewright — System Architecture
 
-> **Version:** 8.7.0 · **Last Updated:** 2026-07-09
+> **Version:** 8.7.0 · **Last Updated:** 2026-08-23
 >
 > This document describes the canonical 5-layer architecture of Forgewright. For product-level context, see [Product Overview](product-overview.md).
 
@@ -41,7 +41,7 @@ Forgewright is organized into **5 distinct layers**, from the user-facing intera
         <div class="layer-badge">3</div>
         <div class="layer-content">
           <h3>LAYER 3: CAPABILITIES</h3>
-          <p>83 Skills (SKILL.md + LITE.md) &middot; 24 Modes &middot; Routing Engine</p>
+          <p>84 Skills (SKILL.md + LITE.md) &middot; 24 Modes &middot; Routing Engine</p>
         </div>
       </article>
     </li>
@@ -59,7 +59,7 @@ Forgewright is organized into **5 distinct layers**, from the user-facing intera
         <div class="layer-badge">5</div>
         <div class="layer-content">
           <h3>LAYER 5: RUNTIME</h3>
-          <p>MCP Servers &middot; GitNexus &middot; Scripts (53) &middot; State (.forgewright/)</p>
+          <p>MCP Servers &middot; GitNexus &middot; Project-owned scripts &middot; State (.forgewright/)</p>
         </div>
       </article>
     </li>
@@ -102,10 +102,10 @@ The kernel is the reasoning engine. It defines **how** the AI thinks, plans, and
 
 | File | Responsibility |
 |------|---------------|
-| `ENTRY.md` | Boot sequence (5 hard rules, skill routing table, memory load) |
+| `ENTRY.md` | Boot sequence (6 hard rules, skill routing table, optional continuity context) |
 | `CLARIFY.md` | Vague requirement resolution (trigger table + 5 MCQs) |
 | `SOLVE.md` | The reasoning loop (9 steps: UNDERSTAND → GROUND → DECOMPOSE → EXECUTE → AUDIT) |
-| `VERIFY.md` | Verification block contracts (3 templates: Command, UI, PoT) |
+| `VERIFY.md` | Schema-v2 evidence, exact-tree replay, UI/runtime evidence, and HARD review contracts |
 | `AUDIT.md` | Post-execution requirement coverage matrix |
 | `ESCALATE.md` | EASY/HARD classification and escalation protocol |
 | `INDEX.md` | Full skill index (loaded on-demand, not at boot) |
@@ -117,7 +117,7 @@ The kernel enforces a strict reasoning loop for every task:
 <section class="architecture-diagram architecture-flow" aria-labelledby="diagram-flow-title">
   <details class="diagram-description">
     <summary id="diagram-flow-title">The Kernel Loop</summary>
-    <p>A sequential flow of steps from User Request through Clarify, Understand, Ground, Decompose, Execute &amp; Verify, Audit, to Memory Save.</p>
+    <p>A sequential flow from User Request through Clarify, Understand, Ground, Decompose, Execute &amp; Verify, Audit, and an optional material-event continuity checkpoint.</p>
   </details>
   <ol class="flow-list">
     <li class="flow-step">
@@ -129,7 +129,7 @@ The kernel enforces a strict reasoning loop for every task:
     </li>
     <li class="flow-step">
       <div class="step-box">2. UNDERSTAND</div>
-      <aside class="step-annotation">Scratchpad: goal, success criteria, risks</aside>
+      <aside class="step-annotation">Concise task state: objective, acceptance, material uncertainty</aside>
     </li>
     <li class="flow-step">
       <div class="step-box">3. GROUND</div>
@@ -147,7 +147,7 @@ The kernel enforces a strict reasoning loop for every task:
           <li>Execute &rarr; CHECK</li>
           <li>Reasoning checkpoint</li>
           <li>If FAIL &rarr; fix or STUCK</li>
-          <li>VERIFY block per change</li>
+          <li>Schema-v2 evidence for completion claims</li>
         </ul>
       </div>
       <aside class="step-annotation">"What did this tell me?"</aside>
@@ -157,13 +157,13 @@ The kernel enforces a strict reasoning loop for every task:
       <aside class="step-annotation">Requirement coverage matrix</aside>
     </li>
     <li class="flow-step">
-      <div class="step-box">7. MEMORY SAVE</div>
-      <aside class="step-annotation">Persist context for next session</aside>
+      <div class="step-box">7. CONTINUITY IF MATERIAL</div>
+      <aside class="step-annotation">Context-only checkpoint; re-ground on resume</aside>
     </li>
   </ol>
 </section>
 
-### Hard Rules (The 5+1 Laws)
+### Hard Rules (The 6 Laws)
 
 1. Never claim something works without a VERIFY block.
 2. Never edit a symbol before running impact analysis.
@@ -177,7 +177,6 @@ The kernel enforces a strict reasoning loop for every task:
 After 2 failures on the same item:
 1. Write an isolation script to test the assumption
 2. Search codebase for a working pattern
-3. Research external docs
 4. Reset context (start fresh with lessons learned)
 5. Escalate as HARD
 6. Report blocker with evidence
@@ -186,7 +185,7 @@ After 2 failures on the same item:
 
 ## Layer 3: Capabilities
 
-The capabilities layer contains the 83 specialized AI skills and the routing engine that dispatches requests to the right skills.
+The capabilities layer contains the 84 canonical AI skills and the routing engine that dispatches requests to the right skills.
 
 ### Skill Structure
 
@@ -202,7 +201,7 @@ Each skill is a directory under `skills/` containing:
 - **SKILL.md** — The canonical, complete instruction set for the skill. Defines the skill's authority, phases, inputs, outputs, and verification criteria.
 - **LITE.md** — A distilled version (≤2K tokens) for the lightweight kernel (Forgewright Lite). Contains only triggers, checklist, and essential instructions.
 
-### Skill Categories (83 Skills)
+### Skill Categories (84 Skills)
 
 | Category | Skills | Examples |
 |----------|--------|----------|
@@ -288,7 +287,7 @@ Every skill execution is wrapped by the middleware chain defined in `skills/prod
 ```
 01 Session Data → 02 Context Load → 03 DryRun Check → 04 Guardrail
 → 04b Plan Quality → 04c Tool Sandbox → 04d Context Offload
-→ 05 Skill Execute → 06 Verify → 07 Quality Gate → 08 Memory Save
+→ 05 Skill Execute → 06 Verify → 07 Quality Gate → 08 Optional Context
 → 09 Session Update → 10 Graceful Failure
 ```
 
@@ -298,46 +297,48 @@ Key middleware behaviors:
 - **Guardrail (④):** Runs `before_tool()` on every tool call, blocks destructive operations
 - **Quality Gate (⑦):** Runs after every skill, produces mini-scorecard
 
-### Memory System (FluxMem V4)
+### Continuity and Optional Memory
 
 <section class="architecture-diagram architecture-fluxmem" aria-labelledby="diagram-fluxmem-title">
   <details class="diagram-description">
-    <summary id="diagram-fluxmem-title">FluxMem V4 (SQLite) View</summary>
-    <p>A panel layout showing the central memory.db, alongside Scripts, ASIP Integration, and the Memory Bank text files.</p>
+    <summary id="diagram-fluxmem-title">Continuity and Optional Retrieval Memory</summary>
+    <p>The canonical continuity checkpoint binds current project/session evidence. Optional SQLite and Markdown memory remain context-only inputs.</p>
   </details>
   <div class="fluxmem-grid">
     <article class="fluxmem-panel">
-      <h3>memory.db</h3>
+      <h3>Canonical checkpoint</h3>
       <ul>
-        <li>flux_nodes (episodic, semantic, procedural)</li>
-        <li>flux_edges (calls, improves, contradicts, ...)</li>
-        <li>procedural_circuits (cached trajectories, PES)</li>
+        <li><code>forgewright-continuity/v1</code></li>
+        <li>Project + session + turn + monotonic sequence</li>
+        <li>Exact tree, ledger offset/head, prior checkpoint hash</li>
+        <li>Objective, acceptance IDs, verified fact bindings, next action</li>
       </ul>
     </article>
     <article class="fluxmem-panel">
-      <h3>Scripts</h3>
+      <h3>Material event triggers</h3>
       <ul>
-        <li>mem0-v2.py <span># CLI: add, search, stats, decay</span></li>
-        <li>memory-trace.py <span># Trace offloaded tool events</span></li>
-        <li>memory-consolidate.py <span># Consolidate to personas</span></li>
+        <li>Scope or durable decision changes</li>
+        <li>Material verifier results</li>
+        <li>Supported pre-compaction event or handoff</li>
+        <li>STUCK/block or terminal boundary</li>
       </ul>
     </article>
     <article class="fluxmem-panel">
-      <h3>ASIP Integration</h3>
+      <h3>Resume gate</h3>
       <ul>
-        <li>Failure &rarr; edge decay (weight &times; 0.5)</li>
-        <li>Success &rarr; edge reinforce (weight &times; 1.2)</li>
-        <li>NotebookLM lessons &rarr; semantic nodes (weight 1.5)</li>
-        <li>Passive checkpoint after 10min idle</li>
+        <li>Verify checksum/hash chain and expiry</li>
+        <li>Require exact workspace, session, tree, and ledger head</li>
+        <li>Corrupt/mismatched state &rarr; explicit fresh start</li>
+        <li>Always re-ground against current workspace/runtime</li>
       </ul>
     </article>
     <article class="fluxmem-panel">
-      <h3>Memory Bank (.forgewright/memory-bank/)</h3>
+      <h3>Optional retrieval context</h3>
       <ul>
-        <li>activeContext.md <span># Current work + blockers</span></li>
-        <li>HANDOVER.md <span># Cross-session handover</span></li>
-        <li>persona.md <span># Stable preferences</span></li>
-        <li>scenarios/*.md <span># Successful execution patterns</span></li>
+        <li><code>memory.db</code>, <code>activeContext.md</code>, and handovers</li>
+        <li>Never authorize tools, resume execution, or completion</li>
+        <li>No raw chain-of-thought, secrets, or tool dumps</li>
+        <li>Same-OS-user malicious tampering is outside the threat model</li>
       </ul>
     </article>
   </div>
@@ -368,6 +369,33 @@ Forgewright exposes two MCP servers for IDE integration:
 | `forgewright` | stdio (npx tsx) | Pipeline mgmt, skill invocation, memory ops | Orchestration |
 | `gitnexus` | stdio | 16 tools: query, context, impact, detect_changes, rename, cypher, etc. | Code Intelligence |
 
+The canonical Forgewright MCP process acquires an external
+`forgewright-mcp-lifecycle-lease/v1` record before connecting the stdio
+transport. The lease binds a 256-bit owner token, monotonic version, workspace,
+session, PID start, PGID, parent PID/start, command digest, TTL, and in-flight
+count. EOF, SIGINT, and SIGTERM close the exact owned lease idempotently. A
+startup reconciliation pass closes dead leases without a signal. For an expired
+live lease, the reaper holds a per-lease lock and rechecks identity, command
+digest, ownership, version, and in-flight state immediately before TERM and
+KILL. It signals only the positive leased PID; PID reuse, token rotation,
+in-flight work, or an unowned process produces no signal.
+
+### Harness Host Contract
+
+`HarnessAdapter v1` keeps the core provider-neutral while making host lifecycle
+support explicit:
+
+| Contract field | Values / behavior |
+|---|---|
+| Loop mode | `forgewright-owned-loop` or `native-host-loop` |
+| Lifecycle operations | `start`, `resume`, `fork`, `steer`, `interrupt`, `checkpoint` |
+| Pre-compaction | Native signal, material-event fallback, or unsupported |
+| Resume binding | Workspace, session, turn, checkpoint hash, ledger offset/head, capability snapshot, issue/expiry |
+| Failure policy | Unknown schema, operation, or capability fails closed |
+
+This contract does not yet complete the planned `TrajectoryLedger`, execution
+containment, full-loop record/replay, or live provider certification.
+
 Configuration via `~/.cursor/mcp.json` (Cursor) or equivalent:
 
 ```json
@@ -375,7 +403,7 @@ Configuration via `~/.cursor/mcp.json` (Cursor) or equivalent:
   "mcpServers": {
     "forgewright": {
       "command": "npx",
-      "args": ["tsx", "/path/to/forgewright/.forgewright/mcp-server/server.ts"],
+      "args": ["tsx", "/path/to/forgewright/mcp/src/index.ts"],
       "env": { "FORGEWRIGHT_WORKSPACE": "${workspaceFolder}" }
     }
   }
@@ -384,11 +412,9 @@ Configuration via `~/.cursor/mcp.json` (Cursor) or equivalent:
 
 ### GitNexus Code Intelligence
 
-GitNexus maintains a graph database of code symbols and relationships:
-
-```
-19,346 symbols · 25,022 relationships · 300 execution flows
-```
+GitNexus maintains a workspace-indexed graph of code symbols, relationships,
+and execution flows. Counts are runtime/index state and are intentionally not
+frozen in this architecture document.
 
 | Tool | Purpose |
 |------|---------|
@@ -399,7 +425,7 @@ GitNexus maintains a graph database of code symbols and relationships:
 | `rename` | Call-graph-aware multi-file rename |
 | `explain` | Taint analysis (source → sink flows) |
 
-### Scripts (53 Shell/Python Scripts)
+### Project-Owned Runtime Scripts
 
 | Category | Key Scripts |
 |----------|-------------|
@@ -419,12 +445,14 @@ All persistent project state lives under `.forgewright/` at the project root:
 |-----------------|-----------|---------|
 | `project-profile.json` | ✅ | Project fingerprint, health, patterns, risk |
 | `code-conventions.md` | ✅ | Detected coding patterns |
-| `session-log.json` | ❌ | Session history and resume state |
+| `runtime/continuity/{workspace}/{session}/` | ❌ | Hash-chained context-only checkpoints and quarantine |
+| `runtime/stop-attempts/` | ❌ | Hashed bounded Stop retry state; no response payloads |
+| `session-log.json` | ❌ | Legacy session context; not resume or completion authority |
 | `quality-history.json` | ❌ | Quality score trending |
 | `quality-report-{session}.json` | ❌ | Per-session quality reports |
 | `baseline-{session}.json` | ❌ | Brownfield test baselines |
 | `change-manifest-{session}.json` | ❌ | File change tracking |
-| `memory-bank/` | Mixed | Persistent memory (activeContext, handover, persona) |
+| `memory-bank/` | Mixed | Optional legacy context (activeContext, handover, persona) |
 | `verify/{turn}.json` | ❌ | Evidence files for Lite kernel verification |
 | `offload/{session}/refs/` | ❌ | Offloaded large tool outputs |
 | `mcp-server/` | ❌ | Generated MCP server files |
@@ -439,14 +467,16 @@ All persistent project state lives under `.forgewright/` at the project root:
 
 ---
 
-## Pipeline Flow
+## Pipeline Flow and Exit Boundaries
 
-The full production pipeline follows 6 phases with 3 approval gates:
+The delivery model has six canonical phases. Work is proportional: phases and
+approval gates apply only when the scope/risk requires them, while verification
+and Stop-loop bounds remain machine-enforced on the canonical hook path.
 
 <section class="architecture-diagram architecture-pipeline" aria-labelledby="diagram-pipeline-title">
   <details class="diagram-description">
-    <summary id="diagram-pipeline-title">Pipeline Flow</summary>
-    <p>A sequence of 6 phases (Interpret, Define, Build, Harden, Ship, Sustain) separated by 3 Approval Gates, with an ASIP Loop for self-healing when Gate 2 fails.</p>
+    <summary id="diagram-pipeline-title">Canonical Delivery and Verification Flow</summary>
+    <p>Six delivery phases feed schema-v2 evidence and one canonical Stop replay. Invalid completion can request a bounded retry without manufacturing verified state.</p>
   </details>
   <ol class="pipeline-list">
     <li class="pipeline-step"><div class="step-box node-start">User Request</div></li>
@@ -480,15 +510,15 @@ The full production pipeline follows 6 phases with 3 approval gates:
     </li>
     <li class="pipeline-step gate-step">
       <div class="gate-box">═══ GATE 2 ═══</div>
-      <aside class="step-annotation">Quality gate (score &ge; threshold)</aside>
+      <aside class="step-annotation">Material behavior has current executable evidence</aside>
     </li>
     <li class="pipeline-retry">
       <aside class="retry-loop">
-        <p>Score &lt; threshold?</p>
+        <p>Schema-v2 evidence + strict response correlation</p>
         <div class="step-box asip-box">
-          <strong>ASIP Loop</strong>
+          <strong>Canonical Stop Gate</strong>
         </div>
-        <p class="retry-annotation">Self-healing: decay edges, research, re-plan</p>
+        <p class="retry-annotation">One replay per Stop; up to two distinct invalid attempts per scope; duplicate/budget exhaustion allows host stop but stays UNVERIFIED</p>
       </aside>
     </li>
     <li class="pipeline-step">
@@ -511,6 +541,37 @@ The full production pipeline follows 6 phases with 3 approval gates:
   </ol>
 </section>
 
+### Loop Boundaries and Exit Conditions
+
+<section class="architecture-diagram architecture-flow" aria-labelledby="diagram-loop-boundaries-title">
+  <details class="diagram-description">
+    <summary id="diagram-loop-boundaries-title">Loop Boundaries and Exit Conditions</summary>
+    <p>Independent caps prevent Stop hooks, tool execution, model calls, peer exchange, and failure recovery from recursively extending one another.</p>
+  </details>
+  <ol class="flow-list">
+    <li class="flow-step">
+      <div class="step-box"><strong>Stop hook</strong><br>1 canonical replay per event<br>2 invalid attempts per session/turn/tree scope</div>
+      <aside class="step-annotation">Duplicate/budget exhaustion: host may stop; completion remains unverified</aside>
+    </li>
+    <li class="flow-step">
+      <div class="step-box"><strong>Agent runtime</strong><br>8 tool calls per turn<br>40 total tool calls<br>3600s default runtime</div>
+      <aside class="step-annotation">Environment overrides remain bounded positive integers</aside>
+    </li>
+    <li class="flow-step">
+      <div class="step-box"><strong>STUCK rule</strong><br>Same step fails twice</div>
+      <aside class="step-annotation">Isolate, find evidence, reset/escalate; no third blind retry</aside>
+    </li>
+    <li class="flow-step">
+      <div class="step-box"><strong>Lifecycle</strong><br>Startup reconciliation<br>exact-PID TERM then bounded KILL</div>
+      <aside class="step-annotation">Dead lease closes without signal; identity/command/owner/in-flight mismatch preserves the process</aside>
+    </li>
+    <li class="flow-step">
+      <div class="step-box"><strong>Continuity</strong><br>Material events only<br>64 KiB checkpoint cap</div>
+      <aside class="step-annotation">Head or full-chain mismatch, corruption, or expiry exits to fresh re-grounding</aside>
+    </li>
+  </ol>
+</section>
+
 ---
 
 ## Cross-Layer Interactions
@@ -524,8 +585,8 @@ The full production pipeline follows 6 phases with 3 approval gates:
 5. **Layer 5 (Runtime):** GitNexus `impact()` on auth-related symbols
 6. **Layer 3 (Capabilities):** Software Engineer executes code changes
 7. **Layer 4 (Controls):** Quality Gate scores output, Guardrail checks for hardcoded secrets
-8. **Layer 2 (Kernel):** VERIFY block proves tests pass → AUDIT covers all requirements
-9. **Layer 4 (Controls):** Memory saves decision ("auth: JWT with refresh token rotation")
+8. **Layer 2 (Kernel):** Schema-v2 evidence binds exact tests/tree → AUDIT covers requirements
+9. **Layer 4 (Controls):** A material boundary may write a context-only continuity checkpoint; a later session must re-ground it
 
 ### Parallel Dispatch
 
@@ -568,4 +629,4 @@ The architecture is governed by the [10 Principles](../VISION.md), summarized:
 
 ---
 
-*Last updated: 2026-07-09*
+*Last updated: 2026-08-23*

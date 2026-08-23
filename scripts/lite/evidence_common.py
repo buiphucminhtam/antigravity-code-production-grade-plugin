@@ -45,6 +45,7 @@ _FINGERPRINT_RUNTIME_DIRS = frozenset(
         ".forgewright/local-ci-venv",
         ".forgewright/memory-bank",
         ".forgewright/metrics",
+        ".forgewright/runtime",
         ".forgewright/subagent-context",
         ".forgewright/telemetry",
         ".forgewright/verify",

@@ -513,7 +513,8 @@ jsonc_parser_module() {
     for candidate in \
         "${CANONICAL_STAGE_DIR:-}/node_modules/jsonc-parser" \
         "$CANONICAL_SERVER_DIR/node_modules/jsonc-parser" \
-        "$FORGEWRIGHT_DIR/mcp/node_modules/jsonc-parser"; do
+        "$FORGEWRIGHT_DIR/mcp/node_modules/jsonc-parser" \
+        "$FORGEWRIGHT_DIR/node_modules/jsonc-parser"; do
         if [[ -n "$candidate" ]] && [[ -f "$candidate/lib/umd/main.js" ]]; then
             printf '%s\n' "$candidate"
             return 0

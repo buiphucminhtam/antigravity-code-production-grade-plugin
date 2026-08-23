@@ -1,29 +1,240 @@
 {
-  "schema": "forgewright-roadmap-completion/v1",
+  "schema": "forgewright-roadmap-completion/v2",
   "scope": "zero-cost local implementation and verification",
-  "completion_rule": "A deliverable is complete when its implementation, deterministic local evidence, and rollback strategy are present. Provider-native activation is a separate gate and is never inferred from fixtures or local CLI probes.",
+  "completion_rule": "Implementation, integration, activation, production evidence, and measured outcome are independent axes. No single axis completes another. Every local evidence claim must be replayed by its exact argv through the declared report producer. Provider-native activation is a separate gate and is never inferred from fixtures or local CLI probes.",
+  "axis_definitions": {
+    "implementation": "Whether the declared artifact exists: done, partial, or missing.",
+    "integration": "Whether the artifact is on the canonical path, partially connected, isolated, or not applicable.",
+    "activation": "Where the capability is enabled; this does not prove production use or outcomes.",
+    "production_evidence": "Whether current production/provider evidence exists, is missing, or is not required for the bounded local claim.",
+    "outcome": "Whether the stated result is measured, only met locally, partial, unmeasured, or not met."
+  },
   "deliverables": [
-    {"id":"P0.1","status":"implemented","activation":"local","evidence":["docs/adr/0001-canonical-production-runtime.md","tests/unit_tests/test_product_truth.py"],"rollback":"Revert the runtime ADR/manifest change and rerun the product-truth verifier."},
-    {"id":"P0.2","status":"implemented","activation":"local","evidence":["product-manifest.json","scripts/ci/verify-product-truth.py","tests/unit_tests/test_product_truth.py"],"rollback":"Restore the previous manifest and regenerate only derived truth documents."},
-    {"id":"P0.3","status":"implemented","activation":"opt-in","evidence":["docs/adr/ADR-008-live-runtime-smoke.md","scripts/ci/verify-runtime-smoke.mjs"],"rollback":"Disable the opt-in smoke environment and retain deterministic runtime tests."},
-    {"id":"P0.4","status":"implemented","activation":"local","evidence":["evals/routing/evaluate.py","tests/unit_tests/test_routing_eval.py"],"rollback":"Reject incompatible reports and restore the previous versioned evaluator contract."},
-    {"id":"P0.5","status":"implemented","activation":"local","evidence":["README.md","tests/unit_tests/test_product_truth.py"],"rollback":"Revert claim wording only after the product-truth tests accept the replacement."},
-
-    {"id":"P1.1","status":"implemented","activation":"library-only","evidence":["mcp/src/runtime/model-call-gateway.ts","mcp/src/runtime/model-call-gateway.test.ts"],"rollback":"Remove gateway wiring while keeping the canonical MCP runtime operational."},
-    {"id":"P1.2","status":"implemented","activation":"canonical-mcp","evidence":["mcp/src/runtime/tool-execution-gateway.ts","mcp/src/runtime/tool-execution-gateway.test.ts"],"rollback":"Restore direct registered-tool dispatch and rerun the gateway regression suite."},
-    {"id":"P1.3","status":"implemented","activation":"canonical-mcp","evidence":["mcp/src/middleware/context-offload.ts","mcp/src/middleware/context-offload.test.ts","mcp/src/runtime/tool-execution-gateway.test.ts"],"rollback":"Disable cache/offload hooks and return bounded direct tool results."},
-    {"id":"P1.4","status":"implemented","activation":"library-only","evidence":["mcp/src/runtime/model-call-gateway.ts","mcp/src/runtime/model-call-gateway.test.ts"],"rollback":"Disable model invocation when reservations cannot be enforced; never bypass budgets."},
-    {"id":"P1.5","status":"implemented","activation":"canonical-mcp","evidence":["mcp/src/state/pipeline-manager.ts","mcp/src/state/pipeline-manager.test.ts"],"rollback":"Restore the last valid state snapshot and retain fail-closed writes."},
-
-    {"id":"P2.1","status":"implemented","activation":"local","evidence":["evals/routing/corpus.py","tests/unit_tests/test_routing_eval.py"],"rollback":"Restore the frozen corpus fingerprint and reject drifted reports."},
-    {"id":"P2.2","status":"implemented","activation":"not-enabled","evidence":["evals/routing/live_evidence.py","tests/unit_tests/test_live_routing_evidence.py","evals/routing/providers/cli.py"],"rollback":"Keep adaptive routing disabled and discard non-native receipts."},
-    {"id":"P2.3","status":"implemented","activation":"not-enabled","evidence":["evals/routing/control_plane.py","tests/unit_tests/test_routing_control_plane.py"],"rollback":"Fail closed to the strong-model route when canary gates lack valid evidence."},
-    {"id":"P2.4","status":"implemented","activation":"not-enabled","evidence":["evals/routing/control_plane.py","tests/unit_tests/test_routing_control_plane.py"],"rollback":"Disable rollout and restore the last accepted provider-native policy snapshot."},
-    {"id":"P2.5","status":"implemented","activation":"not-enabled","evidence":["evals/routing/control_plane.py","tests/unit_tests/test_routing_control_plane.py"],"rollback":"Disable paid review routing when avoided-defect evidence does not exceed cost."},
-
-    {"id":"P3.1","status":"implemented","activation":"local","evidence":["scripts/ci/local-ci.py","scripts/ci/local-ci.mjs","scripts/ci/run-required-checks.sh","tests/unit_tests/test_ci_workflow.py","tests/unit_tests/test_local_ci.py"],"rollback":"Stop release on any local aggregate-gate failure; hosted CI is not part of the canonical execution path."},
-    {"id":"P3.2","status":"implemented","activation":"local","evidence":["scripts/ci/release-supply-chain-policy.mjs","scripts/ci/release-supply-chain-policy.test.mjs","scripts/ci/verify-supply-chain-policy.mjs","scripts/ci/verify-rollback-rehearsal.mjs"],"rollback":"Run the rollback rehearsal and do not publish artifacts or workflows that fail policy verification."},
-    {"id":"P3.3","status":"implemented","activation":"local","evidence":["docs/adr/ADR-006-cli-init-onboard-golden-path.md","tests/golden/forge-init-onboard.test.mjs"],"rollback":"Remove generated project metadata or restore preserved pre-existing files."},
-    {"id":"P3.4","status":"implemented","activation":"local","evidence":["docs/capability-maturity.json","tests/unit_tests/test_capability_maturity.py"],"rollback":"Downgrade unsupported maturity labels and rerun every declared verification command."}
+    {
+      "id": "P0.1", "implementation": "done", "integration": "canonical", "activation": "local", "production_evidence": "missing", "outcome": "partially-met",
+      "evidence": ["docs/adr/0001-canonical-production-runtime.md", "tests/unit_tests/test_product_truth.py"],
+      "verification": {
+        "command": ["python3", "-m", "pytest", "-q", "tests/unit_tests/test_product_truth.py::test_valid_product_truth_fixture_passes", "tests/unit_tests/test_product_truth.py::test_version_drift_has_clear_error"], "timeout_seconds": 120,
+        "acceptance_ids": ["P0.1-canonical-runtime-contract"],
+        "test_refs": ["tests/unit_tests/test_product_truth.py::test_valid_product_truth_fixture_passes", "tests/unit_tests/test_product_truth.py::test_version_drift_has_clear_error"],
+        "negative_paths": [{"id": "P0.1-product-version-drift", "claim": "product truth drift is rejected", "test_refs": ["tests/unit_tests/test_product_truth.py::test_version_drift_has_clear_error"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Revert the runtime ADR/manifest change and rerun the product-truth verifier."
+    },
+    {
+      "id": "P0.2", "implementation": "done", "integration": "canonical", "activation": "local", "production_evidence": "not-required", "outcome": "met-locally",
+      "evidence": ["product-manifest.json", "scripts/ci/verify-product-truth.py", "tests/unit_tests/test_product_truth.py"],
+      "verification": {
+        "command": ["python3", "-m", "pytest", "-q", "tests/unit_tests/test_product_truth.py::test_valid_product_truth_fixture_passes", "tests/unit_tests/test_product_truth.py::test_skill_inventory_drift_has_clear_error"], "timeout_seconds": 120,
+        "acceptance_ids": ["P0.2-product-truth-gate"],
+        "test_refs": ["tests/unit_tests/test_product_truth.py::test_valid_product_truth_fixture_passes", "tests/unit_tests/test_product_truth.py::test_skill_inventory_drift_has_clear_error"],
+        "negative_paths": [{"id": "P0.2-skill-inventory-drift", "claim": "missing declared skill evidence is rejected", "test_refs": ["tests/unit_tests/test_product_truth.py::test_skill_inventory_drift_has_clear_error"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Restore the previous manifest and regenerate only derived truth documents."
+    },
+    {
+      "id": "P0.3", "implementation": "done", "integration": "partial", "activation": "opt-in", "production_evidence": "missing", "outcome": "partially-met",
+      "evidence": ["docs/adr/ADR-008-live-runtime-smoke.md", "scripts/ci/verify-runtime-smoke.mjs", "tests/golden/runtime-smoke.test.mjs"],
+      "verification": {
+        "command": ["node", "tests/golden/runtime-smoke.test.mjs", "--skip-build"], "timeout_seconds": 180,
+        "acceptance_ids": ["P0.3-bounded-runtime-smoke"], "test_refs": ["tests/golden/runtime-smoke.test.mjs"],
+        "negative_paths": [{"id": "P0.3-live-smoke-without-authorization", "claim": "live provider smoke is rejected without explicit opt-in", "test_refs": ["tests/golden/runtime-smoke.test.mjs"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Disable the opt-in smoke environment and retain deterministic runtime tests."
+    },
+    {
+      "id": "P0.4", "implementation": "done", "integration": "canonical", "activation": "local", "production_evidence": "missing", "outcome": "partially-met",
+      "evidence": ["evals/routing/evaluate.py", "tests/unit_tests/test_routing_eval.py"],
+      "verification": {
+        "command": ["python3", "-m", "pytest", "-q", "tests/unit_tests/test_routing_eval.py::test_perfect_router_has_no_under_routing", "tests/unit_tests/test_routing_eval.py::test_missing_and_duplicate_decisions_fail_closed"], "timeout_seconds": 120,
+        "acceptance_ids": ["P0.4-schema-v2-routing-eval"],
+        "test_refs": ["tests/unit_tests/test_routing_eval.py::test_perfect_router_has_no_under_routing", "tests/unit_tests/test_routing_eval.py::test_missing_and_duplicate_decisions_fail_closed"],
+        "negative_paths": [{"id": "P0.4-incomplete-decisions", "claim": "missing or duplicate routing decisions fail closed", "test_refs": ["tests/unit_tests/test_routing_eval.py::test_missing_and_duplicate_decisions_fail_closed"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Reject incompatible reports and restore the previous versioned evaluator contract."
+    },
+    {
+      "id": "P0.5", "implementation": "partial", "integration": "canonical", "activation": "local", "production_evidence": "not-required", "outcome": "partially-met",
+      "evidence": ["README.md", "tests/unit_tests/test_product_truth.py"],
+      "verification": {
+        "command": ["python3", "-m", "pytest", "-q", "tests/unit_tests/test_product_truth.py::test_product_overview_drift_has_clear_error", "tests/unit_tests/test_product_truth.py::test_conflicting_skill_count_is_rejected"], "timeout_seconds": 120,
+        "acceptance_ids": ["P0.5-qualified-public-claims"],
+        "test_refs": ["tests/unit_tests/test_product_truth.py::test_product_overview_drift_has_clear_error", "tests/unit_tests/test_product_truth.py::test_conflicting_skill_count_is_rejected"],
+        "negative_paths": [{"id": "P0.5-conflicting-public-count", "claim": "a conflicting public capability count is rejected", "test_refs": ["tests/unit_tests/test_product_truth.py::test_conflicting_skill_count_is_rejected"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Revert claim wording only after the product-truth tests accept the replacement."
+    },
+    {
+      "id": "P1.1", "implementation": "done", "integration": "isolated", "activation": "library-only", "production_evidence": "missing", "outcome": "partially-met",
+      "evidence": ["mcp/src/runtime/model-call-gateway.ts", "mcp/src/runtime/model-call-gateway.test.ts"],
+      "verification": {
+        "command": ["npm", "--prefix", "mcp", "test", "--", "src/runtime/model-call-gateway.test.ts"], "timeout_seconds": 180,
+        "acceptance_ids": ["P1.1-model-call-gateway-foundation"],
+        "test_refs": ["mcp/src/runtime/model-call-gateway.test.ts#routes by risk and records usage_unavailable without recording prompts", "mcp/src/runtime/model-call-gateway.test.ts#fails closed when no expert capability is available for high-risk work"],
+        "negative_paths": [{"id": "P1.1-no-expert-capability", "claim": "high-risk routing fails closed when no expert capability exists", "test_refs": ["mcp/src/runtime/model-call-gateway.test.ts#fails closed when no expert capability is available for high-risk work"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Remove gateway wiring while keeping the canonical MCP runtime operational."
+    },
+    {
+      "id": "P1.2", "implementation": "done", "integration": "partial", "activation": "canonical-mcp", "production_evidence": "missing", "outcome": "partially-met",
+      "evidence": ["mcp/src/runtime/tool-execution-gateway.ts", "mcp/src/runtime/tool-execution-gateway.test.ts"],
+      "verification": {
+        "command": ["npm", "--prefix", "mcp", "test", "--", "src/runtime/tool-execution-gateway.test.ts"], "timeout_seconds": 180,
+        "acceptance_ids": ["P1.2-tool-execution-gateway"],
+        "test_refs": ["mcp/src/runtime/tool-execution-gateway.test.ts#authorizes then traverses middleware to sanitize, cap, offload, verify, and emit safe telemetry", "mcp/src/runtime/tool-execution-gateway.test.ts#preserves authorization and blocks a later policy denial with telemetry"],
+        "negative_paths": [{"id": "P1.2-policy-denial", "claim": "a later tool policy denial blocks execution and emits telemetry", "test_refs": ["mcp/src/runtime/tool-execution-gateway.test.ts#preserves authorization and blocks a later policy denial with telemetry"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Restore direct registered-tool dispatch and rerun the gateway regression suite."
+    },
+    {
+      "id": "P1.3", "implementation": "done", "integration": "canonical", "activation": "canonical-mcp", "production_evidence": "missing", "outcome": "met-locally",
+      "evidence": ["mcp/src/middleware/context-offload.ts", "mcp/src/middleware/context-offload.test.ts", "mcp/src/runtime/tool-execution-gateway.test.ts"],
+      "verification": {
+        "command": ["npm", "--prefix", "mcp", "test", "--", "src/middleware/context-offload.test.ts", "src/runtime/tool-execution-gateway.test.ts"], "timeout_seconds": 180,
+        "acceptance_ids": ["P1.3-bounded-context-offload"],
+        "test_refs": ["mcp/src/middleware/context-offload.test.ts#offloads large sanitized tool output to JSONL and raw refs", "mcp/src/runtime/tool-execution-gateway.test.ts#uses session-scoped epochs to invalidate only successful canonical mutations"],
+        "negative_paths": [{"id": "P1.3-failed-mutation-cache", "claim": "a failed mutation cannot advance the cache epoch", "test_refs": ["mcp/src/runtime/tool-execution-gateway.test.ts#uses session-scoped epochs to invalidate only successful canonical mutations"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Disable cache/offload hooks and return bounded direct tool results."
+    },
+    {
+      "id": "P1.4", "implementation": "done", "integration": "isolated", "activation": "library-only", "production_evidence": "missing", "outcome": "partially-met",
+      "evidence": ["mcp/src/runtime/model-call-gateway.ts", "mcp/src/runtime/model-call-gateway.test.ts"],
+      "verification": {
+        "command": ["npm", "--prefix", "mcp", "test", "--", "src/runtime/model-call-gateway.test.ts"], "timeout_seconds": 180,
+        "acceptance_ids": ["P1.4-atomic-budget-reservations"],
+        "test_refs": ["mcp/src/runtime/model-call-gateway.test.ts#atomically reserves budget before simultaneous provider calls with no deterministic overshoot", "mcp/src/runtime/model-call-gateway.test.ts#checks budgets before calls at warning, authority, fail-closed, and explicit override thresholds"],
+        "negative_paths": [{"id": "P1.4-budget-without-authority", "claim": "a call above the authority threshold is rejected without authorization", "test_refs": ["mcp/src/runtime/model-call-gateway.test.ts#checks budgets before calls at warning, authority, fail-closed, and explicit override thresholds"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Disable model invocation when reservations cannot be enforced; never bypass budgets."
+    },
+    {
+      "id": "P1.5", "implementation": "done", "integration": "canonical", "activation": "canonical-mcp", "production_evidence": "missing", "outcome": "met-locally",
+      "evidence": ["mcp/src/infrastructure/adapters/FileSystemStateRepository.ts", "mcp/src/infrastructure/adapters/FileSystemStateRepository.test.ts", "mcp/src/core/services/PipelineService.ts", "mcp/src/core/services/PipelineService.test.ts"],
+      "verification": {
+        "command": ["npm", "--prefix", "mcp", "test", "--", "src/infrastructure/adapters/FileSystemStateRepository.test.ts", "src/core/services/PipelineService.test.ts"], "timeout_seconds": 180,
+        "acceptance_ids": ["P1.5-fail-closed-state-transactions"],
+        "test_refs": ["mcp/src/infrastructure/adapters/FileSystemStateRepository.test.ts#serializes same-process transactions without losing read-modify-write updates", "mcp/src/core/services/PipelineService.test.ts#never publishes an event when its repository transaction rejects"],
+        "negative_paths": [{"id": "P1.5-rejected-transaction", "claim": "a rejected repository transaction publishes no state event", "test_refs": ["mcp/src/core/services/PipelineService.test.ts#never publishes an event when its repository transaction rejects"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Restore the last valid state snapshot and retain fail-closed writes."
+    },
+    {
+      "id": "P2.1", "implementation": "done", "integration": "canonical", "activation": "local", "production_evidence": "not-required", "outcome": "met-locally",
+      "evidence": ["evals/routing/corpus.py", "tests/unit_tests/test_routing_eval.py"],
+      "verification": {
+        "command": ["python3", "-m", "pytest", "-q", "tests/unit_tests/test_routing_eval.py::test_corpus_has_100_unique_balanced_tasks", "tests/unit_tests/test_routing_eval.py::test_corpus_fingerprint_is_frozen"], "timeout_seconds": 120,
+        "acceptance_ids": ["P2.1-frozen-routing-corpus"],
+        "test_refs": ["tests/unit_tests/test_routing_eval.py::test_corpus_has_100_unique_balanced_tasks", "tests/unit_tests/test_routing_eval.py::test_corpus_fingerprint_is_frozen"],
+        "negative_paths": [{"id": "P2.1-corpus-fingerprint-drift", "claim": "routing corpus fingerprint drift is rejected", "test_refs": ["tests/unit_tests/test_routing_eval.py::test_corpus_fingerprint_is_frozen"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Restore the frozen corpus fingerprint and reject drifted reports."
+    },
+    {
+      "id": "P2.2", "implementation": "done", "integration": "isolated", "activation": "not-enabled", "production_evidence": "missing", "outcome": "not-measured",
+      "evidence": ["evals/routing/live_evidence.py", "tests/unit_tests/test_live_routing_evidence.py", "evals/routing/providers/cli.py"],
+      "verification": {
+        "command": ["python3", "-m", "pytest", "-q", "tests/unit_tests/test_live_routing_evidence.py::test_canary_runner_produces_attested_gate_accepted_receipt", "tests/unit_tests/test_live_routing_evidence.py::test_runner_is_opt_in_and_fails_closed_on_metadata_drift"], "timeout_seconds": 120,
+        "acceptance_ids": ["P2.2-provider-adapter-evidence-contract"],
+        "test_refs": ["tests/unit_tests/test_live_routing_evidence.py::test_canary_runner_produces_attested_gate_accepted_receipt", "tests/unit_tests/test_live_routing_evidence.py::test_runner_is_opt_in_and_fails_closed_on_metadata_drift"],
+        "negative_paths": [{"id": "P2.2-metadata-drift", "claim": "live evidence metadata drift fails closed", "test_refs": ["tests/unit_tests/test_live_routing_evidence.py::test_runner_is_opt_in_and_fails_closed_on_metadata_drift"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Keep adaptive routing disabled and discard non-native receipts."
+    },
+    {
+      "id": "P2.3", "implementation": "done", "integration": "isolated", "activation": "not-enabled", "production_evidence": "missing", "outcome": "not-measured",
+      "evidence": ["evals/routing/control_plane.py", "tests/unit_tests/test_routing_control_plane.py"],
+      "verification": {
+        "command": ["python3", "-m", "pytest", "-q", "tests/unit_tests/test_routing_control_plane.py::test_canary_requires_exactly_ten_percent_and_zero_quality_drop", "tests/unit_tests/test_routing_control_plane.py::test_rejects_non_live_or_unbalanced_canary_evidence"], "timeout_seconds": 120,
+        "acceptance_ids": ["P2.3-stratified-canary-gate"],
+        "test_refs": ["tests/unit_tests/test_routing_control_plane.py::test_canary_requires_exactly_ten_percent_and_zero_quality_drop", "tests/unit_tests/test_routing_control_plane.py::test_rejects_non_live_or_unbalanced_canary_evidence"],
+        "negative_paths": [{"id": "P2.3-non-live-canary", "claim": "non-live or unbalanced canary evidence is rejected", "test_refs": ["tests/unit_tests/test_routing_control_plane.py::test_rejects_non_live_or_unbalanced_canary_evidence"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Fail closed to the strong-model route when canary gates lack valid evidence."
+    },
+    {
+      "id": "P2.4", "implementation": "done", "integration": "isolated", "activation": "not-enabled", "production_evidence": "missing", "outcome": "not-measured",
+      "evidence": ["evals/routing/control_plane.py", "tests/unit_tests/test_routing_control_plane.py"],
+      "verification": {
+        "command": ["python3", "-m", "pytest", "-q", "tests/unit_tests/test_routing_control_plane.py::test_rollout_and_independent_review_thresholds_are_mechanical", "tests/unit_tests/test_routing_control_plane.py::test_rollout_rejects_inconsistent_escalation_and_review_evidence"], "timeout_seconds": 120,
+        "acceptance_ids": ["P2.4-rollout-gate"],
+        "test_refs": ["tests/unit_tests/test_routing_control_plane.py::test_rollout_and_independent_review_thresholds_are_mechanical", "tests/unit_tests/test_routing_control_plane.py::test_rollout_rejects_inconsistent_escalation_and_review_evidence"],
+        "negative_paths": [{"id": "P2.4-inconsistent-escalation", "claim": "inconsistent escalation and review evidence blocks rollout", "test_refs": ["tests/unit_tests/test_routing_control_plane.py::test_rollout_rejects_inconsistent_escalation_and_review_evidence"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Disable rollout and restore the last accepted provider-native policy snapshot."
+    },
+    {
+      "id": "P2.5", "implementation": "done", "integration": "isolated", "activation": "not-enabled", "production_evidence": "missing", "outcome": "not-measured",
+      "evidence": ["evals/routing/control_plane.py", "tests/unit_tests/test_routing_control_plane.py"],
+      "verification": {
+        "command": ["python3", "-m", "pytest", "-q", "tests/unit_tests/test_routing_control_plane.py::test_review_must_be_individually_profitable_but_zero_reviews_is_allowed", "tests/unit_tests/test_routing_control_plane.py::test_rejects_missing_provenance_nonfinite_cost_and_under_routing"], "timeout_seconds": 120,
+        "acceptance_ids": ["P2.5-review-value-gate"],
+        "test_refs": ["tests/unit_tests/test_routing_control_plane.py::test_review_must_be_individually_profitable_but_zero_reviews_is_allowed", "tests/unit_tests/test_routing_control_plane.py::test_rejects_missing_provenance_nonfinite_cost_and_under_routing"],
+        "negative_paths": [{"id": "P2.5-missing-review-provenance", "claim": "missing provenance or non-finite cost evidence is rejected", "test_refs": ["tests/unit_tests/test_routing_control_plane.py::test_rejects_missing_provenance_nonfinite_cost_and_under_routing"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Disable paid review routing when avoided-defect evidence does not exceed cost."
+    },
+    {
+      "id": "P3.1", "implementation": "done", "integration": "canonical", "activation": "local", "production_evidence": "not-required", "outcome": "met-locally",
+      "evidence": ["scripts/ci/local-ci.py", "scripts/ci/local-ci.mjs", "scripts/ci/run-required-checks.sh", "scripts/ci/verify-roadmap-completion.py", "tests/unit_tests/test_ci_workflow.py", "tests/unit_tests/test_local_ci.py"],
+      "verification": {
+        "command": ["python3", "-m", "pytest", "-q", "tests/unit_tests/test_ci_workflow.py", "tests/unit_tests/test_local_ci.py::test_hosted_ci_is_not_a_canonical_runtime_dependency"], "timeout_seconds": 180,
+        "acceptance_ids": ["P3.1-provider-neutral-local-control-plane"],
+        "test_refs": ["tests/unit_tests/test_ci_workflow.py::test_ci_is_local_first_and_host_provider_neutral", "tests/unit_tests/test_local_ci.py::test_hosted_ci_is_not_a_canonical_runtime_dependency"],
+        "negative_paths": [{"id": "P3.1-hosted-runtime-dependency", "claim": "hosted CI cannot become a canonical runtime dependency", "test_refs": ["tests/unit_tests/test_local_ci.py::test_hosted_ci_is_not_a_canonical_runtime_dependency"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Stop release on any local aggregate-gate failure; hosted CI is not part of the canonical execution path."
+    },
+    {
+      "id": "P3.2", "implementation": "done", "integration": "canonical", "activation": "local", "production_evidence": "not-required", "outcome": "met-locally",
+      "evidence": ["scripts/ci/release-supply-chain-policy.mjs", "scripts/ci/release-supply-chain-policy.test.mjs", "scripts/ci/release-evidence-policy.test.mjs", "scripts/ci/verify-supply-chain-policy.mjs", "scripts/ci/verify-rollback-rehearsal.mjs"],
+      "verification": {
+        "command": ["node", "--test", "scripts/ci/release-supply-chain-policy.test.mjs", "scripts/ci/release-evidence-policy.test.mjs"], "timeout_seconds": 180,
+        "acceptance_ids": ["P3.2-release-supply-chain-policy"],
+        "test_refs": ["scripts/ci/release-supply-chain-policy.test.mjs#release contract requires a semver tag shared by MCP and CLI", "scripts/ci/release-supply-chain-policy.test.mjs#static policy rejects mutable actions, curl pipes, and unpinned tools", "scripts/ci/release-evidence-policy.test.mjs"],
+        "negative_paths": [{"id": "P3.2-mutable-release-dependency", "claim": "mutable actions and unpinned release tools are rejected", "test_refs": ["scripts/ci/release-supply-chain-policy.test.mjs#static policy rejects mutable actions, curl pipes, and unpinned tools"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Run the rollback rehearsal and do not publish artifacts or workflows that fail policy verification."
+    },
+    {
+      "id": "P3.3", "implementation": "done", "integration": "canonical", "activation": "local", "production_evidence": "missing", "outcome": "partially-met",
+      "evidence": ["docs/adr/ADR-006-cli-init-onboard-golden-path.md", "tests/golden/forge-init-onboard.test.mjs"],
+      "verification": {
+        "command": ["node", "tests/golden/forge-init-onboard.test.mjs"], "timeout_seconds": 600,
+        "acceptance_ids": ["P3.3-init-onboard-golden-path"], "test_refs": ["tests/golden/forge-init-onboard.test.mjs"],
+        "negative_paths": [{"id": "P3.3-missing-manifest", "claim": "onboarding without a project manifest fails closed", "test_refs": ["tests/golden/forge-init-onboard.test.mjs"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Remove generated project metadata or restore preserved pre-existing files."
+    },
+    {
+      "id": "P3.4", "implementation": "done", "integration": "canonical", "activation": "local", "production_evidence": "not-required", "outcome": "met-locally",
+      "evidence": ["docs/capability-maturity.json", "tests/unit_tests/test_capability_maturity.py"],
+      "verification": {
+        "command": ["python3", "-m", "pytest", "-q", "tests/unit_tests/test_capability_maturity.py"], "timeout_seconds": 600,
+        "acceptance_ids": ["P3.4-capability-maturity-inventory"],
+        "test_refs": ["tests/unit_tests/test_capability_maturity.py::test_every_readme_capability_has_maturity_and_existing_evidence", "tests/unit_tests/test_capability_maturity.py::test_non_core_domains_are_explicit_optional_packs"],
+        "negative_paths": [{"id": "P3.4-beta-without-verifier", "claim": "a beta capability without executable evidence is rejected", "test_refs": ["tests/unit_tests/test_capability_maturity.py::test_every_readme_capability_has_maturity_and_existing_evidence"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Downgrade unsupported maturity labels and rerun every declared verification command."
+    }
   ]
 }

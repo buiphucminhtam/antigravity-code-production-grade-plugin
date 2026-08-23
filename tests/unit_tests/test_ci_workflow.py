@@ -46,3 +46,29 @@ def test_docs_continuity_is_in_docs_ci_and_required_release_checks():
     assert "origin/main...HEAD" in required
     assert 'docs gate . --base-ref "$base_ref" --json' in required
     assert "docs gate . --worktree --json" in required
+
+
+def test_roadmap_evidence_verifier_is_in_required_release_checks():
+    package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
+    assert package["scripts"]["verify:roadmap"] == (
+        "python3 scripts/ci/verify-roadmap-completion.py"
+    )
+    required = REQUIRED_CHECKS.read_text(encoding="utf-8")
+    assert "run_required roadmap-completion-evidence npm run verify:roadmap" in required
+
+
+def test_harness_upgrade_regressions_are_explicit_required_checks():
+    required = REQUIRED_CHECKS.read_text(encoding="utf-8")
+    assert (
+        "run_required stop-gate-regression python3 -m pytest -q tests/lite/test_gate.py"
+        in required
+    )
+    assert (
+        "run_required continuity-regression python3 -m pytest -q "
+        "tests/unit_tests/test_continuity_checkpoint.py" in required
+    )
+    assert (
+        "run_required harness-lifecycle-contract npm --prefix mcp test -- "
+        "src/runtime/harness-adapter.test.ts src/runtime/lifecycle-lease.test.ts"
+        in required
+    )

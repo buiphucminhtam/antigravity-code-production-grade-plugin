@@ -168,20 +168,23 @@ echo -e "${BLUE}[6/6]${NC} Verifying recovered state..."
 # Test load_handover function by running a Python test script
 cd "$PROJECT_ROOT"
 TEST_RESULT=$(python3 - "$SESSION_DB" << 'PYEOF'
+import importlib.util
 import sys
 import os
 
 # Override paths for test
 os.environ["MEMORY_DB_DIR"] = sys.argv[1]
 
-# Read the module content and patch it
-module_content = open("scripts/memory-middleware.py").read()
-# Remove the main() call to prevent argparse from running
-module_content = module_content.replace("if __name__ == \"__main__\":", "if False:")
-exec(module_content)
+# Import the canonical module directly. Executing the migration shim would
+# resolve paths relative to the verifier process and would not exercise the
+# memory implementation under test.
+module_path = "scripts/memory/memory-middleware.py"
+spec = importlib.util.spec_from_file_location("forgewright_memory_middleware", module_path)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
 
 # Test load_handover
-handover = load_handover()
+handover = module.load_handover()
 if handover:
     if "raw" in handover and "Handover Document" in handover["raw"]:
         print("RECOVERED")
