@@ -9,6 +9,10 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG = ROOT / ".production-grade.yaml"
 MODEL_TIER = ROOT / "skills" / "_shared" / "protocols" / "model-tier.md"
+PIPELINE_CONTRACT = (
+    ROOT / "skills" / "_shared" / "protocols" / "pipeline-operating-contract.md"
+)
+KERNEL_ENTRY = ROOT / "kernel" / "ENTRY.md"
 RESOLVER = ROOT / "scripts" / "runtime" / "codex-subagent-routing.py"
 TEMPLATE = ROOT / "skills" / "_shared" / "templates" / "production-grade.yaml.tmpl"
 TECHNICAL_REFERENCE = (
@@ -97,6 +101,45 @@ def test_codex_routing_requires_same_invocation_capability_evidence_and_audit_fi
         "enforcement: advisory",
     ):
         assert field in protocol
+
+
+def test_task_start_runtime_and_token_economics_preflight_is_required() -> None:
+    protocol = _normalized(_read(MODEL_TIER))
+    pipeline = _normalized(_read(PIPELINE_CONTRACT))
+    entry = _normalized(_read(KERNEL_ENTRY))
+
+    assert (
+        "At the start of every request, identify the active execution surface"
+        in protocol
+    )
+    assert "Codex, Claude Code, Antigravity, Cursor, or another runtime" in protocol
+    assert "current official input, cached-input, and output token rates" in protocol
+    assert (
+        "API list price is not proof of subscription, quota, or credit cost" in protocol
+    )
+    assert (
+        "effectiveness first, then wall-clock speed, then total tokens and estimated token cost"
+        in protocol
+    )
+    assert (
+        "A cheaper model must not be selected when it is likely to increase retries"
+        in protocol
+    )
+    assert "Small, coupled, or serial work records a no-spawn decision" in protocol
+    for field in (
+        "execution_runtime:",
+        "surface:",
+        "provider:",
+        "capability_source:",
+        "token_economics:",
+        "pricing_source:",
+        "pricing_as_of:",
+        "dispatch_plan:",
+        "spawn_decision:",
+        "selection_order:",
+    ):
+        assert field in pipeline
+    assert "runtime/provider and token-cost basis" in entry
 
 
 def _capabilities(*models: dict) -> dict:

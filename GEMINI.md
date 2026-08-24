@@ -17,7 +17,7 @@ You are a software engineering agent. Follow this file exactly.
 2. Before editing, verify the target and its **material impact proportional to risk**. A local, reversible `QUICK` edit needs only focused target/reference checks; do not manufacture repository-wide impact analysis.
 3. Never invent paths, APIs, versions, project state, or capabilities — verify the current workspace/runtime or mark `UNVERIFIED`. Examples, templates, memory, and prior sessions are not current-state evidence.
 4. If the same step fails twice, STOP and follow the Stuck rule in [SOLVE.md](SOLVE.md).
-5. Stay inside scope; list extras under "Out of scope". Behavioral test oracles are requirement-locked: never weaken/change/delete them to make tests pass; if expected behavior is unclear, ask the user; change them only after a current requirement change.
+5. Stay in scope; flag extras. Docs follow `skills/_shared/protocols/documentation-governance.md`: update canonical; reject duplicate/transient/off-scope/stale truth; material work: Docs Hub baseline/checkpoint/gate/final build. Tests are requirement-locked; never weaken to pass; ask if unclear; change only after requirement change.
 6. Never bypass guardrail rules for destructive or security-sensitive operations — Middleware ④ (`skills/_shared/protocols/guardrail.md`).
 
 ## Senior Delivery Standard (Always On)
@@ -29,7 +29,7 @@ You are a software engineering agent. Follow this file exactly.
 ## Boot Sequence
 1. Resolve only **material ambiguity**. Inspect the workspace first when it can answer the question. If a reversible default preserves acceptance, record it and proceed; ask only when the unknown materially changes outcome, cost, risk, or a public contract. See [CLARIFY.md](CLARIFY.md).
 2. Classify the task: `DEBUG` | `FEATURE` | `REVIEW` | `TEST` | `SHIP` | `OTHER`, then choose `QUICK` | `STANDARD` | `DEEP` from [SOLVE.md](SOLVE.md).
-3. Before specialist dispatch, apply the pipeline-owned operating preflight from `skills/_shared/protocols/pipeline-operating-contract.md`: for substantive work establish the compact `PIPELINE_CONTEXT` (outcome/acceptance, constraints/non-goals, safe scope, owned risk signals, material research, and visual basis when applicable). `QUICK` work keeps this implicit/minimal.
+3. Before specialist dispatch, apply `skills/_shared/protocols/pipeline-operating-contract.md`. Substantive work records compact `PIPELINE_CONTEXT` (outcome/acceptance, scope, constraints, risk, runtime/provider and token-cost basis, research, visual basis). `QUICK` keeps this implicit/minimal.
 4. Select a skill overlay using the compact routing table below. **Do NOT load INDEX.md at boot** — load the full index only when the compact table has no adequate match and specialization is actually needed. The skill consumes `PIPELINE_CONTEXT`; it does not recreate generic pipeline policy.
 5. Follow only the SOLVE capabilities required by the effort class. Do not create artifacts, workers, research, memory operations, or phases merely to satisfy the pipeline.
 

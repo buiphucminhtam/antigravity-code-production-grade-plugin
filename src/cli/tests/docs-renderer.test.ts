@@ -278,6 +278,22 @@ describe("Docs Hub static presentation", () => {
     expect(readFileSync(join(output, "app.js"), "utf8")).toContain(
       "search-index.json",
     );
+    expect(readFileSync(join(output, "app.js"), "utf8")).toContain(
+      "showing the complete static list",
+    );
+    expect(readFileSync(join(output, "app.js"), "utf8")).toContain("safeHref");
+    expect(readFileSync(join(output, "app.js"), "utf8")).toContain(
+      "escapeHtml(safeHref(d.route))",
+    );
+    expect(readFileSync(join(output, "search.html"), "utf8")).toContain(
+      "data-project-filter",
+    );
+    expect(readFileSync(join(output, "search.html"), "utf8")).toContain(
+      "data-type-filter",
+    );
+    expect(readFileSync(join(output, "search.html"), "utf8")).toContain(
+      "data-truth-filter",
+    );
     expect(readFileSync(join(output, "404.html"), "utf8")).toContain(
       "Page not found",
     );
@@ -299,18 +315,47 @@ describe("Docs Hub static presentation", () => {
       ).length,
     ).toBe(1);
     expect(result.files.length).toBeGreaterThan(5);
-    expect(
-      JSON.parse(readFileSync(result.searchIndex, "utf8")).documents,
-    ).toHaveLength(1);
+    const searchDocuments = JSON.parse(
+      readFileSync(result.searchIndex, "utf8"),
+    ).documents;
+    expect(searchDocuments).toHaveLength(1);
+    expect(searchDocuments[0]).toMatchObject({
+      sourceOfTruth: true,
+      status: null,
+    });
     expect(apiResult.projects[0]?.id).toBe("demo");
     expect(apiResult.filesWritten).toBeGreaterThan(5);
   });
-  it("renders project intelligence sections, values, safe refs, and empty states", () => {
+  it("renders a concise control center plus complete project section pages", () => {
     const root = mkdtempSync(join(tmpdir(), "forgewright-state-renderer-"));
     const output = join(root, "site");
     renderStaticSite([catalogWithState(root)], { outputDir: output });
     const project = readFileSync(
       join(output, "projects/demo/index.html"),
+      "utf8",
+    );
+    const structure = readFileSync(
+      join(output, "projects/demo/structure.html"),
+      "utf8",
+    );
+    const roadmap = readFileSync(
+      join(output, "projects/demo/roadmap.html"),
+      "utf8",
+    );
+    const flows = readFileSync(
+      join(output, "projects/demo/flows.html"),
+      "utf8",
+    );
+    const backlog = readFileSync(
+      join(output, "projects/demo/backlog.html"),
+      "utf8",
+    );
+    const documents = readFileSync(
+      join(output, "projects/demo/documents.html"),
+      "utf8",
+    );
+    const health = readFileSync(
+      join(output, "projects/demo/health.html"),
       "utf8",
     );
     const projects = readFileSync(join(output, "index.html"), "utf8");
@@ -320,37 +365,53 @@ describe("Docs Hub static presentation", () => {
     expect(project).toContain('id="flows"');
     expect(project).toContain('id="backlog"');
     expect(project).toContain('id="docs-health"');
+    expect(project).toContain('aria-label="Project control"');
+    expect(project).toContain('aria-current="page"');
     expect(project).toContain("implementation");
     expect(project).toContain("State schema version");
-    expect(project).toContain("Runtime source");
-    expect(project).toContain("publishes");
-    expect(project).toContain("Ship &lt;feature&gt;");
-    expect(project).toContain("In Progress");
-    expect(project).toContain("2026-09-01");
-    expect(project).toContain("A document changes");
-    expect(project).toContain("Publish flow");
-    expect(project).toContain("source");
-    expect(project).toContain("catalog");
-    expect(project.indexOf("Scan")).toBeLessThan(
-      project.indexOf("Publish result"),
-    );
-    expect(project).toContain("No inputs recorded.");
-    expect(project).toContain("No outputs recorded.");
-    expect(project).toContain("No references recorded.");
-    expect(project).toContain("HTML is escaped");
-    expect(project).toContain("Add coverage");
     expect(project).toContain("Await approval");
     expect(project).toContain("Missing owner");
     expect(project).toContain("Review output");
-    expect(project).toContain("docs/project-state.json");
     expect(project).toContain("2026-08-12T10:00:00+07:00");
-    expect(project).toContain('href="docs/Docs/Guide.md.html#getting-started"');
-    expect(project).toContain('href="docs/Docs/Guide.md.html#alert-1"');
-    expect(project).toContain("Docs/&lt;missing&gt;.md#&lt;unsafe&gt;");
-    expect(project).not.toContain('href="docs/&lt;missing&gt;');
-    expect(project).not.toContain(
+    expect(project).not.toContain("Runtime source");
+    expect(project).not.toContain("Ship &lt;feature&gt;");
+    expect(project).not.toContain("Publish flow");
+    expect(project).not.toContain("HTML is escaped");
+
+    expect(structure).toContain("Runtime source");
+    expect(structure).toContain("publishes");
+    expect(roadmap).toContain("Ship &lt;feature&gt;");
+    expect(roadmap).toContain("In Progress");
+    expect(roadmap).toContain("2026-09-01");
+    expect(roadmap).toContain('href="docs/Docs/Guide.md.html#getting-started"');
+    expect(roadmap).toContain('href="docs/Docs/Guide.md.html#alert-1"');
+    expect(roadmap).toContain("Docs/&lt;missing&gt;.md#&lt;unsafe&gt;");
+    expect(roadmap).not.toContain('href="docs/&lt;missing&gt;');
+    expect(roadmap).not.toContain(
       'href="docs/Docs/Guide.md.html#&quot;&gt;&lt;script&gt;',
     );
+    expect(flows).toContain("A document changes");
+    expect(flows).toContain("Publish flow");
+    expect(flows).toContain('class="diagram flow-diagram"');
+    expect(flows).toContain('aria-label="Mermaid flow diagram: Publish flow"');
+    expect(flows).toContain('<svg class="diagram-svg"');
+    expect(flows).toContain('viewBox="0 0 480');
+    expect(flows).toContain('width="420"');
+    expect(flows).toContain('<code class="language-mermaid">flowchart TD');
+    expect(flows).toContain("trigger --&gt; step_1");
+    expect(flows).toContain('class="flow-steps"');
+    expect(flows).toContain("source");
+    expect(flows).toContain("catalog");
+    expect(flows.indexOf("Scan")).toBeLessThan(flows.indexOf("Publish result"));
+    expect(flows).toContain("No inputs recorded.");
+    expect(flows).toContain("No outputs recorded.");
+    expect(flows).toContain("No references recorded.");
+    expect(backlog).toContain("HTML is escaped");
+    expect(backlog).toContain("Add coverage");
+    expect(documents).toContain("Guide");
+    expect(documents).toContain("Source of truth");
+    expect(health).toContain("docs/project-state.json");
+    expect(health).toContain("Documentation health");
     expect(project).toContain(
       "State summary &lt;script&gt;alert(1)&lt;/script&gt;",
     );
@@ -370,10 +431,26 @@ describe("Docs Hub static presentation", () => {
       join(output, "projects/demo/index.html"),
       "utf8",
     );
-    expect(project).toContain("No dependencies recorded.");
-    expect(project).toContain("No roadmap items recorded.");
-    expect(project).toContain("No flows recorded.");
-    expect(project).toContain("No backlog items recorded.");
+    const structure = readFileSync(
+      join(output, "projects/demo/structure.html"),
+      "utf8",
+    );
+    const roadmap = readFileSync(
+      join(output, "projects/demo/roadmap.html"),
+      "utf8",
+    );
+    const flows = readFileSync(
+      join(output, "projects/demo/flows.html"),
+      "utf8",
+    );
+    const backlog = readFileSync(
+      join(output, "projects/demo/backlog.html"),
+      "utf8",
+    );
+    expect(structure).toContain("No dependencies recorded.");
+    expect(roadmap).toContain("No roadmap items recorded.");
+    expect(flows).toContain("No flows recorded.");
+    expect(backlog).toContain("No backlog items recorded.");
     expect(project).toContain("No blockers recorded.");
     expect(project).toContain("No risks recorded.");
     expect(project).toContain("No next actions recorded.");
@@ -395,10 +472,18 @@ describe("Docs Hub static presentation", () => {
       join(output, "projects/demo/index.html"),
       "utf8",
     );
+    const structure = readFileSync(
+      join(output, "projects/demo/structure.html"),
+      "utf8",
+    );
     const css = readFileSync(join(output, "style.css"), "utf8");
     expect(project).toContain("Project state unavailable.");
+    expect(structure).toContain("Project state unavailable.");
     expect(project).toContain("PROJECT_STATE_MISSING");
+    expect(css).toContain(".project-nav");
+    expect(css).toContain(".summary-grid");
     expect(css).toContain("@media (max-width: 360px)");
+    expect(css).toContain(".project-nav { margin-inline: -.75rem; }");
     expect(css).toContain("overflow-x: clip");
     expect(css).toContain(".state-grid, .field-list");
     expect(css).toContain("min-width: 0; max-width: 100%");
@@ -431,6 +516,14 @@ describe("Docs Hub static presentation", () => {
     expect(
       searchDocuments(index, "demo safe").map((entry) => entry.id),
     ).toEqual(["doc-1"]);
+    expect(
+      searchDocuments(index, "", {
+        projectId: "demo",
+        type: "documentation",
+        sourceOfTruth: true,
+      }),
+    ).toMatchObject([{ id: "doc-1", status: null, sourceOfTruth: true }]);
+    expect(index.documents[0]?.snippet).toContain("A safe guide");
   });
   it("exports outside roots without modifying source", () => {
     const root = mkdtempSync(join(tmpdir(), "forgewright-obsidian-"));

@@ -632,13 +632,17 @@ function outputRelativePath(outputDir: string, candidate: string): string {
 }
 
 function verifyOutput(outputDir: string, catalog: DocsCatalog): string[] {
+  const projectRoot = `projects/${encodeURIComponent(catalog.project.id)}`;
   const required = [
     ".forgewright-docs-hub",
     "index.html",
     "style.css",
     "app.js",
     "search-index.json",
-    `projects/${encodeURIComponent(catalog.project.id)}/index.html`,
+    `${projectRoot}/index.html`,
+    ...["structure", "roadmap", "flows", "backlog", "documents", "health"].map(
+      (section) => `${projectRoot}/${section}.html`,
+    ),
     ...catalog.documents.map((document) => document.route),
   ];
   for (const path of required) {

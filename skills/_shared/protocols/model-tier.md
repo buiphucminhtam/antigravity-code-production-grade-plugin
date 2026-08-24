@@ -3,7 +3,7 @@ id: model-tier
 title: Capability-Aware Model Tier Protocol
 summary: Select a role tier first; select a concrete model only from verified runtime capabilities.
 status: active
-version: 3.0.0
+version: 4.0.0
 owners: [core]
 triggers: []
 used_by: [all]
@@ -20,6 +20,43 @@ Tier selection and model selection are separate decisions. ForgeWright may choos
 `scout`, `builder`, or `expert` from task evidence, but it must not invent or
 hard-code a provider display name, model ID, snapshot, or unsupported thinking
 parameter.
+
+## Task-start Runtime and Token Economics Preflight
+
+At the start of every request, identify the active execution surface—Codex,
+Claude Code, Antigravity, Cursor, or another runtime—from current system/tool
+evidence. Record the surface, provider, capability source, advertised models and
+reasoning controls, and available concurrency. Do not infer them from branding,
+examples, environment variable names, earlier sessions, or a pricing page.
+
+Every request makes an explicit dispatch-economics decision before deciding
+whether to dispatch:
+
+1. Shape the work first. Small, coupled, or serial work records a no-spawn
+   decision and stays parent-owned; do not add research or dispatch overhead that
+   cannot shorten the critical path or improve acceptance confidence.
+2. For any candidate spawn, research the current official input, cached-input,
+   and output token rates for each exact advertised model under consideration.
+   Record the first-party URL, retrieval date, currency/unit, context threshold,
+   and any billed reasoning/intermediate tokens that materially affect the
+   estimate. Evidence fetched earlier on the same date may be reused only when
+   the provider, exact model, and billing mode are unchanged; otherwise refresh
+   it. Missing or unpublished prices are `UNVERIFIED`, never guessed.
+3. API list price is not proof of subscription, quota, or credit cost. Record the
+   observed billing mode when available; otherwise use list price only as a
+   comparison basis and label actual spend `UNVERIFIED`.
+4. Estimate candidate input/output tokens, retry risk, parallel critical path,
+   and token cost as a range. Avoid false precision when prompt size, reasoning
+   tokens, cache hits, or tool-loop depth are unknown.
+5. Select in this order: effectiveness first, then wall-clock speed, then total
+   tokens and estimated token cost. A cheaper model must not be selected when it
+   is likely to increase retries, miss acceptance, weaken required verification,
+   or delay the critical path. Use the smallest model/tier that is still likely
+   to finish its bounded role correctly and quickly.
+
+The parent owns the final topology and records the considered models, price
+evidence, estimated ranges, role fit, spawn/no-spawn decision, and stop condition.
+This record is compact task state, not a new durable report.
 
 ## Role Tiers
 

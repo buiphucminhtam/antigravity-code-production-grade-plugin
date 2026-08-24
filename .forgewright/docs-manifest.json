@@ -38,6 +38,10 @@
       "type": "operations"
     },
     {
+      "path": "skills/_shared/protocols/documentation-governance.md",
+      "type": "operations"
+    },
+    {
       "path": "docs/process/release-readiness.md",
       "type": "operations"
     },
@@ -57,7 +61,8 @@
     "docs/pipeline-reference.md",
     "docs/active-roadmap.md",
     "docs/adr/ADR-011-central-docs-hub.md",
-    "docs/adr/ADR-012-bounded-peer-collaboration.md"
+    "docs/adr/ADR-012-bounded-peer-collaboration.md",
+    "skills/_shared/protocols/documentation-governance.md"
   ],
   "adapters": {
     "git": true,
@@ -75,6 +80,7 @@
       "docs/adr/ADR-012-bounded-peer-collaboration.md",
       "docs/guides/peer-collaboration.md",
       "skills/_shared/protocols/peer-collaboration.md",
+      "skills/_shared/protocols/documentation-governance.md",
       "docs/process/release-readiness.md",
       "product-manifest.json"
     ],

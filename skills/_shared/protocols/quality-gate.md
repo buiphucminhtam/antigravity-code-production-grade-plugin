@@ -15,6 +15,7 @@ related:
     research-gate,
     consulting-risk-radar,
     visual-grounding,
+    documentation-governance,
   ]
 supersedes: []
 superseded_by: null
@@ -36,20 +37,42 @@ The Quality Gate exists to prove the requested outcome, not to manufacture a sco
 
 ### Continuous Documentation Contract
 
-The proportional default still applies generally: documentation-only or
-non-material local edits do not require an unrelated application build or a
-pretend full release gate. A project-configured continuous documentation
-contract overrides the usual **not every local edit** default when the change
-crosses that project's materiality boundary. In this repository, the contract
-is mandatory for material changes.
+The proportional default still applies to non-material local edits: they do not
+require an unrelated application build or pretend full release gate. Every
+material project update uses the continuous documentation contract;
+missing/legacy projects are initialized or migrated first.
 
-When the contract applies, the postcondition must run
+Before verification, every documentation write must pass
+[`documentation-governance.md`](documentation-governance.md). The audit rejects
+new durable files without scope and search evidence, duplicate or competing
+active truth, transient/generated artifacts in approved source sets, and
+materially impacted canonical documents left stale. Updating an existing
+canonical source is the default; a template never authorizes a new file.
+
+For every material project update, the postcondition must run
 `forge docs gate [target]` (using the applicable `--staged`, `--worktree`, or
 `--base-ref <ref>` view). The gate requires the configured canonical project state in the
 same changeset, runs strict doctor checks in memory, builds generated HTML/CSS
 in a temporary directory, verifies the output, and fails closed on any missing
 or invalid condition. This does not authorize hand-editing generated HTML/CSS;
 project-owned Markdown/JSON remains authoritative.
+
+For every material project update, quality evidence follows the continuous HTML
+refresh lifecycle. Missing/legacy/proportional projects must first run the
+non-destructive `forge docs init [target]` migration; readable legacy output
+does not waive the control center or strict final gate:
+
+1. **Baseline:** before edits, verify the current canonical state and run a
+   persistent `forge docs build [target]`.
+2. **Material checkpoint:** update canonical state/source truth, then run a
+   persistent `forge docs build [target]` before the next handoff or phase.
+3. **Final:** run the strict `forge docs gate [target]`, then run the final
+   persistent `forge docs build [target]` to leave the user-visible site
+   current.
+
+The lifecycle is event-driven, not per-keystroke. Missing baseline,
+checkpoint, or final refresh evidence is `UNVERIFIED` and fails closed; the
+gate’s temporary build cannot substitute for a persistent HTML refresh.
 
 ### Mandatory Payment / HARD Gate
 

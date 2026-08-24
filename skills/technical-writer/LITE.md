@@ -1,57 +1,38 @@
 ---
 name: technical-writer
-description: "Orchestrates documentation architecture, visualizes design specifications, and automates real-time synchronization of project codebases to Obsidian. Use when the user requests documentation creation, markdown file updates, system architecture records (ADRs), or synchronization with the Shared Obsidian Vault."
-version: 1.0.0
+description: "Maintains durable project documentation without duplication, scope drift, or stale truth. Use for authorized documentation creation, canonical updates, ADRs, guides, and documentation lifecycle work."
+version: 2.1.0
 ---
 
 # Technical Writer (LITE)
 
+The canonical precondition is
+`skills/_shared/protocols/documentation-governance.md`. It overrides
+artifact-producing examples or templates: a template shapes an authorized
+document but never authorizes creating one.
+
 ## SOLVE Step 2: GROUND (Technical Writer Domain Slots)
 | Assumption | Check command / file read | Result | Script-produced evidence |
 |---|---|---|---|
-| Centralized Shared Obsidian Vault destination path is active or configured | `echo $OBSIDIAN_VAULT_PATH` | ... | run the check command and paste output |
-| Numeric-prefixed standardized documentation directories exist under docs/ | `find docs/ -maxdepth 1 -type d \| sort` | ... | run the check command and paste output |
-| Standard documentation layout templates are available for alignment | `find docs/ -name "TEMPLATE*.md"` | ... | run the check command and paste output |
-| Post-skill synchronization scripts are installed and executable | `ls -la scripts/sync-obsidian.sh` | ... | run the check command and paste output |
+| Current scope authorizes a durable documentation change | User requirement / acceptance / decision evidence | ... | cite the current requirement basis |
+| Existing canonical documentation has been searched | Docs manifest, truth set, approved roots, and `rg`/Docs Hub search | ... | report the checked paths/results |
+| Proposed content matches current project truth | Current code, schema, tests, runtime, and project state | ... | cite the relevant current evidence |
+| Impacted stale or competing documentation is identified | Backlinks, references, manifest truth, and changed behavior | ... | list impacted paths or `none` |
 
 ## SOLVE Step 3: DECOMPOSE (Technical Writer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
-1. AUDIT | Identify non-compliant filenames violating lowercase kebab-case rules under `docs/` | Ensure all filenames use strictly lowercase letters and hyphens (e.g., `api-specification.md`).
-2. WRITE | Generate architecture decisions, specs, or guides utilizing standard templates | Verify that new architectural records adhere to `TEMPLATE-ADR.md` inside `docs/02-architecture/adrs/`.
-3. LINK | Establish absolute symlinks from project paths into the Shared Obsidian Vault | Ensure zero duplication of physical markdown assets to prevent out-of-sync edits.
-4. HOOK | Register post-commit or post-skill synchronization scripts | Validate that the local Git hook dynamically triggers synchronization whenever doc directories change.
+1. DECIDE | Record `DOCUMENTATION_WRITE_DECISION` in task state | Verify scope basis, existing-doc search, canonical target, and stale-truth impact.
+2. UPDATE | Prefer the existing canonical source | Verify no competing active truth remains.
+3. CREATE | Create only an authorized distinct durable source using project conventions | Verify purpose, audience, owner, status, scope, freshness metadata, and manifest placement.
+4. RETIRE | Archive or supersede incorrect/duplicate content without silent deletion | Verify non-current status and replacement pointer.
+5. VERIFY | Run focused link/metadata checks and the configured Docs Hub doctor/gate | Require observed current-workspace evidence.
 
 ## Common Mistakes Checklist
-- **Filename Convention Violations**: Saving documentation using CamelCase, spaces, or underscores instead of strictly lowercase kebab-case (e.g., `apiSpecification.md` instead of `api-specification.md`).
-- **Misplaced Directories**: Writing files directly under the root `docs/` folder instead of grouping them within the standard numeric-prefixed directories (e.g., `02-architecture/` or `04-testing/`).
-- **Hard Copy Duplication**: Copying raw files physically to the Shared Obsidian Vault, causing context duplication and sync drift, instead of employing absolute symlinks.
-- **Template Omission**: Creating architectural logs or technical specifications from scratch without inheriting sections from standard repository templates.
-- **Unverified Broken Links**: Adding cross-document file links or relative images without verifying paths, breaking rendering on Obsidian Graph Views.
-
-### Step 1: Ground existing documentation directory structure and templates
-```bash
-find docs/ -maxdepth 2 -type d | sort
-ls docs/02-architecture/adrs/TEMPLATE-ADR.md
-```
-
-### Step 2: Generate a standard, lowercase kebab-case Architectural Decision Record
-```bash
-cat << 'EOF' > docs/02-architecture/adrs/0004-sqlite-cognitive-graph.md
-# ADR 0004: SQLite Cognitive Graph for FluxMem (Memory V4)
-
-## Status
-Accepted
-
-## Context
-JSON-based memory files lead to massive context bloat and sluggish parsing speeds in long session executions.
-
-## Decision
-We will migrate memory storage layers to an isolated SQLite database using `flux_nodes` and `flux_edges`.
-
-## Consequences
-- Sub-second execution path caching (Procedural Circuits).
-- Automated ASIP edge decay and lessons indexing.
-- Concurrent and transaction-safe operations.
-EOF
-```
+- **Unrequested Artifact**: Creating a document because the task produced information, without a durable audience or scope basis.
+- **Duplicate Authority**: Creating a second spec, roadmap, status page, or runbook instead of updating the canonical source.
+- **Transient-as-Documentation**: Saving plans, logs, test output, chat summaries, or completion reports in approved documentation roots.
+- **Stale Active Truth**: Updating project behavior while leaving materially affected canonical documentation contradictory or outdated.
+- **Generic Layout Drift**: Imposing a numeric or kebab-case directory scheme that conflicts with the repository's established convention.
+- **Generated-as-Source**: Editing portal/export HTML or registering it as canonical documentation.
+- **Unverified Broken Links**: Adding cross-document file links or relative images without verifying paths, breaking rendering in Docs Hub or other approved readers.

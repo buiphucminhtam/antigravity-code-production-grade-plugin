@@ -35,6 +35,27 @@ Every routed domain role is senior by behavior, not by provider/model name: it o
 
 Routing tiers (`scout`, `builder`, `expert`) express capability/cost, not competence. Provider/model selection follows `skills/_shared/protocols/model-tier.md`; skill frontmatter must not pin a provider model.
 
+## Runtime and subagent economics
+
+Every request starts by identifying the active execution surface and provider
+from current runtime/tool evidence—for example Codex, Claude Code, Antigravity,
+Cursor, or another supported host. A display name, old session, config preference,
+or marketing page is not capability evidence.
+
+Small, coupled, or serial work stays with the parent and records `no-spawn`.
+When delegation could improve the outcome or shorten the critical path, the
+orchestrator checks current first-party input, cached-input, and output token
+prices for the exact models advertised by the active runtime. It records source,
+retrieval date, units, billing mode, expected token range, retry risk, and likely
+critical-path latency. API list prices are comparison evidence, not proof of the
+actual cost of a subscription, quota, or credit-backed host.
+
+Selection order is fixed: acceptance effectiveness, wall-clock speed, total
+tokens, then estimated token cost. A cheaper model is not an optimization if it
+increases retries, delays synthesis, weakens verification, or is unlikely to
+complete its bounded role. The chosen topology uses the fewest independent
+workers and the smallest capable model/tier that can finish correctly and fast.
+
 ## Planning and optimization
 
 `QUICK` work uses `ACTION | TARGET | CHECK` and no numeric plan score. `STANDARD`/`DEEP` use the complexity-scaled thresholds in `skills/_shared/protocols/plan-quality-loop.md`. There is no universal 9/10 gate.
@@ -129,4 +150,4 @@ Generated evidence files are local runtime artifacts. Project source, tests, and
 
 ---
 
-*Updated: 2026-08-18*
+*Updated: 2026-08-24*

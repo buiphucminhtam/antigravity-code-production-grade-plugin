@@ -61,6 +61,24 @@ failure. Enforcement is a postcondition guard/local CI/precommit/release
 responsibility. It is not a policy-check deny regex, and generated HTML/CSS is
 never hand-edited.
 
+The continuous contract is event-driven for every material project update. A
+project without a manifest/canonical state, or still in legacy/proportional
+mode, is first non-destructively initialized or migrated with `forge docs init
+[target]`; legacy readability does not waive the HTML control center:
+
+1. Before the first edit, inspect the current canonical state with strict
+   doctor and run a persistent `forge docs build [target]` baseline.
+2. After every material checkpoint, update canonical state/source truth and run
+   a persistent `forge docs build [target]` so the user-visible project view is
+   current.
+3. Before handoff/completion, run the strict `forge docs gate [target]`, then
+   run a final persistent `forge docs build [target]`.
+
+The lifecycle is intentionally boundary-based rather than per-keystroke.
+Missing baseline, checkpoint, or final refresh evidence fails closed. Persistent
+HTML/CSS is an inspectable disposable view, never a source or a substitute for
+the gate.
+
 The staged view is materialized from the Git index and the base-ref view from
 `HEAD`; neither may borrow a cleaner unstaged worktree state. Rename discovery
 retains both old and new paths for materiality classification. The portable
@@ -87,6 +105,9 @@ replacing its graph.
 - Legacy documents without metadata produce lower-quality classification.
 - Diagram and GitNexus adapters require explicit degradation states.
 - Generated output requires deterministic cleanup and cache ownership rules.
+- Continuous refresh adds baseline/checkpoint/final-build evidence and can
+  block handoff when a worker omits an event boundary; it does not require
+  rebuilding on every keystroke.
 - A project that has not migrated can still scan and build readable legacy
   documentation, but the strict continuity gate remains failing until the
   manifest and canonical project state are present and valid.

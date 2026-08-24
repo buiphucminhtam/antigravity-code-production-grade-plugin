@@ -11,6 +11,48 @@ hand-edited. The canonical project state is `docs/project-state.json` (or the
 path declared by the manifest) and owns structure, roadmap, flows, backlog, and
 live status.
 
+## Documentation write governance
+
+Collection and rendering do not authorize creating more documents. Before any
+durable documentation write, apply the canonical
+[`documentation-governance.md`](../../skills/_shared/protocols/documentation-governance.md)
+pre-write gate. Search current sources first, update an existing canonical
+document by default, and create a new source only for a distinct durable need
+and audience. Task logs, scratch plans, chat recaps, test output, generated
+pages, and other transient artifacts stay outside approved source/truth sets.
+
+Material project changes must identify and update affected canonical truth in
+the same changeset. An active document that contradicts current evidence must
+be corrected, archived, or marked superseded; unrelated stale debt is reported
+without silently expanding the task scope. Timestamp-only edits do not prove
+freshness.
+
+## Continuous HTML refresh
+
+For every material project update, the Docs Hub is refreshed at explicit
+lifecycle events so the user can inspect the whole project as it changes. If a
+project has no manifest/canonical state, or remains legacy/proportional, first
+run the non-destructive `forge docs init [target]` migration; legacy readability
+does not waive the HTML control center or strict final gate:
+
+1. **Before editing:** check the current canonical state with strict doctor,
+   then run a persistent `forge docs build [target]` and retain the baseline
+   result.
+2. **At each material checkpoint:** update the canonical `project-state.json`
+   and any affected source truth first, then run persistent `forge docs build
+   [target]`. A checkpoint is a meaningful implementation, documentation,
+   schema, workflow, or handoff boundary—not each keystroke.
+3. **Before handoff/completion:** update the final canonical state, run strict
+   `forge docs gate [target]` for the selected view, and then run one final
+   persistent `forge docs build [target]` so the generated site matches the
+   approved sources.
+
+Missing baseline, checkpoint, or final refresh evidence blocks handoff. The
+generated HTML/CSS remains disposable and non-source: it is rebuilt from
+project-owned Markdown/JSON and must never be hand-edited. The strict gate’s
+temporary build is verification only and does not replace these persistent
+refreshes.
+
 ## Safety model
 
 - Collection is **allowlist-only**.
@@ -170,7 +212,8 @@ The portal includes:
 - semantic document pages with breadcrumbs and heading outlines;
 - backlinks, related documents, and traceability relations;
 - offline project-aware search;
-- accessible SVG diagram previews with source-text fallback;
+- Mermaid flowcharts derived from canonical project-state steps, rendered as
+  accessible static SVG with Mermaid source and ordered-step fallback;
 - Git and GitNexus availability/staleness state;
 - diagnostics, print styles, light/dark tokens, keyboard focus, and reduced
   motion support.
@@ -195,11 +238,11 @@ npm run ci:docs
 Strict mode fails on warnings as well as errors. Normal mode fails only on
 errors.
 
-For material changes, wire the gate as a postcondition in local CI, precommit,
-or release enforcement. Keep the manifest, project-state JSON, and Markdown
-sources in the changeset; never bypass a failed gate by editing generated
-HTML/CSS. A configured continuous contract overrides the general proportional
-quality default for this materiality boundary.
+For every material project update, wire the gate as a postcondition in local CI,
+precommit, or release enforcement. Keep the manifest, project-state JSON, and
+Markdown sources in the changeset; never bypass a failed gate by editing
+generated HTML/CSS. Missing/legacy projects initialize or migrate to the
+continuous contract before material edits.
 
 The canonical required-check runner uses `origin/main` when the current branch
 contains unpushed commits and otherwise checks the worktree. Release automation

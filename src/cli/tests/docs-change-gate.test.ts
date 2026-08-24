@@ -186,6 +186,18 @@ describe("Docs Hub continuity gate", () => {
     expect(complete.verifiedOutputPaths).toContain(
       "projects/gate-project/index.html",
     );
+    for (const section of [
+      "structure",
+      "roadmap",
+      "flows",
+      "backlog",
+      "documents",
+      "health",
+    ]) {
+      expect(complete.verifiedOutputPaths).toContain(
+        `projects/gate-project/${section}.html`,
+      );
+    }
   });
 
   it("passes documentation-only and test-only changes without pretending they are material", () => {

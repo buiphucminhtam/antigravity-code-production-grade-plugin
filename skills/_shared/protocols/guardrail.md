@@ -7,7 +7,7 @@ version: 1.0.0
 owners: [core]
 triggers: []
 used_by: [all]
-related: []
+related: [documentation-governance]
 supersedes: []
 superseded_by: null
 ---
@@ -236,18 +236,44 @@ WARN Rules:
   - Action: LOG warning + continue
 ```
 
-### 14. Documentation Continuity — DENY (fail-closed)
+### 14. Documentation Continuity and Governance — DENY (fail-closed)
 
 The Docs Hub is a continuous project contract, not a manual publishing task.
 Project-owned Markdown and JSON are the source of truth. The canonical
 `project-state` JSON is the source for continuity checks. **Generated HTML/CSS must never be hand-edited.** It must never be accepted as a replacement for the source documents or the canonical project state.
+Every durable documentation write must first satisfy
+[`documentation-governance.md`](documentation-governance.md) and carry a valid
+task-state `DOCUMENTATION_WRITE_DECISION`.
+
+The continuous HTML refresh lifecycle is also a fail-closed guardrail for every
+material project update. A project without a manifest/canonical state, or still
+in legacy/proportional mode, must first be non-destructively initialized or
+migrated with `forge docs init [target]`; legacy readability never waives the
+HTML control center. Before the first edit, the worker must prove a current-state
+baseline and a persistent `forge docs build [target]`. After
+each material checkpoint, the canonical state and affected source truth must
+be updated before another persistent build. Before handoff or completion,
+`forge docs gate [target]` must pass and a final persistent build must leave the
+user-visible site current. These are event boundaries rather than a
+per-keystroke build loop.
 
 ```
 DENY Rules:
+  - Pattern: durable documentation write with no scope basis or no existing-doc search evidence
+  - Pattern: new document when an existing canonical source already owns the topic
+  - Pattern: duplicate or out-of-scope durable documentation
+  - Pattern: task log, scratch plan, chat recap, test output, or completion report placed in an approved durable docs source
+  - Pattern: active canonical document materially contradicted by the current change without update, archive, or supersession
+  - Pattern: generated or transient artifact added to the manifest truth set
   - Pattern: material project change with no canonical project state in the same changeset
   - Pattern: configured project_docs state missing, invalid, stale, or outside the project root
   - Pattern: direct edit to generated Docs Hub HTML/CSS instead of rebuilding from source
+  - Pattern: material update in a missing, legacy, or proportional Docs Hub project without non-destructive init/migration to the continuous contract
+  - Pattern: material update started without a current-state baseline check and persistent baseline `forge docs build [target]`
+  - Pattern: material checkpoint without canonical-state update followed by persistent `forge docs build [target]`
+  - Pattern: handoff or completion without strict `forge docs gate [target]` and final persistent `forge docs build [target]`
   - Required postcondition: run `forge docs gate [target]`
+  - Required lifecycle: baseline check/build → canonical checkpoint update/build → strict gate → final persistent build
   - Gate inputs: `--staged`, `--worktree`, or `--base-ref <ref>`
   - Gate behavior: detect material changes, run an in-memory strict doctor,
     build HTML/CSS in a temporary directory, verify the generated output, and
@@ -255,8 +281,8 @@ DENY Rules:
   - Enforcement: postcondition guard, local CI, precommit, or release gate
   - Not enforcement: policy-check deny regexes or manual HTML/CSS edits
   - Legacy scan/build remains readable, but strict gate fails until migrated
-  - Reason: "Documentation continuity contract not satisfied"
-  - Action: BLOCK + report the missing source/state/gate evidence
+  - Reason: "Documentation governance or continuity contract not satisfied"
+  - Action: BLOCK + report the missing decision/source/state/baseline/checkpoint/final-build/gate evidence
 ```
 
 ## Decision Matrix
@@ -277,7 +303,7 @@ DENY Rules:
 | **Env persistence** (Rule 11) | — | DENY | DENY | — |
 | **Network exfiltration** (Rule 12) | — | — | WARN | — |
 | **Supply chain** (Rule 13) | — | — | WARN | — |
-| **Documentation continuity** (Rule 14) | WARN | DENY if material change lacks canonical state or edits generated HTML/CSS | DENY if gate is missing or fails | DENY if generated output is treated as source |
+| **Documentation continuity/governance** (Rule 14) | WARN | DENY unauthorized, duplicate, out-of-scope, transient, stale-truth, or generated-source writes | DENY if gate is missing or fails | DENY unless authorized archive/supersession preserves active truth |
 
 ## Response Format
 
@@ -397,11 +423,11 @@ guardrail:
 IF guardrail rule evaluation fails (regex error, config parse error):
   1. Log error: "⚠ Guardrail rule evaluation failed: [rule_name]"
   2. Only for a NON-SECURITY custom rule explicitly running in permissive mode: ALLOW and continue (fail-open)
-  3. For SECURITY rules (Rules 1–4, 7–12, and custom rules with critical: true), strict mode, or any policy/configuration error: DENY and halt the affected tool/pipeline branch (fail-closed)
+  3. For SECURITY rules (Rules 1–4, 7–12), documentation governance (Rule 14), custom rules with critical: true, strict mode, or any policy/configuration error: DENY and halt the affected tool/pipeline branch (fail-closed)
   4. Surface the diagnostic; never continue after a security, strict-mode, or policy/configuration error
 
 Note: "Fail-open" applies ONLY to non-security custom rules explicitly configured as permissive in .production-grade.yaml.
-All built-in security rules (1–4, 7–12) ALWAYS fail-closed (DENY on error).
+All built-in security rules (1–4, 7–12) and documentation governance (Rule 14) ALWAYS fail-closed (DENY on error).
 Consistent with middleware-chain.md Rule 3: Guardrail is the kill switch.
 ```
 

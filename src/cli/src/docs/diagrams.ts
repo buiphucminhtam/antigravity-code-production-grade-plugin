@@ -106,8 +106,8 @@ export function renderDiagramSvg(diagram: DocsDiagram, title: string): string {
     diagram.labels.length > 0
       ? diagram.labels
       : [diagram.valid ? "Diagram" : "Invalid diagram"];
-  const width = 760;
-  const nodeWidth = 220;
+  const width = 480;
+  const nodeWidth = 420;
   const nodeHeight = 54;
   const gap = 34;
   const height = Math.max(

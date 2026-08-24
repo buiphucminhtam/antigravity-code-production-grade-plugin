@@ -118,6 +118,24 @@
       ]
     },
     {
+      "id": "documentation-governance",
+      "title": "Prevent duplicate, out-of-scope, transient, and stale project documentation",
+      "status": "done",
+      "priority": "critical",
+      "owner": "Documentation maintainers",
+      "target_date": null,
+      "depends_on": ["docs-continuity"],
+      "references": [
+        {
+          "path": "skills/_shared/protocols/documentation-governance.md"
+        },
+        {
+          "path": "docs/guides/docs-hub.md",
+          "anchor": "documentation-write-governance"
+        }
+      ]
+    },
+    {
       "id": "bounded-peer-collaboration",
       "title": "Provide parent-mediated bounded advisory exchange between specialist roles",
       "status": "done",
@@ -341,6 +359,101 @@
       ]
     },
     {
+      "id": "runtime-token-routing",
+      "title": "Task-start runtime and token-aware subagent routing",
+      "status": "active",
+      "trigger": "A new user request starts.",
+      "steps": [
+        {
+          "id": "detect-runtime",
+          "name": "DETECT RUNTIME",
+          "actor": "Orchestrator",
+          "inputs": ["Current system context", "Active tool capability schema"],
+          "outputs": [
+            "Execution surface and provider",
+            "Advertised models, controls, and concurrency"
+          ],
+          "references": [
+            {
+              "path": "docs/pipeline-reference.md",
+              "anchor": "runtime-and-subagent-economics"
+            }
+          ]
+        },
+        {
+          "id": "shape-work",
+          "name": "SHAPE WORK",
+          "actor": "Orchestrator",
+          "inputs": ["Objective", "Acceptance", "Dependency graph"],
+          "outputs": [
+            "Independent bounded scopes or parent-serial plan",
+            "Candidate role tiers"
+          ],
+          "references": [
+            {
+              "path": "docs/pipeline-reference.md",
+              "anchor": "planning-and-optimization"
+            }
+          ]
+        },
+        {
+          "id": "check-token-prices",
+          "name": "CHECK TOKEN PRICES",
+          "actor": "Orchestrator",
+          "inputs": [
+            "Exact advertised candidate models",
+            "Current first-party pricing sources"
+          ],
+          "outputs": [
+            "Input, cached-input, and output rates",
+            "Token and cost estimate ranges or UNVERIFIED"
+          ],
+          "references": [
+            {
+              "path": "docs/pipeline-reference.md",
+              "anchor": "runtime-and-subagent-economics"
+            }
+          ]
+        },
+        {
+          "id": "rank-candidates",
+          "name": "RANK CANDIDATES",
+          "actor": "Orchestrator",
+          "inputs": [
+            "Role fit and acceptance confidence",
+            "Critical-path latency",
+            "Token and cost ranges"
+          ],
+          "outputs": [
+            "Effectiveness-first model choice",
+            "Fastest adequate bounded topology"
+          ],
+          "references": [
+            {
+              "path": "docs/pipeline-reference.md",
+              "anchor": "runtime-and-subagent-economics"
+            }
+          ]
+        },
+        {
+          "id": "execute-plan",
+          "name": "EXECUTE PLAN",
+          "actor": "Orchestrator",
+          "inputs": ["Spawn/no-spawn decision", "Stop conditions"],
+          "outputs": [
+            "Parent-owned serial execution or bounded subagent dispatch",
+            "Auditable routing rationale"
+          ],
+          "references": [
+            {
+              "path": "docs/pipeline-reference.md",
+              "anchor": "runtime-and-subagent-economics"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "docs-continuity-gate",
       "title": "Continuous project documentation gate",
       "status": "active",
@@ -528,6 +641,26 @@
   ],
   "backlog": [
     {
+      "id": "runtime-token-economics-preflight",
+      "title": "Identify the active agent runtime and optimize subagent routing with current token prices",
+      "type": "feature",
+      "status": "done",
+      "priority": "high",
+      "owner": "Forgewright maintainers",
+      "acceptance": [
+        "Every request identifies the active execution surface, provider, capability source, and available concurrency before dispatch planning.",
+        "Every candidate subagent model is compared using current first-party input, cached-input, and output token pricing; missing or host-specific actual cost stays explicitly UNVERIFIED.",
+        "Routing prioritizes acceptance effectiveness, then wall-clock speed, total tokens, and estimated token cost; small coupled work records no-spawn.",
+        "A cheaper model is rejected when its retry, verification, or critical-path risk makes the overall plan less effective."
+      ],
+      "references": [
+        {
+          "path": "docs/pipeline-reference.md",
+          "anchor": "runtime-and-subagent-economics"
+        }
+      ]
+    },
+    {
       "id": "wire-docs-gate",
       "title": "Wire the change-aware Docs Hub gate into precommit, full local CI, and required release checks",
       "type": "feature",
@@ -554,6 +687,8 @@
       "owner": "CLI maintainers",
       "acceptance": [
         "Every canonical project-state section is visible without JavaScript.",
+        "Each recorded project flow is shown as a Mermaid-derived static SVG with arrows, Mermaid source, and ordered-step fallback.",
+        "README exposes the continuous baseline, checkpoint, strict-gate, and final-build lifecycle plus the generated control-center paths.",
         "Missing, empty, stale, blocked, and unknown states remain explicit.",
         "The portal is usable at mobile and desktop widths without horizontal viewport overflow."
       ],
@@ -650,8 +785,8 @@
     "lifecycle": "active",
     "health": "on_track",
     "phase": "SUSTAIN",
-    "summary": "Requirement-locked test-oracle enforcement is active across the delivery pipeline. H0 and the H1 HarnessAdapter compatibility contract are complete locally, with bounded Stop re-entry/single replay, exact MCP ownership leases, and project/session continuity integrated as safety controls; these controls do not complete the still-planned H2 TrajectoryLedger, H3 containment, H4 full replay, H5 live provider evidence, or H6 fresh-evaluator handoff.",
-    "updated_at": "2026-08-23T16:14:30+07:00",
+    "summary": "README now presents the Continuous Project Control Center as a primary capability, including the Mermaid pipeline, runtime/token-aware dispatch order, exact generated-site paths, and baseline/checkpoint/gate/final-build lifecycle. Every request identifies its active execution runtime before dispatch planning; candidate subagent models use current official token prices as cost evidence, while routing prioritizes effectiveness, wall-clock speed, total tokens, then estimated token cost. Small coupled work records no-spawn. Docs Hub flow pages render every canonical ordered flow as a Mermaid-derived static SVG with visible arrows, Mermaid source, and accessible ordered-step fallback. Every material project update resolves the continuous Docs Hub contract; missing, legacy, or proportional projects are non-destructively initialized or migrated first. Documentation writes still use a pre-write governance gate that defaults to updating canonical truth and rejects duplicate, out-of-scope, transient, generated-source, or unresolved stale-truth artifacts. Requirement-locked test-oracle enforcement remains active across the delivery pipeline. H0 and the H1 HarnessAdapter compatibility contract are complete locally, with bounded Stop re-entry/single replay, exact MCP ownership leases, and project/session continuity integrated as safety controls; these controls do not complete the still-planned H2 TrajectoryLedger, H3 containment, H4 full replay, H5 live provider evidence, or H6 fresh-evaluator handoff.",
+    "updated_at": "2026-08-24T18:06:13+07:00",
     "blockers": [
       {
         "id": "live-provider-credentials",

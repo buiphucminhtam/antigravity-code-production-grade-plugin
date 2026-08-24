@@ -47,6 +47,37 @@ npm run verify:roadmap
 
 ---
 
+## Continuous Project Control Center
+
+This release turns project documentation from scattered Markdown snapshots into
+a continuously refreshed, local-first HTML control center:
+
+- **Canonical sources stay authoritative.** Documentation governance updates an
+  existing approved source whenever possible and rejects duplicate, transient,
+  out-of-scope, generated-source, or unresolved stale documentation.
+- **HTML stays current during delivery.** Material work requires a strict
+  baseline plus persistent build before edits, a canonical-state update and
+  rebuild at each meaningful checkpoint, then a worktree gate and final build
+  before handoff.
+- **Project flows are visual.** Every flow in `docs/project-state.json` is
+  rendered as an accessible Mermaid-derived static SVG, with the Mermaid source
+  and ordered steps retained as fallbacks.
+- **Dispatch is runtime- and cost-aware.** Each request identifies the active
+  Codex, Claude Code, Antigravity, Cursor, or other runtime. Candidate subagent
+  models are compared using current first-party input/cached-input/output token
+  prices, but routing prioritizes effectiveness, wall-clock speed, total tokens,
+  then estimated token cost. Small coupled work stays parent-owned.
+
+The generated site is written to `.forgewright/docs-hub/site/`; open
+`.forgewright/docs-hub/site/index.html` for the project overview or
+`.forgewright/docs-hub/site/projects/<project-id>/flows.html` for the Mermaid
+flow control view. Generated HTML is inspectable output, never source truth.
+
+**[Read the Docs Hub Guide ➔](docs/guides/docs-hub.md)** ·
+**[Read the Pipeline Reference ➔](docs/pipeline-reference.md)**
+
+---
+
 ## Pipeline Flow
 
 Forgewright separates delivery phases from the runtime controls that prove and
@@ -55,7 +86,13 @@ the same boundaries.
 
 ```mermaid
 flowchart LR
-    A[User request] --> B[INTERPRET<br/>objective, acceptance, risk]
+    A[User request] --> H[DETECT RUNTIME<br/>surface, provider, capabilities]
+    H --> W[SHAPE WORK<br/>dependencies and bounded roles]
+    W --> Q{Independent scopes<br/>benefit from dispatch?}
+    Q -->|No| B[INTERPRET<br/>objective, acceptance, risk]
+    Q -->|Yes| P[CHECK TOKEN PRICES<br/>exact advertised models]
+    P --> R[RANK CANDIDATES<br/>effectiveness → speed → tokens → cost]
+    R --> B
     B --> C[DEFINE<br/>minimum safe scope]
     C --> D[BUILD<br/>ground, impact, execute]
     D --> E[HARDEN<br/>tests, security, review]
@@ -445,15 +482,26 @@ bash scripts/forge-validate.sh
 
 ### Build the Local Docs Hub
 
-Create a privacy-safe manifest, register projects, and build a searchable static
-HTML/CSS portal without moving source documents.
+Create a privacy-safe manifest, register projects, and maintain a searchable
+static HTML/CSS control center without moving source documents. Initialization
+is one-time; the remaining commands are the continuous lifecycle for material
+project work.
 
 ```bash
+# One-time initialization
 forge docs init .
 forge docs registry add .
-forge docs build .
+
+# Baseline before the first material edit
 forge docs doctor . --strict
+forge docs build .
+
+# After each meaningful checkpoint, update canonical docs/project-state first
+forge docs build .
+
+# Final handoff
 forge docs gate . --worktree
+forge docs build .
 ```
 
 Use `forge docs build --all` for every registered project and
@@ -462,7 +510,9 @@ The older `forgewright-wiki-sync*.sh` entry points remain legacy compatibility
 tools; new workflows should use the source-preserving Docs Hub.
 For material changes, `forge docs gate` is mandatory; it verifies the
 project-owned Markdown/JSON and canonical project state before accepting
-generated HTML/CSS output.
+generated HTML/CSS output. The final persistent build ensures the user-facing
+portal matches the sources that passed the gate. Project flows are rendered as
+Mermaid-derived static SVG and remain readable without client-side JavaScript.
 
 **[Read the Docs Hub Guide ➔](docs/guides/docs-hub.md)**
 
