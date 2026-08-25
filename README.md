@@ -67,11 +67,23 @@ a continuously refreshed, local-first HTML control center:
   models are compared using current first-party input/cached-input/output token
   prices, but routing prioritizes effectiveness, wall-clock speed, total tokens,
   then estimated token cost. Small coupled work stays parent-owned.
+- **Canonical rules stay visible without blocking work.** Provider-native
+  lifecycle hooks inject a bounded inventory plus fair excerpts for every
+  active rule in `kernel/rule-manifest.json`. They default to advisory
+  `observe`, preserve the existing Stop/security gates, and fail open on
+  missing runtimes, malformed payloads, invalid manifests, or timeouts. Set
+  `FORGEWRIGHT_RULE_HOOK_MODE=off` for the immediate kill switch.
 
 The generated site is written to `.forgewright/docs-hub/site/`; open
 `.forgewright/docs-hub/site/index.html` for the project overview or
 `.forgewright/docs-hub/site/projects/<project-id>/flows.html` for the Mermaid
 flow control view. Generated HTML is inspectable output, never source truth.
+
+The Stop lifecycle performs only a read-only Docs Hub continuity check. Its
+default `observe` mode reports stale or missing HTML evidence as `UNVERIFIED`
+without blocking; optional `FORGEWRIGHT_DOCS_CONTINUITY_MODE=enforce` may ask
+for one refresh when a present receipt is provably stale, then always allows
+the next pass to prevent retry storms. Use `off` to disable this check.
 
 **[Read the Docs Hub Guide ➔](docs/guides/docs-hub.md)** ·
 **[Read the Pipeline Reference ➔](docs/pipeline-reference.md)**

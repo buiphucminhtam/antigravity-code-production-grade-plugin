@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -50,6 +51,21 @@ deny_patterns:
         encoding="utf-8",
     )
     return path
+
+
+def canonical_static_workspace(tmp_path: Path) -> Path:
+    workspace = tmp_path / "workspace"
+    shutil.copytree(ROOT / "kernel", workspace / "kernel")
+    return workspace
+
+
+def run_static_validator(workspace: Path) -> subprocess.CompletedProcess[str]:
+    return run(
+        "python3",
+        str(ROOT / "scripts/lite/rule-validator.py"),
+        "--static",
+        env={"FORGEWRIGHT_WORKSPACE": str(workspace)},
+    )
 
 
 def write_v2_evidence(tmp_path: Path, *, turn: str = "turn-1") -> tuple[dict, Path]:
@@ -249,6 +265,62 @@ def test_validator_accepts_json_hook_payload_and_propagates_ledger_failure(
         stdin="VERIFY:\n",
     )
     assert failed.returncode != 0
+
+
+def test_static_validator_rejects_manifest_inventory_and_source_mapping_drift(
+    tmp_path: Path,
+) -> None:
+    mutations = {
+        "all-entry": lambda rules: [
+            rule.update(source="kernel/ENTRY.md") for rule in rules
+        ],
+        "duplicate-source": lambda rules: rules.__setitem__(
+            1, {**rules[1], "source": "kernel/ENTRY.md"}
+        ),
+        "wrong-source": lambda rules: rules.__setitem__(
+            1, {**rules[1], "source": "kernel/VERIFY.md"}
+        ),
+        "missing-id": lambda rules: rules.pop(5),
+        "extra-id": lambda rules: rules.append(
+            {
+                **rules[0],
+                "id": "kernel-extra",
+                "source": "kernel/ENTRY.md",
+            }
+        ),
+    }
+    for label, mutate in mutations.items():
+        workspace = canonical_static_workspace(tmp_path / label)
+        manifest_path = workspace / "kernel" / "rule-manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        mutate(manifest["rules"])
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        result = run_static_validator(workspace)
+
+        assert result.returncode != 0, (label, result.stdout, result.stderr)
+        assert "Static validation failed" in result.stderr
+
+
+def test_static_validator_rejects_canonical_defaults_platform_and_event_drift(
+    tmp_path: Path,
+) -> None:
+    mutations = {
+        "defaults": lambda manifest: manifest["defaults"].update(max_rules=6),
+        "platforms": lambda manifest: manifest["rules"][0].update(platforms=["CODEX"]),
+        "events": lambda manifest: manifest["rules"][0].update(events=["SessionStart"]),
+    }
+    for label, mutate in mutations.items():
+        workspace = canonical_static_workspace(tmp_path / label)
+        manifest_path = workspace / "kernel" / "rule-manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        mutate(manifest)
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        result = run_static_validator(workspace)
+
+        assert result.returncode != 0, (label, result.stdout, result.stderr)
+        assert "Static validation failed" in result.stderr
 
 
 def test_telemetry_emits_one_redacted_json_object(tmp_path: Path) -> None:

@@ -1975,6 +1975,90 @@ class TestVerifyGateSh:
             },
         }
 
+    def test_codex_custom_manifest_sources_skip_docs_but_keep_code_governed(self):
+        """Manifest JSON/YAML/assets are continuity; a code file remains gated."""
+        forge = self.tmp / ".forgewright"
+        forge.mkdir()
+        source = self.tmp / "knowledge"
+        source.mkdir()
+        (source / "guide.json").write_text('{"title":"Guide"}\n', encoding="utf-8")
+        (source / "diagram.svg").write_text("<svg />\n", encoding="utf-8")
+        (self.tmp / "docs").mkdir()
+        (self.tmp / "docs/project-state.json").write_text(
+            json.dumps({"status": {"updated_at": "2026-08-25T00:00:00Z"}}),
+            encoding="utf-8",
+        )
+        (forge / "docs-manifest.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "project": {"id": "fixture", "title": "Fixture"},
+                    "sources": [{"path": "knowledge", "type": "documentation"}],
+                    "project_docs": {
+                        "schema_version": 1,
+                        "state": "docs/project-state.json",
+                    },
+                    "truth": ["docs/project-state.json"],
+                    "privacy": {"mode": "allowlist", "allow": ["knowledge", "docs"]},
+                }
+            ),
+            encoding="utf-8",
+        )
+        env = {
+            **os.environ,
+            "FORGEWRIGHT_DOCS_CONTINUITY_MODE": "observe",
+            "FORGEWRIGHT_STOP_STATE_DIR": str(self.tmp / "stop-state-docs"),
+            "FORGEWRIGHT_DOCS_CONTINUITY_STATE_DIR": str(
+                self.tmp / "continuity-state-docs"
+            ),
+        }
+        docs_result = subprocess.run(
+            ["bash", str(STOP_SH), "--platform", "codex"],
+            cwd=self.tmp,
+            env=env,
+            input=json.dumps(
+                {
+                    "hook_event_name": "Stop",
+                    "session_id": "custom-docs-session",
+                    "turn": "custom-docs-turn",
+                    "last_assistant_message": "No code changes were made.",
+                    "files": ["knowledge/guide.json", "knowledge/diagram.svg"],
+                }
+            ),
+            text=True,
+            capture_output=True,
+            timeout=30,
+        )
+        assert docs_result.returncode == 0, docs_result.stderr
+        assert json.loads(docs_result.stdout)["continue"] is True
+        assert (
+            json.loads(docs_result.stdout)["forgewright"]["completion_state"]
+            == "unverified"
+        )
+
+        code_result = subprocess.run(
+            ["bash", str(STOP_SH), "--platform", "codex"],
+            cwd=self.tmp,
+            env={
+                **env,
+                "FORGEWRIGHT_STOP_STATE_DIR": str(self.tmp / "stop-state-code"),
+            },
+            input=json.dumps(
+                {
+                    "hook_event_name": "Stop",
+                    "session_id": "custom-code-session",
+                    "turn": "custom-code-turn",
+                    "last_assistant_message": "No code changes were made.",
+                    "files": ["knowledge/worker.py"],
+                }
+            ),
+            text=True,
+            capture_output=True,
+            timeout=30,
+        )
+        assert code_result.returncode == 0, code_result.stderr
+        assert json.loads(code_result.stdout)["decision"] == "block"
+
     def test_invalid_platform_blocked(self):
         """Unknown platform name → gate blocks with error."""
         r = subprocess.run(
@@ -2160,6 +2244,84 @@ class TestVerifyGateSh:
         assert second_payload["forgewright"]["completion_state"] == "unverified"
         assert second_payload["forgewright"]["retry_suppressed"] is True
         assert second_payload["forgewright"]["reason_code"] == "duplicate_invalid_stop"
+
+    def test_codex_retry_state_symlink_lock_fails_open_without_external_write(self):
+        """An attacker-controlled lock symlink cannot redirect Stop state writes."""
+        source = self.tmp / "fixture.py"
+        source.write_text("print('changed')\n")
+        evidence = _make_evidence(self.tmp, turn="symlink-lock-evidence")
+        payload = {
+            "hook_event_name": "Stop",
+            "last_assistant_message": _strict_response(evidence).replace(
+                "COMMAND:", "COMMAND: mismatched ", 1
+            ),
+            "turn": "symlink-lock-routing",
+            "session_id": "symlink-lock-session",
+        }
+        state_dir = self.tmp / ".forgewright" / "runtime" / "stop-attempts"
+        state_dir.mkdir(parents=True)
+        outside = Path(tempfile.mkdtemp(prefix="fw_external_stop_state_"))
+        try:
+            outside_target = outside / "redirected-lock"
+            (state_dir / ".lock").symlink_to(outside_target)
+            env = {**os.environ, "FORGEWRIGHT_STOP_STATE_DIR": str(state_dir)}
+            result = subprocess.run(
+                ["bash", str(STOP_SH), "--platform", "codex"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                cwd=str(self.tmp),
+                env=env,
+                input=json.dumps(payload),
+            )
+            assert result.returncode == 0, result.stderr
+            assert json.loads(result.stdout)["decision"] == "block"
+            assert not outside_target.exists()
+            assert list(outside.iterdir()) == []
+            assert not list(state_dir.glob("*.json"))
+        finally:
+            shutil.rmtree(outside, ignore_errors=True)
+
+    def test_codex_oversized_retry_state_fails_open_without_rewrite(self):
+        """Oversized retry state is rejected before an unbounded read/allocation."""
+        source = self.tmp / "fixture.py"
+        source.write_text("print('changed')\n")
+        evidence = _make_evidence(self.tmp, turn="oversized-state-evidence")
+        payload = {
+            "hook_event_name": "Stop",
+            "last_assistant_message": _strict_response(evidence).replace(
+                "COMMAND:", "COMMAND: mismatched ", 1
+            ),
+            "turn": "oversized-state-routing",
+            "session_id": "oversized-state-session",
+        }
+        state_dir = self.tmp / ".forgewright" / "runtime" / "stop-attempts"
+        env = {**os.environ, "FORGEWRIGHT_STOP_STATE_DIR": str(state_dir)}
+        first = subprocess.run(
+            ["bash", str(STOP_SH), "--platform", "codex"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=str(self.tmp),
+            env=env,
+            input=json.dumps(payload),
+        )
+        assert json.loads(first.stdout)["decision"] == "block"
+        record = next(state_dir.glob("*.json"))
+        oversized = b"{" + (b" " * (64 * 1024 + 1)) + b"}"
+        record.write_bytes(oversized)
+        second = subprocess.run(
+            ["bash", str(STOP_SH), "--platform", "codex"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=str(self.tmp),
+            env=env,
+            input=json.dumps(payload),
+        )
+        assert second.returncode == 0, second.stderr
+        assert json.loads(second.stdout)["decision"] == "block"
+        assert record.read_bytes() == oversized
 
     @pytest.mark.parametrize(
         ("platform", "first_returncode"),

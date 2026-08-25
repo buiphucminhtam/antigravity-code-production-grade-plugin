@@ -1,0 +1,63 @@
+{
+  "schema_version": "1",
+  "defaults": {
+    "max_context_chars": 6000,
+    "max_rules": 8
+  },
+  "rules": [
+    {
+      "id": "kernel-entry",
+      "status": "active",
+      "canonical": true,
+      "source": "kernel/ENTRY.md",
+      "priority": 10,
+      "platforms": ["CODEX", "CLAUDE", "GEMINI", "ANTIGRAVITY", "CURSOR"],
+      "events": ["SessionStart", "SessionResume", "compact", "BeforeAgent", "SubagentStart", "PreInvocation", "sessionStart"]
+    },
+    {
+      "id": "kernel-solve",
+      "status": "active",
+      "canonical": true,
+      "source": "kernel/SOLVE.md",
+      "priority": 20,
+      "platforms": ["CODEX", "CLAUDE", "GEMINI", "ANTIGRAVITY", "CURSOR"],
+      "events": ["SessionStart", "SessionResume", "compact", "BeforeAgent", "SubagentStart", "PreInvocation", "sessionStart"]
+    },
+    {
+      "id": "kernel-verify",
+      "status": "active",
+      "canonical": true,
+      "source": "kernel/VERIFY.md",
+      "priority": 30,
+      "platforms": ["CODEX", "CLAUDE", "GEMINI", "ANTIGRAVITY", "CURSOR"],
+      "events": ["SessionStart", "SessionResume", "compact", "BeforeAgent", "SubagentStart", "PreInvocation", "sessionStart"]
+    },
+    {
+      "id": "kernel-escalate",
+      "status": "active",
+      "canonical": true,
+      "source": "kernel/ESCALATE.md",
+      "priority": 40,
+      "platforms": ["CODEX", "CLAUDE", "GEMINI", "ANTIGRAVITY", "CURSOR"],
+      "events": ["SessionStart", "SessionResume", "compact", "BeforeAgent", "SubagentStart", "PreInvocation", "sessionStart"]
+    },
+    {
+      "id": "kernel-clarify",
+      "status": "active",
+      "canonical": true,
+      "source": "kernel/CLARIFY.md",
+      "priority": 50,
+      "platforms": ["CODEX", "CLAUDE", "GEMINI", "ANTIGRAVITY", "CURSOR"],
+      "events": ["SessionStart", "SessionResume", "compact", "BeforeAgent", "SubagentStart", "PreInvocation", "sessionStart"]
+    },
+    {
+      "id": "kernel-policy",
+      "status": "active",
+      "canonical": true,
+      "source": "kernel/POLICY.md",
+      "priority": 60,
+      "platforms": ["CODEX", "CLAUDE", "GEMINI", "ANTIGRAVITY", "CURSOR"],
+      "events": ["SessionStart", "SessionResume", "compact", "BeforeAgent", "SubagentStart", "PreInvocation", "sessionStart"]
+    }
+  ]
+}

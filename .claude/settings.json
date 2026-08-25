@@ -1,5 +1,29 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; [ -n \"$root\" ] || exit 0; command -v python3 >/dev/null 2>&1 || exit 0; script=\"$root/scripts/lite/rule-context-hook.py\"; [ -f \"$script\" ] || exit 0; python3 \"$script\" --workspace \"$root\" --platform CLAUDE --event SessionStart || true'",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; [ -n \"$root\" ] || exit 0; command -v python3 >/dev/null 2>&1 || exit 0; script=\"$root/scripts/lite/rule-context-hook.py\"; [ -f \"$script\" ] || exit 0; python3 \"$script\" --workspace \"$root\" --platform CLAUDE --event SubagentStart || true'",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [

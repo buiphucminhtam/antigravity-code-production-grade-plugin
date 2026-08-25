@@ -118,6 +118,21 @@
       ]
     },
     {
+      "id": "rule-context-lifecycle",
+      "title": "Keep canonical rule context visible across supported agent runtimes without blocking normal work",
+      "status": "done",
+      "priority": "critical",
+      "owner": "Runtime maintainers",
+      "target_date": null,
+      "depends_on": ["docs-continuity"],
+      "references": [
+        {
+          "path": "docs/guides/docs-hub.md",
+          "anchor": "rule-context-and-stop-lifecycle"
+        }
+      ]
+    },
+    {
       "id": "documentation-governance",
       "title": "Prevent duplicate, out-of-scope, transient, and stale project documentation",
       "status": "done",
@@ -535,6 +550,92 @@
       ]
     },
     {
+      "id": "rule-context-lifecycle",
+      "title": "Provider-neutral rule context and bounded Docs continuity",
+      "status": "active",
+      "trigger": "A supported agent runtime starts a session, subagent, agent turn, or model invocation.",
+      "steps": [
+        {
+          "id": "receive-lifecycle-event",
+          "name": "Receive native lifecycle event",
+          "actor": "Codex, Claude, Gemini, Antigravity, or Cursor",
+          "inputs": ["Native hook payload", "Current project or installed framework root"],
+          "outputs": ["Platform and event identity"],
+          "references": [
+            {
+              "path": "docs/guides/docs-hub.md",
+              "anchor": "rule-context-and-stop-lifecycle"
+            }
+          ]
+        },
+        {
+          "id": "resolve-rule-inventory",
+          "name": "Resolve and validate canonical inventory",
+          "actor": "Rule-context hook",
+          "inputs": ["kernel/rule-manifest.json", "Bounded local rule sources"],
+          "outputs": ["Active canonical rules", "Source hashes or fail-open allow"],
+          "references": [
+            {
+              "path": "docs/guides/docs-hub.md",
+              "anchor": "rule-context-and-stop-lifecycle"
+            }
+          ]
+        },
+        {
+          "id": "inject-bounded-context",
+          "name": "Inject bounded rule context",
+          "actor": "Rule-context hook",
+          "inputs": ["Complete rule inventory", "Per-host context budget"],
+          "outputs": ["Every rule ID, path, and hash", "Fair excerpts or compact inventory"],
+          "references": [
+            {
+              "path": "docs/guides/docs-hub.md",
+              "anchor": "rule-context-and-stop-lifecycle"
+            }
+          ]
+        },
+        {
+          "id": "execute-and-refresh",
+          "name": "Execute work and refresh project control",
+          "actor": "Parent or bounded specialist",
+          "inputs": ["Current workspace evidence", "Injected canonical context"],
+          "outputs": ["Scoped project change", "Canonical state and HTML checkpoint"],
+          "references": [
+            {
+              "path": "docs/guides/docs-hub.md",
+              "anchor": "continuous-html-refresh"
+            }
+          ]
+        },
+        {
+          "id": "inspect-stop-continuity",
+          "name": "Inspect Docs continuity at Stop",
+          "actor": "Read-only continuity check",
+          "inputs": ["Material changed paths", "Manifest, state, and build receipt metadata"],
+          "outputs": ["Current, stale, irrelevant, or UNVERIFIED continuity status"],
+          "references": [
+            {
+              "path": "docs/guides/docs-hub.md",
+              "anchor": "rule-context-and-stop-lifecycle"
+            }
+          ]
+        },
+        {
+          "id": "bounded-stop-decision",
+          "name": "Continue without retry storm",
+          "actor": "Canonical Stop gate",
+          "inputs": ["Continuity mode and status", "Existing verification result"],
+          "outputs": ["Normal Stop validation", "At most one stale-receipt refresh request", "Allow plus UNVERIFIED on second pass or infrastructure error"],
+          "references": [
+            {
+              "path": "docs/guides/docs-hub.md",
+              "anchor": "rule-context-and-stop-lifecycle"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "evidence-v2-gate",
       "title": "Exact-turn completion evidence and high-risk fix chain",
       "status": "active",
@@ -785,8 +886,8 @@
     "lifecycle": "active",
     "health": "on_track",
     "phase": "SUSTAIN",
-    "summary": "README now presents the Continuous Project Control Center as a primary capability, including the Mermaid pipeline, runtime/token-aware dispatch order, exact generated-site paths, and baseline/checkpoint/gate/final-build lifecycle. Every request identifies its active execution runtime before dispatch planning; candidate subagent models use current official token prices as cost evidence, while routing prioritizes effectiveness, wall-clock speed, total tokens, then estimated token cost. Small coupled work records no-spawn. Docs Hub flow pages render every canonical ordered flow as a Mermaid-derived static SVG with visible arrows, Mermaid source, and accessible ordered-step fallback. Every material project update resolves the continuous Docs Hub contract; missing, legacy, or proportional projects are non-destructively initialized or migrated first. Documentation writes still use a pre-write governance gate that defaults to updating canonical truth and rejects duplicate, out-of-scope, transient, generated-source, or unresolved stale-truth artifacts. Requirement-locked test-oracle enforcement remains active across the delivery pipeline. H0 and the H1 HarnessAdapter compatibility contract are complete locally, with bounded Stop re-entry/single replay, exact MCP ownership leases, and project/session continuity integrated as safety controls; these controls do not complete the still-planned H2 TrajectoryLedger, H3 containment, H4 full replay, H5 live provider evidence, or H6 fresh-evaluator handoff.",
-    "updated_at": "2026-08-24T18:06:13+07:00",
+    "summary": "README now presents the Continuous Project Control Center as a primary capability, including the Mermaid pipeline, runtime/token-aware dispatch order, exact generated-site paths, and baseline/checkpoint/gate/final-build lifecycle. Every request identifies its active execution runtime before dispatch planning; candidate subagent models use current official token prices as cost evidence, while routing prioritizes effectiveness, wall-clock speed, total tokens, then estimated token cost. Small coupled work records no-spawn. Provider-native lifecycle hooks now inject a bounded inventory for every active canonical kernel rule across Codex, Claude, Gemini, Antigravity, and Cursor; project adapters resolve the Git root, while global installs use the trusted absolute framework runtime to validate and read the current project's manifest without executing project-supplied hook code. The off kill switch remains available. Rule-context failures are fail-open and do not replace existing Stop or security gates. Static validation now locks the exact six-rule ID-to-source inventory, while installer and doctor migrations recognize only exact trusted Forgewright-owned commands and preserve similarly named user hooks. The Stop lifecycle adds a read-only Docs continuity check that defaults to observe, derives custom JSON/YAML/asset sources from the current manifest, rejects unsafe catalog paths, binds cached fingerprints to current manifest semantics, and permits at most one stale-receipt refresh request in enforce mode before allowing UNVERIFIED. Docs Hub flow pages render every canonical ordered flow as a Mermaid-derived static SVG with visible arrows, Mermaid source, and accessible ordered-step fallback. Every material project update resolves the continuous Docs Hub contract; missing, legacy, or proportional projects are non-destructively initialized or migrated first. Documentation writes still use a pre-write governance gate that defaults to updating canonical truth and rejects duplicate, out-of-scope, transient, generated-source, or unresolved stale-truth artifacts. Requirement-locked test-oracle enforcement remains active across the delivery pipeline. H0 and the H1 HarnessAdapter compatibility contract are complete locally, with bounded Stop re-entry/single replay, exact MCP ownership leases, and project/session continuity integrated as safety controls; these controls do not complete the still-planned H2 TrajectoryLedger, H3 containment, H4 full replay, H5 live provider evidence, or H6 fresh-evaluator handoff.",
+    "updated_at": "2026-08-25T12:39:03+07:00",
     "blockers": [
       {
         "id": "live-provider-credentials",
@@ -799,7 +900,14 @@
         "owner": "Runtime maintainers"
       }
     ],
-    "risks": [],
+    "risks": [
+      {
+        "id": "lifecycle-live-host-coverage",
+        "title": "Cursor CLI is unavailable locally and Antigravity lacks a live first-party hook validator; these adapters currently rely on native-schema review plus deterministic shell and payload canaries.",
+        "owner": "Runtime maintainers",
+        "mitigation": "Keep both adapters fail-open and in observe mode, preserve their static contract tests, and run a live host canary before enabling any stronger behavior."
+      }
+    ],
     "next_actions": [
       {
         "id": "trajectory-lifecycle",

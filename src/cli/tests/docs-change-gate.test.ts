@@ -133,7 +133,7 @@ describe("Docs Hub continuity gate", () => {
           ".forgewright/cache/docs-index.json",
           "skills/art-director/SKILL.md",
           "kernel/SOLVE.md",
-          ".cursor/rules/guard.md",
+          ".cursor/rules/guard.mdc",
           "AGENTS.md",
           "product-manifest.json",
           "src/main.ts",
@@ -148,7 +148,7 @@ describe("Docs Hub continuity gate", () => {
         ["docs/Roadmap.md"],
       ),
     ).toEqual([
-      ".cursor/rules/guard.md",
+      ".cursor/rules/guard.mdc",
       "AGENTS.md",
       "Assets/World.unity",
       "docs/Roadmap.md",

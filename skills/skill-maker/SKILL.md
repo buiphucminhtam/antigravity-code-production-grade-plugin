@@ -593,27 +593,29 @@ Forgewright also supports Cursor rules (project-level AI guidance). Use this whe
 ```
 .cursor/rules/
 ├── RULES.md          # Index of all rules
-├── <rule-name>.md    # Individual rule file
+├── <rule-name>.mdc   # Cursor-recognized project rule
 └── references/       # Optional: reference docs
 ```
 
 **Rule file frontmatter:**
 ```yaml
 ---
-name: rule-name
-scope: "*.ts, src/**"    # File pattern (glob)
-version: "1.0.0"
-created: "2026-05-24"
-updated: "2026-05-24"
+description: Narrow project convention and when it is relevant
+globs: "src/**/*.ts"
+alwaysApply: false
 ---
 ```
+
+Use `alwaysApply: true` only when the rule is genuinely project-wide and does
+not duplicate `AGENTS.md`. Cursor ignores plain `.md` files in
+`.cursor/rules/`, so generated project rules use `.mdc`.
 
 ### Rule vs Agent Skill
 
 | Aspect | Cursor Rule | Cursor Agent Skill |
 |--------|-------------|-------------------|
 | File location | `.cursor/rules/` | `.cursor/agents/` |
-| Format | Markdown with frontmatter | Markdown with YAML frontmatter + body |
+| Format | `.mdc` with Cursor frontmatter | Markdown with YAML frontmatter + body |
 | Trigger | File pattern matching | Manual invocation |
 | Scope | File-specific conventions | Complete agent behaviors |
 | Example | "TypeScript naming convention" | "security-auditor agent" |
@@ -623,7 +625,7 @@ updated: "2026-05-24"
 1. **Interview** — Same as skill creation, but focus on file scope and conventions
 2. **Choose template** — Use `templates/cursor/rule.md.hbs` or `templates/cursor/file-rule.hbs`
 3. **Generate** — Fill template with interview results
-4. **Install** — Write to `.cursor/rules/<name>.md`
+4. **Install** — Write to `.cursor/rules/<name>.mdc`
 5. **Index** — Add entry to `.cursor/rules/RULES.md`
 
 ### Interview Questions for Cursor Rules
@@ -647,7 +649,8 @@ updated: "2026-05-24"
 | Overfitting to test cases | Generalize patterns, explain WHY |
 | All caps instructions (MUST/NEVER) | Yellow flag — reframe as explanations |
 | No test cases | Create realistic prompts + success criteria |
-| Cursor rule without RULES.md index | Always add entry to `.cursor/rules/RULES.md` |
+| Cursor rule uses `.md` or legacy frontmatter | Use `.mdc` with `description`, `globs`, and `alwaysApply` |
+| Cursor rule without RULES.md index | Add an entry to `.cursor/rules/RULES.md` |
 | Confusing Rule with Agent Skill | Rules = conventions; Agents = behaviors |
 | Rule scope too broad | Narrow patterns over `**/*.ts` |
 

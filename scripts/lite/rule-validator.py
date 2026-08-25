@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -65,6 +66,39 @@ KERNEL_FILES = (
     "CLARIFY.md",
     "POLICY.md",
 )
+RULE_MANIFEST = "rule-manifest.json"
+RULE_MANIFEST_MAX_BYTES = 128 * 1024
+RULE_SOURCE_MAX_BYTES = 32 * 1024
+RULE_TOTAL_SOURCE_MAX_BYTES = 256 * 1024
+RULE_MAX_COUNT = 8
+RULE_MIN_CONTEXT_CHARS = 512
+RULE_MAX_CONTEXT_CHARS = 16000
+RULE_MAX_ID_LENGTH = 64
+RULE_MAX_SOURCE_LENGTH = 256
+RULE_STATUSES = {"active", "superseded", "inactive", "transient"}
+# This inventory is deliberately kept in the validator rather than inferred
+# from the manifest.  The manifest is untrusted input to this check; deriving
+# the expected set from it would let a truncated or miswired manifest approve
+# itself.
+RULE_EXPECTED_SOURCES = {
+    "kernel-entry": "kernel/ENTRY.md",
+    "kernel-solve": "kernel/SOLVE.md",
+    "kernel-verify": "kernel/VERIFY.md",
+    "kernel-escalate": "kernel/ESCALATE.md",
+    "kernel-clarify": "kernel/CLARIFY.md",
+    "kernel-policy": "kernel/POLICY.md",
+}
+RULE_EXPECTED_DEFAULTS = {"max_context_chars": 6000, "max_rules": 8}
+RULE_REQUIRED_PLATFORMS = ("CODEX", "CLAUDE", "GEMINI", "ANTIGRAVITY", "CURSOR")
+RULE_LIFECYCLE_EVENTS = (
+    "SessionStart",
+    "SessionResume",
+    "compact",
+    "BeforeAgent",
+    "SubagentStart",
+    "PreInvocation",
+    "sessionStart",
+)
 REQUIRED_VERIFY_FIELDS = (
     "ACCEPTANCE",
     "CLAIM",
@@ -79,6 +113,174 @@ _FIELD_RE = re.compile(
 )
 
 
+def _validate_rule_manifest(kernel_dir: Path) -> list[str]:
+    """Validate canonical rule metadata without importing the hook runtime."""
+    path = kernel_dir / RULE_MANIFEST
+    if path.is_symlink() or not path.is_file() or not os.access(path, os.R_OK):
+        return [f"missing or unreadable rule manifest: {path}"]
+    try:
+        with path.open("rb") as manifest_handle:
+            raw_bytes = manifest_handle.read(RULE_MANIFEST_MAX_BYTES + 1)
+        if len(raw_bytes) > RULE_MANIFEST_MAX_BYTES:
+            return ["rule manifest exceeds bounded read limit"]
+        manifest = json.loads(raw_bytes.decode("utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        return [f"malformed rule manifest: {error}"]
+    if not isinstance(manifest, dict) or manifest.get("schema_version") != "1":
+        return ["rule manifest has unsupported schema_version"]
+    rules = manifest.get("rules")
+    if not isinstance(rules, list) or not rules or len(rules) > RULE_MAX_COUNT:
+        return ["rule manifest must contain a non-empty rules list"]
+    defaults = manifest.get("defaults", {})
+    if not isinstance(defaults, dict):
+        return ["rule manifest defaults must be an object"]
+    max_chars = defaults.get("max_context_chars", 6000)
+    max_rules = defaults.get("max_rules", len(rules))
+    errors: list[str] = []
+    if defaults != RULE_EXPECTED_DEFAULTS:
+        errors.append(
+            "rule manifest defaults must exactly match the canonical defaults"
+        )
+    if (
+        not isinstance(max_chars, int)
+        or not RULE_MIN_CONTEXT_CHARS <= max_chars <= RULE_MAX_CONTEXT_CHARS
+    ):
+        errors.append("rule manifest max_context_chars is outside the safe bound")
+    if not isinstance(max_rules, int) or not 1 <= max_rules <= RULE_MAX_COUNT:
+        errors.append("rule manifest max_rules is outside the safe bound")
+    root = PROJECT_ROOT.resolve()
+    seen: set[str] = set()
+    active_canonical_sources: dict[str, str] = {}
+    total_source_bytes = 0
+    inventory_floor = len("[Forgewright rule inventory]\n")
+    for number, rule in enumerate(rules, 1):
+        if not isinstance(rule, dict):
+            errors.append(f"rule manifest entry {number} is not an object")
+            continue
+        identifier = rule.get("id")
+        if not isinstance(identifier, str):
+            errors.append(f"rule manifest entry {number} has a duplicate/empty id")
+            identifier = ""
+        identifier = identifier.strip()
+        if not identifier or len(identifier) > RULE_MAX_ID_LENGTH or identifier in seen:
+            errors.append(f"rule manifest entry {number} has a duplicate/empty id")
+        else:
+            seen.add(identifier)
+        source = rule.get("source")
+        if isinstance(source, str):
+            source = source.strip()
+        if (
+            not isinstance(source, str)
+            or not source
+            or len(source) > RULE_MAX_SOURCE_LENGTH
+        ):
+            errors.append(f"rule manifest entry {number} has no source")
+            continue
+        inventory_floor += (
+            len(identifier) + 1 + len(source) + 1 + len("sha256:" + ("0" * 64)) + 1
+        )
+        status = rule.get("status")
+        if not isinstance(status, str) or status.strip().lower() not in RULE_STATUSES:
+            errors.append(f"rule manifest entry {number} has an invalid status")
+            status = ""
+        canonical = rule.get("canonical")
+        if not isinstance(canonical, bool):
+            errors.append(f"rule manifest entry {number} canonical must be boolean")
+        if not isinstance(rule.get("priority", 1000), int):
+            errors.append(f"rule manifest entry {number} priority must be an integer")
+        for field in ("platforms", "events"):
+            values = (
+                rule.get("events", rule.get("triggers", rule.get("event", ["*"])))
+                if field == "events"
+                else rule.get(field, ["*"])
+            )
+            if isinstance(values, str):
+                values = [values]
+            if (
+                not isinstance(values, list)
+                or len(values) > RULE_MAX_COUNT
+                or not all(isinstance(value, str) and value.strip() for value in values)
+            ):
+                errors.append(f"rule manifest entry {number} has invalid {field}")
+        if status.strip().lower() == "active" and canonical is True:
+            active_canonical_sources[identifier] = source
+            if tuple(rule.get("platforms", ())) != RULE_REQUIRED_PLATFORMS:
+                errors.append(
+                    f"rule manifest entry {number} does not cover every supported platform"
+                )
+            if tuple(rule.get("events", ())) != RULE_LIFECYCLE_EVENTS:
+                errors.append(
+                    f"rule manifest entry {number} does not cover every configured lifecycle event"
+                )
+        normalized = source.replace("\\", "/")
+        candidate = Path(normalized)
+        if candidate.is_absolute() or any(
+            part in {"", ".", ".."} for part in candidate.parts
+        ):
+            errors.append(f"rule manifest source escapes workspace: {source!r}")
+            continue
+        try:
+            resolved = (root / candidate).resolve(strict=True)
+            resolved.relative_to(root)
+        except (OSError, ValueError):
+            errors.append(
+                f"rule manifest source is missing or escapes workspace: {source!r}"
+            )
+            continue
+        if not resolved.is_file() or not os.access(resolved, os.R_OK):
+            errors.append(f"rule manifest source is unreadable: {source!r}")
+        try:
+            source_size = resolved.stat().st_size
+        except OSError as error:
+            errors.append(
+                f"rule manifest source cannot be inspected: {source!r}: {error}"
+            )
+            source_size = 0
+        if source_size > RULE_SOURCE_MAX_BYTES:
+            errors.append(
+                f"rule manifest source exceeds bounded read limit: {source!r}"
+            )
+        # Hashing active canonical sources makes source identity observable to
+        # the static checker while keeping the checker read-only.
+        if status.strip().lower() == "active" and canonical is True:
+            total_source_bytes += source_size
+            try:
+                with resolved.open("rb") as source_handle:
+                    hashlib.sha256(
+                        source_handle.read(RULE_SOURCE_MAX_BYTES + 1)
+                    ).hexdigest()
+            except (OSError, UnicodeError) as error:
+                errors.append(
+                    f"rule manifest source cannot be hashed: {source!r}: {error}"
+                )
+    expected_ids = set(RULE_EXPECTED_SOURCES)
+    actual_ids = set(active_canonical_sources)
+    missing_ids = sorted(expected_ids - actual_ids)
+    extra_ids = sorted(actual_ids - expected_ids)
+    if missing_ids or extra_ids:
+        details: list[str] = []
+        if missing_ids:
+            details.append(f"missing={missing_ids}")
+        if extra_ids:
+            details.append(f"extra={extra_ids}")
+        errors.append(
+            "rule manifest canonical active inventory does not exactly match "
+            + ", ".join(details)
+        )
+    for identifier, expected_source in RULE_EXPECTED_SOURCES.items():
+        actual_source = active_canonical_sources.get(identifier)
+        if actual_source is not None and actual_source != expected_source:
+            errors.append(
+                f"rule manifest source mapping for {identifier!r} must be "
+                f"{expected_source!r}, got {actual_source!r}"
+            )
+    if total_source_bytes > RULE_TOTAL_SOURCE_MAX_BYTES:
+        errors.append("active canonical rule sources exceed total read budget")
+    if max_chars < inventory_floor:
+        errors.append("rule manifest context bound cannot contain the rule inventory")
+    return errors
+
+
 def static_validation() -> int:
     kernel_dir = PROJECT_ROOT / "kernel"
     missing = [name for name in KERNEL_FILES if not (kernel_dir / name).is_file()]
@@ -87,7 +289,8 @@ def static_validation() -> int:
         for name in KERNEL_FILES
         if (kernel_dir / name).is_file() and not os.access(kernel_dir / name, os.R_OK)
     ]
-    if missing or unreadable:
+    manifest_errors = _validate_rule_manifest(kernel_dir)
+    if missing or unreadable or manifest_errors:
         if missing:
             print(
                 f"Static validation failed: missing kernel files: {missing}",
@@ -98,6 +301,8 @@ def static_validation() -> int:
                 f"Static validation failed: unreadable kernel files: {unreadable}",
                 file=sys.stderr,
             )
+        for error in manifest_errors:
+            print(f"Static validation failed: {error}", file=sys.stderr)
         return 1
     print("Static validation passed.")
     return 0

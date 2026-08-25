@@ -15,10 +15,12 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 import tempfile
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -26,22 +28,58 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from evidence_common import (
     FINAL_PHASES,
+    MAX_EVIDENCE_BYTES,
     SCHEMA_VERSION,
+    read_evidence_bytes,
     read_evidence_json,
     worktree_fingerprint,
 )
+
+try:
+    from continuity_check import ContinuityResult, check_continuity
+except ImportError:  # An older global install must preserve the old Stop path.
+
+    @dataclass(frozen=True)
+    class ContinuityResult:  # type: ignore[no-redef]
+        status: str
+        reason: str = ""
+        material_paths: tuple[str, ...] = ()
+        receipt_path: str = ""
+
+        @property
+        def material(self) -> bool:
+            return bool(self.material_paths)
+
+    def check_continuity(*_args: Any, **_kwargs: Any) -> ContinuityResult:
+        return ContinuityResult("off")
+
+
 from verify_gate import _check_stubs, _find_evidence, changed_files
 
 
 SCHEMA = "forgewright-stop-decision/v1"
 MAX_PAYLOAD_BYTES = 1024 * 1024
 MAX_DIAGNOSTIC_BYTES = 64 * 1024
+MAX_RETRY_STATE_BYTES = 64 * 1024
 STATE_TTL_SECONDS = 15 * 60
 MAX_ATTEMPTS_PER_SCOPE = 2
 VALID_PLATFORMS = {"CLAUDE", "GEMINI", "CURSOR", "CODEX", ""}
 SKIP_SUFFIXES = {".md", ".txt"}
 SKIP_NAMES = {".gitignore", ".gitattributes", ".memignore", ".cursorignore"}
 SKIP_PREFIXES = (".forgewright/", ".gitnexus/", ".forgenexus/")
+DOCS_SOURCE_EXTENSIONS = {
+    ".md",
+    ".markdown",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".svg",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+}
 VERIFY_MARKER = re.compile(
     r"(?im)^\s*(?:(?:#{1,6}\s*)?(?:CLAIM|VERIFY|VERIFICATION)\s*:|"
     r"#{1,6}\s*(?:VERIFY|VERIFICATION)\s*$|```(?:verify|verification)\b)"
@@ -155,6 +193,26 @@ def _is_code_path(value: str) -> bool:
     return not normalized.startswith(SKIP_PREFIXES)
 
 
+def _is_docs_continuity_path(value: str, material_paths: tuple[str, ...] = ()) -> bool:
+    """Recognize validated Docs Hub sources without exempting actual code."""
+
+    normalized = value.removeprefix("./").replace("\\", "/")
+    if normalized == ".forgewright/docs-manifest.json":
+        return True
+    if Path(normalized).suffix.lower() not in DOCS_SOURCE_EXTENSIONS:
+        return False
+    if any(
+        normalized == path or normalized.startswith(path.rstrip("/") + "/")
+        for path in material_paths
+        if path
+    ):
+        return True
+    # This fallback is only used for legacy/missing-manifest diagnostics;
+    # check_continuity supplies manifest-derived material paths when a
+    # validated manifest is present.
+    return normalized.startswith(("docs/", "documentation/", "wiki/"))
+
+
 def _files_to_check(root: Path, payload: dict[str, Any]) -> list[str]:
     combined = [*_payload_files(payload), *changed_files(root)]
     return list(dict.fromkeys(value for value in combined if value))
@@ -170,20 +228,139 @@ def _evidence_digest(root: Path, turn: str) -> str:
         return "missing"
     candidate = root / ".forgewright" / "verify" / f"{turn}.json"
     try:
-        if candidate.is_symlink() or not candidate.is_file():
+        # Evidence is untrusted input.  Keep the digest path anchored to the
+        # project verify directory and use the shared descriptor-anchored,
+        # bounded reader so a large file cannot be allocated before checking
+        # its size and no symlink component can redirect the read.
+        if not hasattr(os, "O_NOFOLLOW"):
             return "missing"
-        return _sha256_bytes(candidate.read_bytes())
-    except OSError:
+        return _sha256_bytes(
+            read_evidence_bytes(root, candidate, max_bytes=MAX_EVIDENCE_BYTES)
+        )
+    except (OSError, ValueError):
         return "missing"
 
 
-def _state_dir(root: Path) -> Path:
+def _has_symlink_component(root: Path, path: Path) -> bool:
+    """Return whether an existing path component is a symlink or escapes root."""
+
+    try:
+        root_lexical = Path(os.path.abspath(root))
+        root_real = root.resolve()
+        candidate = path if path.is_absolute() else root_lexical / path
+        candidate_lexical = Path(os.path.abspath(candidate))
+        try:
+            relative = candidate_lexical.relative_to(root_lexical)
+            component_root = root_lexical
+        except ValueError:
+            # ``Path.resolve`` may canonicalize a platform alias such as
+            # /var to /private/var.  Treat that resolved spelling as the
+            # workspace lexical root, but still enforce containment below.
+            try:
+                candidate_lexical = candidate_lexical.resolve(strict=False)
+                relative = candidate_lexical.relative_to(root_real)
+                component_root = root_real
+            except ValueError:
+                return True
+    except (OSError, RuntimeError, ValueError):
+        return True
+
+    current = component_root
+    for component in relative.parts:
+        current /= component
+        try:
+            if current.is_symlink():
+                return True
+        except OSError:
+            return True
+    try:
+        candidate_lexical.resolve(strict=False).relative_to(root_real)
+    except (OSError, RuntimeError, ValueError):
+        return True
+    return False
+
+
+def _state_entry_safe(root: Path, directory: Path, path: Path) -> bool:
+    """Check a state entry before any read or replacement is attempted."""
+
+    if path.parent != directory or _has_symlink_component(root, path):
+        return False
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        return True
+    except OSError:
+        return False
+    return stat.S_ISREG(info.st_mode)
+
+
+def _read_bounded_regular(path: Path, limit: int) -> bytes | None:
+    """Read a regular file with a pre-allocation size bound and no-follow."""
+
+    if limit < 0 or not hasattr(os, "O_NOFOLLOW"):
+        return None
+    try:
+        initial = path.lstat()
+        if not stat.S_ISREG(initial.st_mode) or initial.st_size > limit:
+            return None
+        fd = os.open(
+            path,
+            os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
+        )
+    except OSError:
+        return None
+    try:
+        opened = os.fstat(fd)
+        identity = (opened.st_dev, opened.st_ino)
+        if (
+            not stat.S_ISREG(opened.st_mode)
+            or opened.st_size > limit
+            or identity != (initial.st_dev, initial.st_ino)
+        ):
+            return None
+        chunks: list[bytes] = []
+        total = 0
+        while total <= limit:
+            chunk = os.read(fd, min(64 * 1024, limit + 1 - total))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+            if total > limit:
+                return None
+        final = os.fstat(fd)
+        if (
+            (final.st_dev, final.st_ino) != identity
+            or final.st_size != opened.st_size
+            or final.st_mtime_ns != opened.st_mtime_ns
+        ):
+            return None
+        return b"".join(chunks)
+    except (OSError, ValueError):
+        return None
+    finally:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+
+
+def _state_dir(root: Path) -> Path | None:
     configured = os.environ.get("FORGEWRIGHT_STOP_STATE_DIR", "").strip()
-    return (
-        Path(configured).expanduser().resolve()
+    raw = (
+        Path(configured).expanduser()
         if configured
-        else root / ".forgewright" / "runtime" / "stop-attempts"
+        else Path(".forgewright") / "runtime" / "stop-attempts"
     )
+    candidate = raw if raw.is_absolute() else root / raw
+    if _has_symlink_component(root, candidate):
+        return None
+    try:
+        resolved = candidate.resolve(strict=False)
+        resolved.relative_to(root.resolve())
+    except (OSError, RuntimeError, ValueError):
+        return None
+    return resolved
 
 
 def _identity(root: Path, payload: dict[str, Any]) -> tuple[str, str]:
@@ -214,56 +391,177 @@ def _identity(root: Path, payload: dict[str, Any]) -> tuple[str, str]:
 
 
 def _atomic_json(path: Path, value: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    os.chmod(path.parent, 0o700)
-    fd, raw_temp = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
-    temp = Path(raw_temp)
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise OSError("atomic state writes require O_NOFOLLOW")
+    directory = path.parent
+    directory_fd = os.open(
+        directory,
+        os.O_RDONLY
+        | getattr(os, "O_DIRECTORY", 0)
+        | os.O_NOFOLLOW
+        | getattr(os, "O_CLOEXEC", 0),
+    )
+    temp_name = ""
+    fd = -1
     try:
+        os.fchmod(directory_fd, 0o700)
+        payload = json.dumps(value, sort_keys=True, separators=(",", ":")).encode(
+            "utf-8"
+        )
+        if len(payload) > MAX_RETRY_STATE_BYTES:
+            raise OSError("retry state exceeds the bounded size limit")
+        for _ in range(100):
+            temp_name = f".{path.name}.{next(tempfile._get_candidate_names())}"
+            try:
+                fd = os.open(
+                    temp_name,
+                    os.O_WRONLY
+                    | os.O_CREAT
+                    | os.O_EXCL
+                    | os.O_NOFOLLOW
+                    | getattr(os, "O_CLOEXEC", 0),
+                    0o600,
+                    dir_fd=directory_fd,
+                )
+                break
+            except FileExistsError:
+                continue
+        if fd < 0:
+            raise OSError("could not allocate a temporary retry-state file")
         os.fchmod(fd, 0o600)
-        with os.fdopen(fd, "w", encoding="utf-8") as stream:
-            json.dump(value, stream, sort_keys=True, separators=(",", ":"))
+        with os.fdopen(fd, "wb") as stream:
+            fd = -1
+            stream.write(payload)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temp, path)
-        directory_fd = os.open(path.parent, os.O_RDONLY)
-        try:
-            os.fsync(directory_fd)
-        finally:
-            os.close(directory_fd)
+        os.replace(
+            temp_name,
+            path.name,
+            src_dir_fd=directory_fd,
+            dst_dir_fd=directory_fd,
+        )
+        temp_name = ""
+        os.fsync(directory_fd)
     finally:
-        temp.unlink(missing_ok=True)
+        if fd >= 0:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        if temp_name:
+            try:
+                os.unlink(temp_name, dir_fd=directory_fd)
+            except OSError:
+                pass
+        try:
+            os.close(directory_fd)
+        except OSError:
+            pass
 
 
 def _retry_state(root: Path, scope: str, key: str, *, record: bool) -> tuple[bool, str]:
     directory = _state_dir(root)
-    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-    os.chmod(directory, 0o700)
-    lock_path = directory / ".lock"
-    with lock_path.open("a+", encoding="utf-8") as lock:
-        os.chmod(lock_path, 0o600)
-        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
-        path = directory / f"{scope}.json"
-        state: dict[str, Any] = {"attempts": 0, "keys": {}, "updated_at": 0.0}
-        try:
-            loaded = json.loads(path.read_text(encoding="utf-8"))
-            if isinstance(loaded, dict):
-                state.update(loaded)
-        except (OSError, json.JSONDecodeError, TypeError):
-            pass
-        age = time.time() - float(state.get("updated_at", 0.0) or 0.0)
-        if age > STATE_TTL_SECONDS:
-            state = {"attempts": 0, "keys": {}, "updated_at": 0.0}
-        keys = state.get("keys") if isinstance(state.get("keys"), dict) else {}
-        attempts = int(state.get("attempts", 0) or 0)
-        if key in keys:
-            return True, "duplicate_invalid_stop"
-        if attempts >= MAX_ATTEMPTS_PER_SCOPE:
-            return True, "retry_budget_exhausted"
-        if record:
-            keys[key] = 1
-            state = {"attempts": attempts + 1, "keys": keys, "updated_at": time.time()}
-            _atomic_json(path, state)
+    if directory is None:
+        # Retry state is an optimization at the host boundary.  If its
+        # configured location is unsafe or unavailable, continue the normal
+        # validation path and never create anything through that location.
         return False, "validation_failed"
+    try:
+        if _has_symlink_component(root, directory):
+            return False, "validation_failed"
+        directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+        if _has_symlink_component(root, directory):
+            return False, "validation_failed"
+        info = directory.lstat()
+        if not stat.S_ISDIR(info.st_mode):
+            return False, "validation_failed"
+        os.chmod(directory, 0o700)
+    except OSError:
+        return False, "validation_failed"
+    lock_path = directory / ".lock"
+    path = directory / f"{scope}.json"
+    if (
+        not _state_entry_safe(root, directory, lock_path)
+        or not _state_entry_safe(root, directory, path)
+        or not hasattr(os, "O_NOFOLLOW")
+    ):
+        return False, "validation_failed"
+    lock_fd = -1
+    try:
+        lock_fd = os.open(
+            lock_path,
+            os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
+            0o600,
+        )
+        lock_info = os.fstat(lock_fd)
+        if not stat.S_ISREG(lock_info.st_mode):
+            return False, "validation_failed"
+        os.fchmod(lock_fd, 0o600)
+        with os.fdopen(lock_fd, "r+", encoding="utf-8") as lock:
+            lock_fd = -1
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            if not _state_entry_safe(root, directory, path):
+                return False, "validation_failed"
+            state: dict[str, Any] = {
+                "attempts": 0,
+                "keys": {},
+                "updated_at": 0.0,
+            }
+            try:
+                info = path.lstat()
+            except FileNotFoundError:
+                info = None
+            except OSError:
+                return False, "validation_failed"
+            if info is not None:
+                raw_state = _read_bounded_regular(path, MAX_RETRY_STATE_BYTES)
+                if raw_state is None:
+                    # Do not overwrite malformed/oversized state: this keeps
+                    # a persistence fault fail-open and write-free.
+                    return False, "validation_failed"
+                try:
+                    loaded = json.loads(raw_state.decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError, TypeError):
+                    return False, "validation_failed"
+                if not isinstance(loaded, dict):
+                    return False, "validation_failed"
+                state.update(loaded)
+            try:
+                age = time.time() - float(state.get("updated_at", 0.0) or 0.0)
+                attempts = int(state.get("attempts", 0) or 0)
+            except (TypeError, ValueError, OverflowError):
+                return False, "validation_failed"
+            if age > STATE_TTL_SECONDS:
+                state = {"attempts": 0, "keys": {}, "updated_at": 0.0}
+                attempts = 0
+            keys = state.get("keys")
+            if not isinstance(keys, dict):
+                return False, "validation_failed"
+            if key in keys:
+                return True, "duplicate_invalid_stop"
+            if attempts >= MAX_ATTEMPTS_PER_SCOPE:
+                return True, "retry_budget_exhausted"
+            if record:
+                keys[key] = 1
+                state = {
+                    "attempts": attempts + 1,
+                    "keys": keys,
+                    "updated_at": time.time(),
+                }
+                if not _state_entry_safe(root, directory, path):
+                    return False, "validation_failed"
+                _atomic_json(path, state)
+            return False, "validation_failed"
+    except (OSError, ValueError, TypeError, OverflowError):
+        # Persistence failures must not turn into an exception or an external
+        # write.  The caller retains the existing Stop validation result.
+        return False, "validation_failed"
+    finally:
+        if lock_fd >= 0:
+            try:
+                os.close(lock_fd)
+            except OSError:
+                pass
 
 
 def _typed(
@@ -279,9 +577,17 @@ def _typed(
 
 
 def _emit_allow(
-    platform: str, typed: bool, completion: str, reason: str, suppressed: bool
+    platform: str,
+    typed: bool,
+    completion: str,
+    reason: str,
+    suppressed: bool,
+    *,
+    diagnostic: str = "",
 ) -> int:
     decision = _typed("allow_stop", completion, suppressed, reason)
+    if diagnostic:
+        print(f"[DOCS-CONTINUITY] UNVERIFIED: {diagnostic[:512]}", file=sys.stderr)
     if platform == "CODEX":
         payload: dict[str, Any] = {"continue": True}
         if typed:
@@ -290,8 +596,14 @@ def _emit_allow(
     return 0
 
 
-def _emit_block(platform: str, typed: bool, reason: str) -> int:
-    decision = _typed("request_retry", "unverified", False, "validation_failed")
+def _emit_block(
+    platform: str,
+    typed: bool,
+    reason: str,
+    *,
+    reason_code: str = "validation_failed",
+) -> int:
+    decision = _typed("request_retry", "unverified", False, reason_code)
     if platform == "CODEX":
         payload: dict[str, Any] = {"decision": "block", "reason": reason[:512]}
         if typed:
@@ -381,26 +693,51 @@ def main() -> int:
     payload = _normalize_payload(root, _parse_payload(raw))
     payload["platform"] = platform
     files = _files_to_check(root, payload)
-    has_code = any(_is_code_path(value) for value in files)
+    continuity: ContinuityResult = check_continuity(root, payload, files=files)
+    if continuity.status == "retry":
+        return _emit_block(
+            platform,
+            args.typed_stop_decision,
+            f"Docs Hub continuity requires one bounded refresh: {continuity.reason}.",
+            reason_code="docs_continuity_retry",
+        )
+    has_code = any(
+        _is_code_path(value)
+        and not (
+            continuity.material
+            and _is_docs_continuity_path(value, continuity.material_paths)
+        )
+        for value in files
+    )
     stop_marker_requires_validation = args.typed_stop_decision and _has_verify_marker(
         payload
     )
+    continuity_unverified = continuity.status in {"observe", "unverified"}
+    continuity_reason = continuity.reason or "docs_continuity_unverified"
+    continuity_retry_suppressed = continuity_reason.endswith("_retry_suppressed")
     if not has_code and not stop_marker_requires_validation:
         if platform != "CODEX":
             print("[VERIFY-GATE] No code changes detected — gate OPEN")
         return _emit_allow(
             platform,
             args.typed_stop_decision,
-            "verified",
-            "no_code_changes",
-            False,
+            "unverified" if continuity_unverified else "verified",
+            "docs_continuity_unverified"
+            if continuity_unverified
+            else "no_code_changes",
+            continuity_retry_suppressed,
+            diagnostic=continuity_reason if continuity_unverified else "",
         )
 
     scope, key = _identity(root, payload)
     suppressed, suppression_reason = _retry_state(root, scope, key, record=False)
     if suppressed:
         return _emit_allow(
-            platform, args.typed_stop_decision, "unverified", suppression_reason, True
+            platform,
+            args.typed_stop_decision,
+            "unverified",
+            suppression_reason,
+            True,
         )
 
     stub_errors = _check_stubs(files)
@@ -421,7 +758,14 @@ def main() -> int:
                 file=sys.stderr,
             )
         return _emit_allow(
-            platform, args.typed_stop_decision, "verified", "validation_passed", False
+            platform,
+            args.typed_stop_decision,
+            "unverified" if continuity_unverified else "verified",
+            "docs_continuity_unverified"
+            if continuity_unverified
+            else "validation_passed",
+            continuity_retry_suppressed,
+            diagnostic=continuity_reason if continuity_unverified else "",
         )
 
     suppressed, suppression_reason = _retry_state(root, scope, key, record=True)

@@ -53,6 +53,52 @@ project-owned Markdown/JSON and must never be hand-edited. The strict gate’s
 temporary build is verification only and does not replace these persistent
 refreshes.
 
+## Rule-context and Stop lifecycle
+
+Forgewright uses provider-native lifecycle hooks to keep the canonical kernel
+visible without turning rule loading into a new failure point. Codex and Claude
+receive context at session and subagent start, Gemini before the agent,
+Antigravity before model invocation, and Cursor at session start. The hook
+validates `kernel/rule-manifest.json`, emits every active canonical rule ID,
+path, and source hash, then allocates the remaining character budget fairly so
+an early large rule cannot hide later rules. Antigravity receives inventory
+only to avoid repeating a full prompt on every invocation.
+
+```mermaid
+flowchart LR
+    A[Host lifecycle event] --> B{Rule hook mode}
+    B -->|off| C[Allow with no injected context]
+    B -->|observe or advisory enforce| D[Resolve project or installed rule root]
+    D --> E{Manifest and paths valid?}
+    E -->|No| C
+    E -->|Yes| F[Inject bounded inventory and fair excerpts]
+    F --> G[Project work and material Docs Hub checkpoints]
+    G --> H[Read-only Stop continuity check]
+    H -->|Observe or infrastructure unavailable| I[Allow and mark Docs continuity UNVERIFIED]
+    H -->|Enforce and receipt provably stale, first pass| J[Request one refresh]
+    J --> H
+    H -->|Receipt current| K[Continue normal Stop verification]
+```
+
+Rule-context hooks never invoke the network, edit canonical sources, or build
+HTML. Their receipts contain hashes and inclusion metadata only under
+`.forgewright/runtime/rule-context/`. Operational failures return the host’s
+native allow response with exit code zero. The default mode is `observe`;
+`FORGEWRIGHT_RULE_HOOK_MODE=off` is the kill switch, while `enforce` remains
+advisory and does not block normal project work.
+
+The separate Docs continuity check also defaults to `observe`. Setting
+`FORGEWRIGHT_DOCS_CONTINUITY_MODE=enforce` permits one retry only when a
+material docs change and a present build receipt are confidently identified as
+stale. Missing infrastructure, malformed metadata, the second pass, and retry
+state failures all allow Stop with `UNVERIFIED`; the hook never builds or
+migrates a project during Stop. Global and submodule installs can repair the
+runtime and lifecycle entries with:
+
+```bash
+bash scripts/hooks/forgewright-hook-doctor.sh --quick --fix
+```
+
 ## Safety model
 
 - Collection is **allowlist-only**.

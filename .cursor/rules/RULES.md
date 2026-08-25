@@ -1,88 +1,27 @@
 # Cursor Rules Index
 
-> Master index of all Cursor rules for the Forgewright project.
-> Managed by Forgewright — auto-generated from skill audit.
+`AGENTS.md` is the single project-wide instruction authority for Cursor and
+Antigravity. It is generated from `kernel/` and must not be duplicated by a
+second always-applied Cursor rule.
 
----
+## Active project rules
 
-## Overview
+No standalone Cursor project rules are active. A future rule must use Cursor's
+recognized `.mdc` format with valid frontmatter, own a narrow file or task
+scope, and avoid copying instructions already present in `AGENTS.md`.
 
-This project uses Cursor rules to provide project-specific guidance to the AI.
-Rules live in `.cursor/rules/` (project-level) and are loaded based on file patterns.
+## Lifecycle enforcement
 
----
+Project lifecycle hooks are configured in `.cursor/hooks.json`. Hooks may
+inject compact context or record observability, but rule-context failures must
+remain fail-open for normal project work. Destructive and security-sensitive
+controls remain governed by the canonical Forgewright guardrail.
 
-## Available Rules
+## Adding a scoped rule
 
-No rules deployed yet. See "Adding a New Rule" below.
-
-## Active Rules
-
-|| # | Rule | File | Purpose |
-|--|---|------|------|---------|
-| 1 | Pipeline Enforcement | `.cursor/rules/01-forgewright-pipeline.md` | Force Step 0 + Step 0.5 before ANY execution |
-
----
-
-## Quick Reference
-
-### Rule Priority
-
-Rules are applied in order of specificity:
-1. Exact file matches (highest priority)
-2. Pattern matches (`*.ts`, `src/**`)
-3. Directory matches
-4. Global rules (lowest priority)
-
-### Best Practices
-
-- Keep rules concise (< 500 words)
-- Use specific scopes
-- Include concrete examples
-- Avoid conflicting rules
-- Review rules quarterly
-
----
-
-## Agent Skills (`.cursor/agents/`)
-
-These are Cursor Agent skills, not file-scope rules. They define complete agent behaviors:
-
-| Agent | File | Purpose |
-|-------|------|---------|
-| `chat-interpreter` | `.cursor/agents/chat-interpreter.md` | Translates natural language into pipeline requests |
-| `quality-reviewer` | `.cursor/agents/quality-reviewer.md` | Code quality assessment |
-| `security-auditor` | `.cursor/agents/security-auditor.md` | OWASP security audit |
-| `spec-reviewer` | `.cursor/agents/spec-reviewer.md` | Spec compliance validation |
-| `verifier` | `.cursor/agents/verifier.md` | Functional verification |
-
----
-
-## Hook Activation Rules (`skills/production-grade/hooks/`)
-
-Pattern-matching rules that recommend skill activation on UserPromptSubmit:
-
-| Hook | File | Purpose |
-|------|------|---------|
-| Activation Rules | `skills/production-grade/hooks/activation-rules.json` | Maps user prompts → Forgewright skills |
-
----
-
-## Templates (`templates/cursor/`)
-
-Templates for generating new rules:
-
-| Template | File | Purpose |
-|----------|------|---------|
-| Rule Template | `templates/cursor/rule.md.hbs` | General-purpose Cursor rule template |
-| File Rule Template | `templates/cursor/file-rule.hbs` | File-specific rule template |
-| Rules Index Template | `templates/cursor/rules-index.hbs` | Rules index template |
-
----
-
-## Adding a New Rule
-
-1. Create a new `.md` file in `.cursor/rules/`
-2. Follow the `rule.md.hbs` template structure
-3. Add an entry to this index
-4. Test the rule in Cursor
+1. Confirm that `AGENTS.md` does not already own the instruction.
+2. Create a `.mdc` file with `description`, `globs`, and `alwaysApply`
+   frontmatter appropriate to its scope.
+3. Keep the content concise and reference canonical project sources instead of
+   copying them.
+4. Add the rule to this index and test its actual Cursor activation behavior.

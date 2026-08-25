@@ -1,6 +1,11 @@
 {
   "version": 1,
   "hooks": {
+    "sessionStart": [
+      {
+        "command": "bash -c 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; [ -n \"$root\" ] || exit 0; command -v python3 >/dev/null 2>&1 || exit 0; script=\"$root/scripts/lite/rule-context-hook.py\"; [ -f \"$script\" ] || exit 0; python3 \"$script\" --workspace \"$root\" --platform CURSOR --event sessionStart || true'"
+      }
+    ],
     "stop": [
       {
         "command": "bash scripts/lite/stop-gate.sh --platform CURSOR"

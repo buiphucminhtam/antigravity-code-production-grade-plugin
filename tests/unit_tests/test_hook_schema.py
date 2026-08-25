@@ -15,6 +15,7 @@ GIT_LOCAL_ENV_KEYS = (
     "GIT_OBJECT_DIRECTORY",
     "GIT_WORK_TREE",
 )
+RULE_CONTEXT_HOOK = ROOT / "scripts" / "lite" / "rule-context-hook.py"
 
 
 def load_json(relative_path: str) -> dict:
@@ -28,6 +29,107 @@ def hook_commands(groups: list[dict]) -> list[str]:
         for hook in group.get("hooks", [])
         if hook.get("type") == "command"
     ]
+
+
+def context_hook_from_groups(groups: list[dict], event: str) -> dict:
+    matches = [
+        hook
+        for group in groups
+        for hook in group.get("hooks", [])
+        if hook.get("type") == "command"
+        and "rule-context-hook.py" in hook.get("command", "")
+        and f"--event {event}" in hook.get("command", "")
+    ]
+    assert len(matches) == 1, f"expected one {event} context hook, got {matches}"
+    return matches[0]
+
+
+def assert_observe_context_hook(
+    hook: dict, platform: str, event: str, *, max_timeout: int = 2
+) -> None:
+    command = hook["command"]
+    assert hook["type"] == "command"
+    assert f"--platform {platform}" in command
+    assert f"--event {event}" in command
+    assert "failClosed" not in hook
+    assert "decision" not in hook
+    assert "stop-gate.sh" not in command
+    assert not any(
+        token in command for token in ("curl", "wget", "http://", "https://")
+    )
+    assert "git rev-parse --show-toplevel" in command
+    assert "command -v python3" in command
+    assert '[ -f "$script" ] || exit 0' in command
+    assert '--workspace "$root"' in command
+    assert "|| true" in command
+    if "timeout" in hook:
+        assert isinstance(hook["timeout"], int)
+        assert 0 < hook["timeout"] <= max_timeout
+
+
+def write_rule_context_fixture(workspace: Path) -> None:
+    kernel = workspace / "kernel"
+    kernel.mkdir()
+    (kernel / "ENTRY.md").write_text("fixture rule\n", encoding="utf-8")
+    (kernel / "rule-manifest.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "1",
+                "defaults": {"max_context_chars": 1200, "max_rules": 8},
+                "rules": [
+                    {
+                        "id": "fixture-entry",
+                        "status": "active",
+                        "canonical": True,
+                        "source": "kernel/ENTRY.md",
+                        "platforms": [
+                            "CODEX",
+                            "CLAUDE",
+                            "GEMINI",
+                            "ANTIGRAVITY",
+                            "CURSOR",
+                        ],
+                        "events": [
+                            "SessionStart",
+                            "InstructionsLoaded",
+                            "BeforeAgent",
+                            "PreInvocation",
+                            "sessionStart",
+                        ],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def run_rule_context_hook(
+    workspace: Path, platform: str, event: str
+) -> subprocess.CompletedProcess[str]:
+    environment = clean_git_environment()
+    environment.update(
+        {
+            "FORGEWRIGHT_WORKSPACE": str(workspace),
+            "FORGEWRIGHT_RULE_HOOK_MODE": "observe",
+        }
+    )
+    return subprocess.run(
+        [
+            "python3",
+            str(RULE_CONTEXT_HOOK),
+            "--platform",
+            platform,
+            "--event",
+            event,
+        ],
+        cwd=workspace,
+        env=environment,
+        input="{}",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
 
 
 def clean_git_environment() -> dict[str, str]:
@@ -94,6 +196,289 @@ def test_checked_in_codex_stop_hook_uses_native_schema() -> None:
     assert isinstance(config["hooks"]["Stop"], list)
     commands = hook_commands(config["hooks"]["Stop"])
     assert any("stop-gate.sh --platform CODEX" in command for command in commands)
+
+
+def test_checked_in_codex_lifecycle_context_hooks_are_bounded_and_observe_only() -> (
+    None
+):
+    config = tomllib.loads((ROOT / ".codex/config.toml").read_text(encoding="utf-8"))
+
+    session_start = config["hooks"]["SessionStart"]
+    assert session_start[0]["matcher"] == "startup|resume|clear|compact"
+    assert_observe_context_hook(
+        context_hook_from_groups(session_start, "SessionStart"), "CODEX", "SessionStart"
+    )
+
+    subagent_start = config["hooks"]["SubagentStart"]
+    assert subagent_start[0]["matcher"] == "*"
+    assert_observe_context_hook(
+        context_hook_from_groups(subagent_start, "SubagentStart"),
+        "CODEX",
+        "SubagentStart",
+    )
+
+    stop_commands = hook_commands(config["hooks"]["Stop"])
+    assert any("stop-gate.sh --platform CODEX" in command for command in stop_commands)
+
+
+def test_checked_in_claude_lifecycle_context_hooks_are_bounded_and_observe_only() -> (
+    None
+):
+    config = load_json(".claude/settings.json")
+
+    session_start = config["hooks"]["SessionStart"]
+    assert session_start[0]["matcher"] == "startup|resume|clear|compact"
+    assert_observe_context_hook(
+        context_hook_from_groups(session_start, "SessionStart"),
+        "CLAUDE",
+        "SessionStart",
+    )
+
+    subagent_start = config["hooks"]["SubagentStart"]
+    assert subagent_start[0]["matcher"] == "*"
+    assert_observe_context_hook(
+        context_hook_from_groups(subagent_start, "SubagentStart"),
+        "CLAUDE",
+        "SubagentStart",
+    )
+
+    assert "InstructionsLoaded" not in config["hooks"]
+
+    stop_commands = hook_commands(config["hooks"]["Stop"])
+    assert any("stop-gate.sh --platform CLAUDE" in command for command in stop_commands)
+
+
+def test_checked_in_gemini_before_agent_context_hook_is_bounded_and_preserves_guards() -> (
+    None
+):
+    config = load_json(".gemini/settings.json")
+
+    before_agent = config["hooks"]["BeforeAgent"]
+    hook = context_hook_from_groups(before_agent, "BeforeAgent")
+    assert_observe_context_hook(hook, "GEMINI", "BeforeAgent", max_timeout=2000)
+
+    before_tool_commands = hook_commands(config["hooks"]["BeforeTool"])
+    assert any(
+        "gemini-before-tool-gate.sh" in command for command in before_tool_commands
+    )
+    after_agent_commands = hook_commands(config["hooks"]["AfterAgent"])
+    assert any(
+        "stop-gate.sh --platform GEMINI" in command for command in after_agent_commands
+    )
+
+
+def test_checked_in_antigravity_pre_invocation_context_hook_is_bounded_and_preserves_guard() -> (
+    None
+):
+    config = load_json(".agents/hooks.json")
+
+    named_hook = config["forgewright-policy"]
+    pre_invocation = named_hook["PreInvocation"]
+    assert len(pre_invocation) == 1
+    hook = pre_invocation[0]
+    assert_observe_context_hook(hook, "ANTIGRAVITY", "PreInvocation")
+
+    pre_tool_commands = hook_commands(named_hook["PreToolUse"])
+    assert any(
+        "antigravity-pre-tool-gate.sh" in command for command in pre_tool_commands
+    )
+
+
+def test_checked_in_cursor_session_start_context_hook_is_non_blocking_and_preserves_stop() -> (
+    None
+):
+    config = load_json(".cursor/hooks.json")
+
+    session_start = config["hooks"]["sessionStart"]
+    assert len(session_start) == 1
+    hook = session_start[0]
+    command = hook["command"]
+    assert "rule-context-hook.py" in command
+    assert "--platform CURSOR" in command
+    assert "--event sessionStart" in command
+    assert "git rev-parse --show-toplevel" in command
+    assert "command -v python3" in command
+    assert '[ -f "$script" ] || exit 0' in command
+    assert '--workspace "$root"' in command
+    assert "|| true" in command
+    assert "stop-gate.sh" not in command
+    assert "failClosed" not in hook
+    assert "decision" not in hook
+
+    assert any(
+        "stop-gate.sh --platform CURSOR" in hook.get("command", "")
+        for hook in config["hooks"]["stop"]
+    )
+
+
+def test_rule_context_hook_emits_native_nonblocking_output_for_each_runtime(
+    tmp_path: Path,
+) -> None:
+    write_rule_context_fixture(tmp_path)
+    cases = (
+        ("CODEX", "SessionStart", "hookSpecificOutput", "additionalContext"),
+        ("CLAUDE", "SessionStart", "hookSpecificOutput", "additionalContext"),
+        ("GEMINI", "BeforeAgent", "hookSpecificOutput", "additionalContext"),
+        ("ANTIGRAVITY", "PreInvocation", "injectSteps", "ephemeralMessage"),
+        ("CURSOR", "sessionStart", "additional_context", None),
+    )
+
+    for platform, event, context_key, nested_context_key in cases:
+        result = run_rule_context_hook(tmp_path, platform, event)
+        assert result.returncode == 0, result.stderr
+        payload = json.loads(result.stdout)
+        assert payload["continue"] is True
+        assert len(json.dumps(payload)) <= 7000
+        if platform == "ANTIGRAVITY":
+            assert "decision" not in payload
+            assert payload[context_key][0][nested_context_key]
+        elif nested_context_key is None:
+            assert payload[context_key]
+        else:
+            assert payload[context_key][nested_context_key]
+
+
+def lifecycle_context_hook_specs() -> list[tuple[str, str, str]]:
+    codex = tomllib.loads((ROOT / ".codex/config.toml").read_text(encoding="utf-8"))
+    claude = load_json(".claude/settings.json")
+    gemini = load_json(".gemini/settings.json")
+    antigravity = load_json(".agents/hooks.json")
+    cursor = load_json(".cursor/hooks.json")
+    return [
+        (
+            "CODEX",
+            "SessionStart",
+            context_hook_from_groups(codex["hooks"]["SessionStart"], "SessionStart")[
+                "command"
+            ],
+        ),
+        (
+            "CODEX",
+            "SubagentStart",
+            context_hook_from_groups(codex["hooks"]["SubagentStart"], "SubagentStart")[
+                "command"
+            ],
+        ),
+        (
+            "CLAUDE",
+            "SessionStart",
+            context_hook_from_groups(claude["hooks"]["SessionStart"], "SessionStart")[
+                "command"
+            ],
+        ),
+        (
+            "CLAUDE",
+            "SubagentStart",
+            context_hook_from_groups(claude["hooks"]["SubagentStart"], "SubagentStart")[
+                "command"
+            ],
+        ),
+        (
+            "GEMINI",
+            "BeforeAgent",
+            context_hook_from_groups(gemini["hooks"]["BeforeAgent"], "BeforeAgent")[
+                "command"
+            ],
+        ),
+        (
+            "ANTIGRAVITY",
+            "PreInvocation",
+            antigravity["forgewright-policy"]["PreInvocation"][0]["command"],
+        ),
+        ("CURSOR", "sessionStart", cursor["hooks"]["sessionStart"][0]["command"]),
+    ]
+
+
+def test_lifecycle_context_hooks_resolve_git_root_from_subdirectory() -> None:
+    environment = clean_git_environment()
+    environment["FORGEWRIGHT_RULE_HOOK_MODE"] = "observe"
+    nested_workspace = ROOT / "kernel"
+    for platform, event, command in lifecycle_context_hook_specs():
+        result = subprocess.run(
+            command,
+            cwd=nested_workspace,
+            env=environment,
+            input="{}",
+            text=True,
+            capture_output=True,
+            check=False,
+            shell=True,
+            executable="/bin/bash",
+        )
+        assert result.returncode == 0, (platform, event, result.stderr)
+        payload = json.loads(result.stdout)
+        assert payload["continue"] is True
+        if platform == "ANTIGRAVITY":
+            assert "decision" not in payload
+            assert payload["injectSteps"]
+
+
+def test_lifecycle_context_hooks_fail_open_when_script_is_missing(
+    tmp_path: Path,
+) -> None:
+    clean_git_workspace(tmp_path)
+    environment = clean_git_environment()
+    environment["FORGEWRIGHT_RULE_HOOK_MODE"] = "observe"
+    for platform, event, command in lifecycle_context_hook_specs():
+        result = subprocess.run(
+            command,
+            cwd=tmp_path,
+            env=environment,
+            input="{}",
+            text=True,
+            capture_output=True,
+            check=False,
+            shell=True,
+            executable="/bin/bash",
+        )
+        assert result.returncode == 0, (platform, event, result.stderr)
+        assert result.stdout == "", (platform, event, result.stdout)
+
+
+def test_lifecycle_context_hooks_fail_open_without_a_git_root(tmp_path: Path) -> None:
+    environment = clean_git_environment()
+    environment["FORGEWRIGHT_RULE_HOOK_MODE"] = "observe"
+    for platform, event, command in lifecycle_context_hook_specs():
+        result = subprocess.run(
+            command,
+            cwd=tmp_path,
+            env=environment,
+            input="{}",
+            text=True,
+            capture_output=True,
+            check=False,
+            shell=True,
+            executable="/bin/bash",
+        )
+        assert result.returncode == 0, (platform, event, result.stderr)
+        assert result.stdout == "", (platform, event, result.stdout)
+
+
+def test_lifecycle_context_hooks_fail_open_when_interpreter_is_missing(
+    tmp_path: Path,
+) -> None:
+    command_path = tmp_path / "bin"
+    command_path.mkdir()
+    for command in ("bash", "git"):
+        os.symlink(shutil.which(command), command_path / command)
+
+    environment = clean_git_environment()
+    environment["FORGEWRIGHT_RULE_HOOK_MODE"] = "observe"
+    environment["PATH"] = str(command_path)
+    for platform, event, command in lifecycle_context_hook_specs():
+        result = subprocess.run(
+            command,
+            cwd=ROOT / "kernel",
+            env=environment,
+            input="{}",
+            text=True,
+            capture_output=True,
+            check=False,
+            shell=True,
+            executable="/bin/bash",
+        )
+        assert result.returncode == 0, (platform, event, result.stderr)
+        assert result.stdout == "", (platform, event, result.stdout)
 
 
 def test_global_codex_stop_gate_defers_to_project_gate(tmp_path: Path) -> None:

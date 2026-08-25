@@ -6,8 +6,8 @@ Templates for creating Cursor IDE rules and agent prompts for project-specific A
 
 | Template | Description |
 |----------|-------------|
-| `rule.md.hbs` | Generic Cursor rule template |
-| `file-rule.hbs` | File-specific rule (e.g., `.cursor/rules/react.md`) |
+| `rule.md.hbs` | Generic scoped Cursor `.mdc` rule template |
+| `file-rule.hbs` | File-specific rule (e.g., `.cursor/rules/react.mdc`) |
 | `agent.md.hbs` | Agent prompt template for custom agents |
 | `rules-index.hbs` | Rules directory index |
 
@@ -17,7 +17,7 @@ Templates for creating Cursor IDE rules and agent prompts for project-specific A
 # Generate a custom Cursor rule
 npx ts-node scripts/generate-template.ts \
   --template cursor/rule \
-  --output ./.cursor/rules/my-project.md \
+  --output ./.cursor/rules/my-project.mdc \
   --data '{"ruleName": "TypeScript Standards", "scope": "*.ts"}'
 
 # Generate agent prompt
@@ -43,6 +43,12 @@ npx ts-node scripts/generate-template.ts \
 ## Rule Structure
 
 ```markdown
+---
+description: A narrow explanation of when this rule applies
+globs: "src/**/*.ts"
+alwaysApply: false
+---
+
 # Rule: [Name]
 
 ## Scope
@@ -65,8 +71,10 @@ Files matching: [scope]
 
 ## Best Practices
 
+- Treat `AGENTS.md` as the project-wide authority; add only narrow rules that
+  do not duplicate it
 - Keep rules concise (under 500 words)
 - Use specific file scopes
 - Include concrete examples
 - Avoid conflicting rules
-- Review rules quarterly
+- Keep `.cursor/rules/RULES.md` current and remove stale rules
