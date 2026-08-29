@@ -1,12 +1,337 @@
-import { mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { LifecycleCoordinator } from './lifecycle-coordinator.js';
 import { ToolExecutionGateway } from './tool-execution-gateway.js';
+import { TrajectoryLedger } from './trajectory-ledger.js';
+import { ExecutionContainment, loadRuntimeTrustContext } from './execution-containment.js';
 
 const allowPolicy = { evaluate: async () => ({ action: 'allow' as const }) };
+const roots: string[] = [];
+
+afterEach(() => {
+  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+});
+
+async function lifecycleFixture() {
+  const root = mkdtempSync(join(tmpdir(), 'forgewright-tool-lifecycle-'));
+  roots.push(root);
+  const ledger = new TrajectoryLedger({ root, ledgerId: 'tool-lifecycle' });
+  const lifecycle = await LifecycleCoordinator.open({
+    ledger,
+    rootScopeId: 'root-scope',
+    workspaceId: 'workspace',
+    sessionId: 'session',
+    origin: 'test',
+    writerEpoch: 1,
+    objectiveDigest: 'a'.repeat(64),
+  });
+  return { ledger, lifecycle };
+}
+
+function containmentFixture() {
+  const root = mkdtempSync(join(tmpdir(), 'forgewright-containment-'));
+  roots.push(root);
+  mkdirSync(join(root, '.forgewright'));
+  writeFileSync(join(root, '.forgewright', 'execution-policy.yaml'), 'mode: strict\n');
+  return new ExecutionContainment(loadRuntimeTrustContext({ FORGEWRIGHT_WORKSPACE: root }));
+}
 
 describe('ToolExecutionGateway', () => {
+  it('enforces containment without lifecycle and permits only bounded overlay reads', async () => {
+    const containment = containmentFixture();
+    const gateway = new ToolExecutionGateway({
+      containment,
+      policyEvaluator: allowPolicy,
+      middleware: { tool_sandbox: { enabled: false } },
+    });
+    const blocked = vi.fn(async () => ({
+      content: [{ type: 'text' as const, text: 'unexpected' }],
+    }));
+    await expect(
+      gateway.execute(
+        { name: 'unknown-tool', arguments: {}, sessionId: 's', turnNumber: 1 },
+        blocked,
+      ),
+    ).resolves.toMatchObject({ isError: true, content: [{ text: 'CONTAINMENT_UNKNOWN_TOOL' }] });
+    expect(blocked).not.toHaveBeenCalled();
+    await expect(
+      gateway.execute(
+        {
+          name: 'fw_load_skill_overlay',
+          arguments: { name: 'software-engineer' },
+          sessionId: 's',
+          turnNumber: 2,
+        },
+        async () => ({ content: [{ type: 'text', text: 'allowed' }] }),
+      ),
+    ).resolves.toMatchObject({ content: [{ text: 'allowed' }] });
+  });
+
+  it('accounts containment denial through lifecycle and keeps the root reusable', async () => {
+    const { ledger, lifecycle } = await lifecycleFixture();
+    const gateway = new ToolExecutionGateway({
+      lifecycle,
+      containment: containmentFixture(),
+      policyEvaluator: allowPolicy,
+      middleware: { tool_sandbox: { enabled: false } },
+    });
+    const blocked = vi.fn(async () => ({
+      content: [{ type: 'text' as const, text: 'unexpected' }],
+    }));
+
+    await expect(
+      gateway.execute(
+        { name: 'unknown-effect', arguments: {}, sessionId: 's', turnNumber: 1 },
+        blocked,
+      ),
+    ).resolves.toMatchObject({
+      isError: true,
+      content: [{ text: 'CONTAINMENT_UNKNOWN_TOOL' }],
+    });
+    expect(blocked).not.toHaveBeenCalled();
+    await expect(
+      gateway.execute(
+        { name: 'fw_get_current_phase', arguments: {}, sessionId: 's', turnNumber: 2 },
+        async () => ({ content: [{ type: 'text', text: 'root-still-active' }] }),
+      ),
+    ).resolves.toMatchObject({ content: [{ text: 'root-still-active' }] });
+
+    const events = await ledger.reconstruct();
+    expect(events.filter((event) => event.kind === 'operation.settled')).toMatchObject([
+      { payload: { outcome: 'failed', errorCode: 'TOOL_RESULT_ERROR' } },
+      { payload: { outcome: 'completed', errorCode: null } },
+    ]);
+    expect(
+      events.filter(
+        (event) => event.kind === 'scope.closed' && event.payload.scopeId !== 'root-scope',
+      ),
+    ).toMatchObject([{ payload: { outcome: 'failed' } }, { payload: { outcome: 'completed' } }]);
+    expect(lifecycle.state).toBe('ACTIVE');
+  });
+  it('records lifecycle scopes and operations without persisting raw tool arguments', async () => {
+    const { ledger, lifecycle } = await lifecycleFixture();
+    const gateway = new ToolExecutionGateway({
+      lifecycle,
+      policyEvaluator: allowPolicy,
+      middleware: { tool_sandbox: { enabled: false } },
+    });
+
+    await expect(
+      gateway.execute(
+        {
+          name: 'decimal-tool',
+          arguments: { nested: { decimal: 1.25 }, secret: 'do-not-persist' },
+          sessionId: 's',
+          turnNumber: 1,
+        },
+        async () => ({ content: [{ type: 'text', text: 'ok' }] }),
+      ),
+    ).resolves.toMatchObject({ content: [{ text: 'ok' }] });
+
+    const events = await ledger.reconstruct();
+    expect(events.filter((event) => event.kind === 'scope.opened')).toHaveLength(2);
+    expect(events.filter((event) => event.kind === 'scope.closed')).toHaveLength(1);
+    expect(events.filter((event) => event.kind === 'operation.started')).toHaveLength(1);
+    expect(events.filter((event) => event.kind === 'operation.settled')).toMatchObject([
+      { payload: { outcome: 'completed', errorCode: null } },
+    ]);
+    expect(JSON.stringify(events)).not.toContain('do-not-persist');
+    expect(JSON.stringify(events)).not.toContain('1.25');
+  });
+
+  it('settles returned errors and cached results through lifecycle accounting', async () => {
+    const { ledger, lifecycle } = await lifecycleFixture();
+    const gateway = new ToolExecutionGateway({
+      lifecycle,
+      policyEvaluator: allowPolicy,
+      middleware: {
+        session_deduplication: { enabled: true, include_tools: ['fw_get_current_phase'] },
+        tool_sandbox: { enabled: false },
+        quality_gate: { enabled: false },
+        verification: { enabled: false },
+      },
+    });
+    let invocations = 0;
+    const invoke = () =>
+      gateway.execute(
+        { name: 'fw_get_current_phase', arguments: {}, sessionId: 's', turnNumber: 1 },
+        async () => ({ content: [{ type: 'text', text: `ok-${++invocations}` }] }),
+      );
+
+    await expect(invoke()).resolves.toMatchObject({ content: [{ text: 'ok-1' }] });
+    await expect(invoke()).resolves.toMatchObject({ content: [{ text: 'ok-1' }] });
+    await expect(
+      gateway.execute(
+        { name: 'returned-error', arguments: {}, sessionId: 's', turnNumber: 2 },
+        async () => ({ isError: true, content: [{ type: 'text', text: 'blocked' }] }),
+      ),
+    ).resolves.toMatchObject({ isError: true, content: [{ text: 'blocked' }] });
+
+    const events = await ledger.reconstruct();
+    expect(events.filter((event) => event.kind === 'operation.started')).toHaveLength(3);
+    expect(events.filter((event) => event.kind === 'scope.closed')).toHaveLength(3);
+    expect(events.filter((event) => event.kind === 'operation.settled')).toMatchObject([
+      { payload: { outcome: 'completed' } },
+      { payload: { outcome: 'completed' } },
+      { payload: { outcome: 'failed', errorCode: 'TOOL_RESULT_ERROR' } },
+    ]);
+  });
+
+  it('settles authorization and policy blocks as failed operations without executing callbacks', async () => {
+    const { ledger, lifecycle } = await lifecycleFixture();
+    const unauthorized = new ToolExecutionGateway({
+      lifecycle,
+      authorize: () => false,
+      policyEvaluator: allowPolicy,
+      middleware: { tool_sandbox: { enabled: false } },
+    });
+    const policyBlocked = new ToolExecutionGateway({
+      lifecycle,
+      policyEvaluator: { evaluate: async () => ({ action: 'block', reason: 'blocked' }) },
+      middleware: { tool_sandbox: { enabled: false } },
+    });
+    const unauthorizedCallback = vi.fn(async () => ({
+      content: [{ type: 'text' as const, text: 'unexpected' }],
+    }));
+    const policyCallback = vi.fn(async () => ({
+      content: [{ type: 'text' as const, text: 'unexpected' }],
+    }));
+
+    await expect(
+      unauthorized.execute(
+        { name: 'unauthorized', arguments: {}, sessionId: 's', turnNumber: 1 },
+        unauthorizedCallback,
+      ),
+    ).resolves.toMatchObject({ isError: true });
+    await expect(
+      policyBlocked.execute(
+        { name: 'policy-blocked', arguments: {}, sessionId: 's', turnNumber: 2 },
+        policyCallback,
+      ),
+    ).resolves.toMatchObject({ isError: true });
+    expect(unauthorizedCallback).not.toHaveBeenCalled();
+    expect(policyCallback).not.toHaveBeenCalled();
+
+    const events = await ledger.reconstruct();
+    expect(events.filter((event) => event.kind === 'scope.opened')).toHaveLength(3);
+    expect(events.filter((event) => event.kind === 'scope.closed')).toHaveLength(2);
+    expect(events.filter((event) => event.kind === 'operation.started')).toHaveLength(2);
+    expect(events.filter((event) => event.kind === 'operation.settled')).toMatchObject([
+      { payload: { outcome: 'failed', errorCode: 'TOOL_RESULT_ERROR' } },
+      { payload: { outcome: 'failed', errorCode: 'TOOL_RESULT_ERROR' } },
+    ]);
+  });
+
+  it('records thrown handler errors and prevents execution once lifecycle admissions close', async () => {
+    const { ledger, lifecycle } = await lifecycleFixture();
+    const gateway = new ToolExecutionGateway({
+      lifecycle,
+      policyEvaluator: allowPolicy,
+      middleware: { tool_sandbox: { enabled: false } },
+    });
+
+    await expect(
+      gateway.execute(
+        { name: 'throws', arguments: {}, sessionId: 's', turnNumber: 1 },
+        async () => {
+          throw new Error('handler boom');
+        },
+      ),
+    ).rejects.toThrow('handler boom');
+    await lifecycle.finalize({ timeoutMs: 1_000, outcome: 'completed' });
+    const callback = vi.fn(async () => ({
+      content: [{ type: 'text' as const, text: 'unexpected' }],
+    }));
+    await expect(
+      gateway.execute({ name: 'closed', arguments: {}, sessionId: 's', turnNumber: 2 }, callback),
+    ).resolves.toMatchObject({ isError: true });
+    expect(callback).not.toHaveBeenCalled();
+
+    const events = await ledger.reconstruct();
+    expect(events.filter((event) => event.kind === 'operation.started')).toHaveLength(1);
+    expect(events.filter((event) => event.kind === 'operation.settled')).toMatchObject([
+      { payload: { outcome: 'failed', errorCode: 'LIFECYCLE_HANDLER_FAILED' } },
+    ]);
+    expect(
+      events.filter(
+        (event) => event.kind === 'scope.closed' && event.payload.scopeId !== 'root-scope',
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('records malformed non-JSON arguments as a failed operation without running callbacks', async () => {
+    const { ledger, lifecycle } = await lifecycleFixture();
+    const gateway = new ToolExecutionGateway({
+      lifecycle,
+      policyEvaluator: allowPolicy,
+      middleware: { tool_sandbox: { enabled: false } },
+    });
+    const callback = vi.fn(async () => ({
+      content: [{ type: 'text' as const, text: 'unexpected' }],
+    }));
+
+    await expect(
+      gateway.execute(
+        {
+          name: 'invalid-arguments',
+          arguments: { value: Number.NaN },
+          sessionId: 's',
+          turnNumber: 1,
+        },
+        callback,
+      ),
+    ).resolves.toMatchObject({ isError: true });
+    expect(callback).not.toHaveBeenCalled();
+
+    const events = await ledger.reconstruct();
+    expect(events.filter((event) => event.kind === 'operation.started')).toMatchObject([
+      {
+        payload: {
+          inputDigest: '961ede884f83b409f4ebfd92efe8695bae429af41437cb47286f14e1d62c1422',
+        },
+      },
+    ]);
+    expect(events.filter((event) => event.kind === 'operation.settled')).toMatchObject([
+      { payload: { outcome: 'failed', errorCode: 'TOOL_RESULT_ERROR' } },
+    ]);
+    expect(events.filter((event) => event.kind === 'scope.closed')).toMatchObject([
+      { payload: { outcome: 'failed' } },
+    ]);
+    expect(JSON.stringify(events)).not.toContain('NaN');
+  });
+
+  it('returns an admitted cooperative result while lifecycle finalization drains its scope', async () => {
+    const { ledger, lifecycle } = await lifecycleFixture();
+    const gateway = new ToolExecutionGateway({
+      lifecycle,
+      policyEvaluator: allowPolicy,
+      middleware: { tool_sandbox: { enabled: false } },
+    });
+    let complete!: () => void;
+    let entered!: () => void;
+    const enteredPromise = new Promise<void>((resolve) => (entered = resolve));
+    const result = gateway.execute(
+      { name: 'draining-tool', arguments: {}, sessionId: 's', turnNumber: 1 },
+      async () =>
+        new Promise((resolve) => {
+          complete = () => resolve({ content: [{ type: 'text', text: 'drained' }] });
+          entered();
+        }),
+    );
+    await enteredPromise;
+    const finalization = lifecycle.finalize({ timeoutMs: 1_000, outcome: 'completed' });
+    complete();
+
+    await expect(result).resolves.toMatchObject({ content: [{ text: 'drained' }] });
+    await finalization;
+    const events = await ledger.reconstruct();
+    expect(events.filter((event) => event.kind === 'operation.settled')).toMatchObject([
+      { payload: { outcome: 'completed' } },
+    ]);
+  });
+
   it('preserves authorization and blocks a later policy denial with telemetry', async () => {
     const calls: string[] = [];
     const telemetry: unknown[] = [];

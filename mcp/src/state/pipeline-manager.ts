@@ -20,8 +20,8 @@ import { StateQueryService } from '../core/services/StateQueryService.js';
 import { FileSystemStateRepository } from '../infrastructure/adapters/FileSystemStateRepository.js';
 import { McpEventPublisher } from '../infrastructure/adapters/McpEventPublisher.js';
 import { FileLogEventPublisher } from '../infrastructure/adapters/FileLogEventPublisher.js';
-import { HttpWebhookEventPublisher } from '../infrastructure/adapters/HttpWebhookEventPublisher.js';
 import { CombinedEventPublisher } from '../infrastructure/adapters/CombinedEventPublisher.js';
+import { createHttpWebhookPublisher } from './rpc-client.js';
 
 // Re-export models for backward compatibility
 export { DEFAULT_STATE, PIPELINE_PHASES, PHASE_KEYS };
@@ -108,6 +108,9 @@ export function getWorkspaceRoot(): string {
 
 export function resetWorkspaceRoot(): void {
   _workspaceRoot = null;
+  pipelineService = null;
+  queryService = null;
+  combinedEventPublisher = null;
 }
 
 // ─── Service Instances (Singleton pattern) ───────────────────────────────────
@@ -131,7 +134,7 @@ function getServices() {
     // Note: To truly set the server on mcpPublisher, we need a way to pass it.
     // rpc-client.ts is handling the server right now.
     const filePublisher = new FileLogEventPublisher(wsRoot);
-    const httpPublisher = new HttpWebhookEventPublisher(wsRoot, sessionId);
+    const httpPublisher = createHttpWebhookPublisher(wsRoot, sessionId);
 
     combinedEventPublisher = new CombinedEventPublisher([
       mcpPublisher,

@@ -242,7 +242,12 @@ Domain overlap is valid only when it is genuinely part of the specialty: prompt 
 5. **PAYMENT / HARD CLOSURE** — for payment-domain or other `HARD` fixes,
    require the v2 RED/GREEN evidence pair plus mutation/backcheck and clean
    target-tree restoration. For payment-domain work also require an
-   independent-approved reviewer and contract/runtime/E2E evidence.
+   independent-approved keyless `review-2`, with reviewer identity different
+   from `implementer_id`, plus contract/runtime/E2E evidence. Bind the review
+   to the canonical final-evidence digest, exact tree/turn/workspace,
+   acceptance IDs, and negative paths. Treat the binding as mismatch detection,
+   not cryptographic reviewer authentication; same-user forgery remains a
+   stated trust limitation.
 6. **RISK CLOSURE** — every material `risk_signal` is resolved, explicitly accepted, or blocking.
 7. **VISUAL CONFORMANCE** — when applicable, compare rendered output to `visual_basis`; a concrete mismatch outranks a subjective score.
 8. **CRITICAL AUDIT** — requirement coverage, contradictions, cross-entry consistency, domain handoff consistency, and proof that no behavioral test oracle changed without an explicit requirement delta.

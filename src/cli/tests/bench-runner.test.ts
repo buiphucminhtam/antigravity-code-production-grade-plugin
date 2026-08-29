@@ -9,6 +9,7 @@ import {
 } from "../src/bench/runner.js";
 import { EventEmitter } from "node:events";
 import { Readable } from "node:stream";
+import { createHash } from "node:crypto";
 
 function createMockSpawn(exitCode: number, stdoutText = "", stderrText = "") {
   const spawnCalls: { program: string; args: string[]; options: any }[] = [];
@@ -167,8 +168,14 @@ describe("Benchmark runner", () => {
     expect(report).toBeDefined();
     expect(report?.summary.totalTasks).toBe(1);
     expect(report?.tasks[0].attempts.length).toBe(2);
-    expect(report?.tasks[0].attempts[0].stdout).toBe("success_stdout");
-    expect(report?.tasks[0].attempts[0].stderr).toBe("no_errors");
+    expect(report?.tasks[0].attempts[0].stdoutSha256).toBe(
+      createHash("sha256").update("success_stdout").digest("hex"),
+    );
+    expect(report?.tasks[0].attempts[0].stdoutBytes).toBe(14);
+    expect(report?.tasks[0].attempts[0].stderrSha256).toBe(
+      createHash("sha256").update("no_errors").digest("hex"),
+    );
+    expect(report?.tasks[0].attempts[0].stderrBytes).toBe(9);
 
     // Check spawned adapter and verifier calls
     expect(spawnCalls.length).toBe(4); // 2 runs (adapter + verifier) per attempt

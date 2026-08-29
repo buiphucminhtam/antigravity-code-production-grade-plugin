@@ -41,13 +41,16 @@ final GREEN`, with the clean pre-mutation target tree restored. Payment,
 billing, IAP/in-app purchase, receipt validation, entitlements, subscription,
 and checkout are always HARD/DEEP, regardless of file count.
 
-HARD approval is valid only as a separate, signed `review-2` using OpenSSH
-Ed25519. The review must include the canonical final-evidence digest and exact
-tree, turn, acceptance IDs, and negative bindings, verified against external
-`FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS` or
-`~/.forgewright/reviewers.allowed_signers`. Review-1 and self-authored JSON are
-`UNVERIFIED`. Keep the workflow local-first/provider-neutral; never store
-secrets or private keys in the workspace.
+HARD approval is valid only as a separate keyless `review-2`. The review must
+bind the canonical final-evidence digest, exact tree, turn, workspace,
+acceptance IDs, and negative bindings; set
+`reviewer.status: independent-approved`; and identify an `implementer_id`
+different from the reviewer identity. Review-1, self-authored or same-identity
+review, and marker-only approval are `UNVERIFIED`. Digest and exact-tree
+bindings detect mismatched evidence, but a keyless record does not
+cryptographically authenticate the reviewer or prevent same-user forgery.
+Keep the workflow local-first/provider-neutral and report this residual trust
+limitation honestly.
 
 ## Proportional Workflow
 
@@ -118,14 +121,8 @@ Emit one block per material acceptance ID. Marker-only or narrative summaries
 cannot replace the machine record. Non-code `QUICK` reporting remains
 proportional to the verified fact/artifact.
 
-Example local attestation (both paths are external to the workspace):
-
-```sh
-FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS=/absolute/path/reviewers.allowed_signers \
-python3 scripts/lite/review_attest.py sign \
-  --evidence .forgewright/verify/<turn>.json \
-  --private-key /absolute/path/reviewer_ed25519
-```
+The keyless review record is a local integrity binding, not a cryptographic
+identity attestation. Never describe its reviewer identity as authenticated.
 
 ---
 

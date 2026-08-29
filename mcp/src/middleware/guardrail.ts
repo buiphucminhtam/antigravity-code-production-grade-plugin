@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, realpathSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 
@@ -79,35 +80,99 @@ function defaultScriptPath(workspaceRoot: string): string {
   return findPolicyScript(process.cwd());
 }
 
+function safePolicyEnvironment(cwd: string, policyFile: string): NodeJS.ProcessEnv {
+  const environment: NodeJS.ProcessEnv = {
+    PATH: process.env.PATH,
+    HOME: process.env.HOME,
+    LANG: process.env.LANG,
+    LC_ALL: process.env.LC_ALL,
+    TMPDIR: process.env.TMPDIR,
+    FORGEWRIGHT_WORKSPACE: cwd,
+    FORGEWRIGHT_POLICY_FILE: policyFile,
+  };
+  if (process.env.FORGEWRIGHT_TELEMETRY_DIR) {
+    environment.FORGEWRIGHT_TELEMETRY_DIR = process.env.FORGEWRIGHT_TELEMETRY_DIR;
+  }
+  return Object.fromEntries(
+    Object.entries(environment).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined,
+    ),
+  );
+}
+
+function secureRegularFile(path: string, label: string): string {
+  const info = lstatSync(path);
+  if (!info.isFile() || info.isSymbolicLink()) throw new Error(`${label} is not a regular file`);
+  if ((info.mode & 0o022) !== 0) throw new Error(`${label} is writable by group or others`);
+  if (typeof process.getuid === 'function' && info.uid !== process.getuid()) {
+    throw new Error(`${label} is not owned by the current user`);
+  }
+  return realpathSync(path);
+}
+function snapshot(path: string) {
+  const info = lstatSync(path);
+  return `${info.dev}:${info.ino}:${info.mode}:${info.uid}:${createHash('sha256').update(readFileSync(path)).digest('hex')}`;
+}
+
 export class ProcessPolicyEvaluator implements PolicyEvaluator {
   private readonly cwd: string;
   private readonly scriptPath: string;
   private readonly policyFile: string;
   private readonly timeoutMs: number;
   private readonly maxOutputBytes: number;
+  private readonly scriptSnapshot: string;
+  private readonly policySnapshot: string;
 
   constructor(options: ProcessPolicyEvaluatorOptions = {}) {
-    this.cwd = process.env.FORGEWRIGHT_WORKSPACE
-      ? resolve(process.env.FORGEWRIGHT_WORKSPACE)
-      : findWorkspaceRoot(options.cwd ?? process.cwd());
-    this.scriptPath = options.scriptPath ?? defaultScriptPath(this.cwd);
-    this.policyFile = resolve(
-      options.policyFile ??
-        (process.env.FORGEWRIGHT_POLICY_FILE ||
-          resolve(this.cwd, '.forgewright/execution-policy.yaml')),
+    this.cwd = realpathSync(
+      process.env.FORGEWRIGHT_WORKSPACE
+        ? resolve(process.env.FORGEWRIGHT_WORKSPACE)
+        : findWorkspaceRoot(options.cwd ?? process.cwd()),
+    );
+    this.scriptPath = secureRegularFile(
+      options.scriptPath ?? defaultScriptPath(this.cwd),
+      'Execution policy script',
+    );
+    this.policyFile = secureRegularFile(
+      resolve(
+        options.policyFile ??
+          (process.env.FORGEWRIGHT_POLICY_FILE ||
+            resolve(this.cwd, '.forgewright/execution-policy.yaml')),
+      ),
+      'Execution policy file',
     );
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.maxOutputBytes = options.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES;
+    this.scriptSnapshot = snapshot(this.scriptPath);
+    this.policySnapshot = snapshot(this.policyFile);
   }
 
   evaluate(toolName: string, arguments_: Record<string, unknown>): Promise<PolicyEvaluation> {
     return new Promise((resolveEvaluation) => {
+      try {
+        if (
+          snapshot(this.scriptPath) !== this.scriptSnapshot ||
+          snapshot(this.policyFile) !== this.policySnapshot
+        ) {
+          resolveEvaluation({
+            action: 'config-error',
+            reason: 'Execution policy identity changed.',
+          });
+          return;
+        }
+      } catch {
+        resolveEvaluation({
+          action: 'config-error',
+          reason: 'Execution policy cannot be revalidated.',
+        });
+        return;
+      }
       const child = spawn(
-        'bash',
+        '/bin/bash',
         [this.scriptPath, 'check', toolName, serializePolicyArguments(arguments_)],
         {
           cwd: this.cwd,
-          env: { ...process.env, FORGEWRIGHT_POLICY_FILE: this.policyFile },
+          env: safePolicyEnvironment(this.cwd, this.policyFile),
           shell: false,
           stdio: ['ignore', 'pipe', 'pipe'],
         },

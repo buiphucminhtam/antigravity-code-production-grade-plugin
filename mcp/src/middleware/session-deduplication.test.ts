@@ -38,6 +38,24 @@ describe('SessionDeduplicationMiddleware', () => {
   });
 
   describe('shouldDeduplicate', () => {
+    it('does not cache when explicitly disabled', () => {
+      mw.configure({ enabled: false });
+      const first = makeCtx('Grep', { pattern: 'stateful' });
+      first.call.result = { content: [{ type: 'text', text: 'first' }] };
+      expect(mw.before_tool(first).action).toBe('pass');
+      mw.after_tool(first);
+      expect(mw.before_tool(makeCtx('Grep', { pattern: 'stateful' })).action).toBe('pass');
+    });
+
+    it('does not deduplicate the stateful overlay loader', () => {
+      const first = makeCtx('fw_load_skill_overlay', { name: 'software-engineer' });
+      first.call.result = { content: [{ type: 'text', text: 'overlay' }] };
+      mw.before_tool(first);
+      mw.after_tool(first);
+      expect(
+        mw.before_tool(makeCtx('fw_load_skill_overlay', { name: 'software-engineer' })).action,
+      ).toBe('pass');
+    });
     it('should NOT deduplicate Write (side effect)', () => {
       const ctx = makeCtx('Write', { path: '/tmp/test.txt' });
       const result = mw.before_tool(ctx);

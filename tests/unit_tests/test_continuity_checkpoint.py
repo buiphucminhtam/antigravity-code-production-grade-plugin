@@ -353,3 +353,370 @@ def test_message_tick_does_not_checkpoint_from_simulated_counts(tmp_path: Path) 
     assert session["message_count"] == 0
     assert session["checkpoints"] == []
     assert "event-driven" in ticked.stdout.lower()
+
+
+def test_semantic_boundary_checkpoint_and_nonsemantic_reason_rejection(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _git_workspace(workspace)
+
+    written = _run(
+        workspace,
+        "checkpoint",
+        "--session",
+        "semantic-session",
+        "--turn",
+        "turn-1",
+        "--reason",
+        "pre-compaction",
+        "--boundary",
+        "pre-compaction",
+        "--max-steps",
+        "2",
+        "--max-tool-calls",
+        "3",
+        payload=_payload(),
+    )
+    assert written.returncode == 0, written.stderr
+    checkpoint = json.loads(written.stdout)
+    assert checkpoint["semantic_boundary"] == "pre-compaction"
+    assert checkpoint["continuation"]["max_steps"] == 2
+    assert checkpoint["authority"] == "context-only"
+
+    rejected = _run(
+        workspace,
+        "checkpoint",
+        "--session",
+        "timer-session",
+        "--turn",
+        "turn-1",
+        "--reason",
+        "timer",
+        payload=_payload(),
+    )
+    assert rejected.returncode == 2
+    assert "non_semantic_checkpoint_reason" in rejected.stderr
+
+
+def test_bounded_continuation_consumes_cumulatively_and_rejects_replay_overrun(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _git_workspace(workspace)
+    written = _run(
+        workspace,
+        "checkpoint",
+        "--session",
+        "budget-session",
+        "--turn",
+        "turn-1",
+        "--reason",
+        "step-boundary",
+        "--max-steps",
+        "2",
+        "--max-tool-calls",
+        "3",
+        payload=_payload(),
+    )
+    checkpoint = json.loads(written.stdout)
+    checkpoint_hash = checkpoint["checkpoint_hash"]
+    nonce = checkpoint["continuation"]["nonce"]
+
+    first = _run(
+        workspace,
+        "consume",
+        "--session",
+        "budget-session",
+        "--checkpoint-hash",
+        checkpoint_hash,
+        "--nonce",
+        nonce,
+        "--request-id",
+        "request-1",
+        "--steps",
+        "1",
+        "--tool-calls",
+        "1",
+    )
+    assert first.returncode == 0, first.stderr
+    assert json.loads(first.stdout)["remaining_steps"] == 1
+
+    second = _run(
+        workspace,
+        "consume",
+        "--session",
+        "budget-session",
+        "--checkpoint-hash",
+        checkpoint_hash,
+        "--nonce",
+        nonce,
+        "--request-id",
+        "request-2",
+        "--steps",
+        "1",
+        "--tool-calls",
+        "1",
+    )
+    assert second.returncode == 0, second.stderr
+    assert json.loads(second.stdout)["remaining_steps"] == 0
+
+    wrong_nonce = _run(
+        workspace,
+        "consume",
+        "--session",
+        "budget-session",
+        "--checkpoint-hash",
+        checkpoint_hash,
+        "--nonce",
+        "f" * 64,
+        "--request-id",
+        "wrong-nonce",
+        "--steps",
+        "0",
+        "--tool-calls",
+        "1",
+    )
+    assert wrong_nonce.returncode == 2
+    assert "continuation_nonce_mismatch" in wrong_nonce.stderr
+
+    replay = _run(
+        workspace,
+        "consume",
+        "--session",
+        "budget-session",
+        "--checkpoint-hash",
+        checkpoint_hash,
+        "--nonce",
+        nonce,
+        "--request-id",
+        "request-2",
+        "--steps",
+        "0",
+        "--tool-calls",
+        "1",
+    )
+    assert replay.returncode == 2
+    assert "continuation_replay" in replay.stderr
+
+    overrun = _run(
+        workspace,
+        "consume",
+        "--session",
+        "budget-session",
+        "--checkpoint-hash",
+        checkpoint_hash,
+        "--nonce",
+        nonce,
+        "--request-id",
+        "request-3",
+        "--steps",
+        "1",
+        "--tool-calls",
+        "0",
+    )
+    assert overrun.returncode == 2
+    assert "continuation_overrun" in overrun.stderr
+
+    resumed = _run(workspace, "resume", "--session", "budget-session")
+    assert json.loads(resumed.stdout)["remaining_budget"] == {
+        "steps": 0,
+        "tool_calls": 1,
+    }
+
+
+def test_trajectory_binding_and_receipt_corruption_fail_fresh(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _git_workspace(workspace)
+    trajectory_args = [
+        "--trajectory-id",
+        "trajectory-1",
+        "--writer-epoch",
+        "3",
+        "--trajectory-offset",
+        "7",
+        "--trajectory-head-hash",
+        "b" * 64,
+        "--capability-hash",
+        "c" * 64,
+    ]
+    written = _run(
+        workspace,
+        "checkpoint",
+        "--session",
+        "trajectory-session",
+        "--turn",
+        "turn-1",
+        "--reason",
+        "handoff",
+        "--max-steps",
+        "2",
+        "--max-tool-calls",
+        "2",
+        *trajectory_args,
+        payload=_payload(),
+    )
+    assert written.returncode == 0, written.stderr
+    checkpoint = json.loads(written.stdout)
+    matched = _run(
+        workspace, "resume", "--session", "trajectory-session", *trajectory_args
+    )
+    assert json.loads(matched.stdout)["status"] == "resumable-context"
+    mismatched = _run(
+        workspace,
+        "resume",
+        "--session",
+        "trajectory-session",
+        *trajectory_args[:-1],
+        "d" * 64,
+    )
+    parsed = json.loads(mismatched.stdout)
+    assert parsed["status"] == "fresh-start"
+    assert "trajectory_mismatch" in parsed["reasons"]
+
+    consumed = _run(
+        workspace,
+        "consume",
+        "--session",
+        "trajectory-session",
+        "--checkpoint-hash",
+        checkpoint["checkpoint_hash"],
+        "--nonce",
+        checkpoint["continuation"]["nonce"],
+        "--request-id",
+        "request-1",
+        "--steps",
+        "1",
+        "--tool-calls",
+        "0",
+        *trajectory_args,
+    )
+    assert consumed.returncode == 0, consumed.stderr
+    receipt = next(
+        Path(checkpoint["storage_path"]).parent.glob("receipts/*/receipt-*.json")
+    )
+    receipt.write_text("{}", encoding="utf-8")
+    corrupt = _run(
+        workspace, "resume", "--session", "trajectory-session", *trajectory_args
+    )
+    corrupt_result = json.loads(corrupt.stdout)
+    assert corrupt_result["status"] == "fresh-start"
+    assert "continuation_receipt_corrupt" in corrupt_result["reasons"]
+
+
+def test_continuation_expiry_fails_fresh(tmp_path: Path) -> None:
+    import time
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _git_workspace(workspace)
+    written = _run(
+        workspace,
+        "checkpoint",
+        "--session",
+        "expiry-session",
+        "--turn",
+        "turn-1",
+        "--reason",
+        "handoff",
+        "--max-steps",
+        "1",
+        "--ttl-seconds",
+        "1",
+        payload=_payload(),
+    )
+    assert written.returncode == 0, written.stderr
+    time.sleep(1.05)
+    resumed = _run(workspace, "resume", "--session", "expiry-session")
+    parsed = json.loads(resumed.stdout)
+    assert parsed["status"] == "fresh-start"
+    assert "checkpoint_expired" in parsed["reasons"]
+
+
+def test_continuity_rejects_symlinked_roots_sessions_and_oversized_reads(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _git_workspace(workspace)
+    external = tmp_path / "external"
+    external.mkdir()
+    linked_root = tmp_path / "linked-root"
+    linked_root.symlink_to(external, target_is_directory=True)
+    rejected_root = subprocess.run(
+        [
+            sys.executable,
+            str(CONTINUITY),
+            "checkpoint",
+            "--session",
+            "linked-session",
+            "--turn",
+            "turn-1",
+            "--reason",
+            "handoff",
+        ],
+        cwd=workspace,
+        env={
+            **os.environ,
+            "FORGEWRIGHT_WORKSPACE": str(workspace),
+            "FORGEWRIGHT_CONTINUITY_ROOT": str(linked_root / "nested"),
+        },
+        input=json.dumps(_payload()),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert rejected_root.returncode == 2
+    assert "continuity_root_symlink" in rejected_root.stderr
+    assert list(external.iterdir()) == []
+
+    written = _run(
+        workspace,
+        "checkpoint",
+        "--session",
+        "session-link",
+        "--turn",
+        "turn-1",
+        "--reason",
+        "handoff",
+        payload=_payload(),
+    )
+    checkpoint = json.loads(written.stdout)
+    session_dir = Path(checkpoint["storage_path"]).parent
+    moved = tmp_path / "moved-session"
+    session_dir.rename(moved)
+    session_dir.symlink_to(moved, target_is_directory=True)
+    rejected_session = _run(
+        workspace,
+        "checkpoint",
+        "--session",
+        "session-link",
+        "--turn",
+        "turn-2",
+        "--reason",
+        "handoff",
+        payload=_payload(),
+    )
+    assert rejected_session.returncode == 2
+    assert "continuity_session_symlink" in rejected_session.stderr
+
+    safe = _run(
+        workspace,
+        "checkpoint",
+        "--session",
+        "oversized-session",
+        "--turn",
+        "turn-1",
+        "--reason",
+        "handoff",
+        payload=_payload(),
+    )
+    safe_checkpoint = json.loads(safe.stdout)
+    Path(safe_checkpoint["storage_path"]).write_bytes(b"{" + b"x" * (65 * 1024))
+    oversized = _run(workspace, "resume", "--session", "oversized-session")
+    oversized_result = json.loads(oversized.stdout)
+    assert oversized_result["status"] == "fresh-start"
+    assert "corrupt_checkpoint" in oversized_result["reasons"]

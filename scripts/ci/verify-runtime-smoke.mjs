@@ -1,6 +1,14 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -83,8 +91,29 @@ async function runCodexSmoke() {
 async function runMcpSmoke() {
   const build = join(root, 'mcp', 'build', 'index.js');
   const workspace = mkdtempSync(join(tmpdir(), 'forgewright-mcp-smoke-'));
-  const child = spawn(process.execPath, [build], { cwd: workspace, stdio: ['pipe', 'pipe', 'pipe'] });
+  const trajectoryRoot = join(workspace, 'trajectory-ledgers');
+  const trajectoryId = 'runtime-smoke-trajectory';
+  const rawSecret = 'runtime-smoke-raw-secret';
+  mkdirSync(join(workspace, '.forgewright'), { recursive: true });
+  cpSync(
+    join(root, '.forgewright', 'execution-policy.yaml'),
+    join(workspace, '.forgewright', 'execution-policy.yaml'),
+  );
+  const child = spawn(process.execPath, [build], {
+    cwd: workspace,
+    env: {
+      ...process.env,
+      FORGEWRIGHT_MCP_LEASE_ROOT: join(workspace, 'leases'),
+      FORGEWRIGHT_WORKSPACE: workspace,
+      FORGEWRIGHT_TRAJECTORY_ROOT: trajectoryRoot,
+      FORGEWRIGHT_TRAJECTORY_ID: trajectoryId,
+      FORGEWRIGHT_SESSION_ID: 'runtime-smoke-session',
+      FORGEWRIGHT_LIFECYCLE_SHUTDOWN_TIMEOUT_MS: '5000',
+    },
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
   let stderr = '';
+  let exited = false;
   const pending = new Map();
   let nextId = 1;
   const timer = setTimeout(() => child.kill('SIGTERM'), timeoutMs);
@@ -99,6 +128,13 @@ async function runMcpSmoke() {
     buffer = buffer.includes('\n') ? buffer.slice(buffer.lastIndexOf('\n') + 1) : buffer;
   });
   child.stderr.on('data', (chunk) => { stderr = (stderr + chunk).slice(-2048); });
+  const closed = new Promise((resolve, reject) => {
+    child.on('error', reject);
+    child.on('close', (code) => {
+      exited = true;
+      code === 0 ? resolve() : reject(new Error(`MCP process exited ${code}: ${stderr}`));
+    });
+  });
   const call = (method, params) => new Promise((resolve, reject) => {
     const id = nextId++;
     const timeout = setTimeout(() => reject(new Error(`MCP ${method} timed out`)), timeoutMs);
@@ -109,14 +145,62 @@ async function runMcpSmoke() {
     const initialized = await call('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'forgewright-runtime-smoke', version: '1' } });
     child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized', params: {} })}\n`);
     const tools = await call('tools/list', {});
-    const current = await call('tools/call', { name: 'fw_get_current_phase', arguments: {} });
+    const current = await call('tools/call', {
+      name: 'fw_get_current_phase',
+      arguments: { secret: rawSecret },
+    });
     if (initialized.error || tools.error || current.error || current.result?.isError) throw new Error(`MCP boundary rejected smoke call: ${stderr}`);
     const toolCount = tools.result?.tools?.length;
     if (!Number.isInteger(toolCount) || toolCount < 1) throw new Error('MCP tools/list returned no tools');
-    return { protocol: initialized.result?.protocolVersion, toolCount, nonMutatingTool: 'fw_get_current_phase' };
+    child.stdin.end();
+    await closed;
+
+    const trajectoryDirectory = join(trajectoryRoot, trajectoryId);
+    const events = readdirSync(trajectoryDirectory)
+      .filter((name) => name.endsWith('.event.json'))
+      .sort()
+      .map((name) => JSON.parse(readFileSync(join(trajectoryDirectory, name), 'utf8')));
+    const kinds = events.map((event) => event.kind);
+    for (const requiredKind of [
+      'trajectory.opened',
+      'scope.opened',
+      'operation.started',
+      'operation.settled',
+      'scope.closed',
+      'finalization.started',
+      'finalization.receipt',
+      'trajectory.terminal',
+    ]) {
+      if (!kinds.includes(requiredKind)) throw new Error(`MCP trajectory missed ${requiredKind}`);
+    }
+    const terminal = events.at(-1);
+    const receipt = events.at(-2);
+    if (terminal?.kind !== 'trajectory.terminal' || receipt?.kind !== 'finalization.receipt') {
+      throw new Error('MCP trajectory did not seal receipt then terminal');
+    }
+    if (terminal.payload?.outcome !== 'completed' || terminal.payload?.quiescence !== 'confirmed') {
+      throw new Error('MCP trajectory terminal did not confirm completed quiescence');
+    }
+    if (terminal.payload?.receiptEventId !== receipt.eventId) {
+      throw new Error('MCP trajectory terminal is not bound to its receipt');
+    }
+    if (JSON.stringify(events).includes(rawSecret)) {
+      throw new Error('MCP trajectory persisted raw tool arguments');
+    }
+    return {
+      protocol: initialized.result?.protocolVersion,
+      toolCount,
+      nonMutatingTool: 'fw_get_current_phase',
+      trajectory: {
+        eventCount: events.length,
+        terminalOutcome: terminal.payload.outcome,
+        quiescence: terminal.payload.quiescence,
+        rawArgumentsPersisted: false,
+      },
+    };
   } finally {
     clearTimeout(timer);
-    child.kill('SIGTERM');
+    if (!exited) child.kill('SIGTERM');
     rmSync(workspace, { recursive: true, force: true });
   }
 }

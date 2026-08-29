@@ -27,13 +27,12 @@ Otherwise the step is `EASY`; `QUICK` work does not need ceremonial per-line tag
 2. Cross-validate only when disagreement or risk remains material — do not trigger a second model merely to satisfy a cascade.
 3. Integrate only verified output.
 
-For payment-domain and other HARD completion, the independent reviewer must be
-separate from the implementer and produce a signed `review-2` record using
-OpenSSH Ed25519. It must bind the canonical final-evidence digest, exact tree,
-turn, acceptance IDs, and `negative_path_bindings`, and verify against the
-external `FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS` file or
-`~/.forgewright/reviewers.allowed_signers`. Review-1, self-authored JSON, or a
-marker-only approval is `UNVERIFIED`.
+Payment/HARD completion requires reviewer identity different from
+`implementer_id` and a keyless `review-2` binding canonical final-evidence digest, exact tree,
+turn, workspace, acceptance IDs, and `negative_path_bindings`, with
+`reviewer.status: independent-approved`. Review-1, same-identity records, and
+markers are `UNVERIFIED`. The binding does not authenticate identity; disclose
+same-user-forgery risk.
 
 ## Budget / Stop Condition
 Respect declared cost/token/deadline constraints. When the preferred escalation is unavailable, use the safest bounded path that still meets acceptance; for security/irreversible/public-contract work, report the unresolved blocker rather than silently weakening the gate. Do not invent extra work to consume remaining budget.

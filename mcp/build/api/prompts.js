@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { ListPromptsRequestSchema, GetPromptRequestSchema, } from '@modelcontextprotocol/sdk/types.js';
-import { getAllSkills } from '../parsers/skill-parser.js';
+import { getAllSkills, loadSkillOverlay } from '../parsers/skill-parser.js';
 import { getWorkspaceRoot } from '../state/pipeline-manager.js';
 function getDesignMdContent() {
     try {
@@ -43,7 +43,8 @@ export function registerPrompts(server) {
         if (promptName === 'fw_orchestrator') {
             const orchestratorSkill = skills.find((s) => s.name === 'production-grade');
             if (orchestratorSkill) {
-                let text = `Please operate as the Forgewright Orchestrator. Load and follow the production-grade skill instructions.\n\n${orchestratorSkill.content}`;
+                const content = orchestratorSkill.content ?? loadSkillOverlay(orchestratorSkill.name).content;
+                let text = `Please operate as the Forgewright Orchestrator. Load and follow the production-grade skill instructions.\n\n${content}`;
                 const designMd = getDesignMdContent();
                 if (designMd) {
                     text += `\n\n[MANDATORY DESIGN SOURCE-OF-TRUTH: DESIGN.md]\nA DESIGN.md file has been detected at the root of the workspace. You and all downstream skills MUST strictly follow its design tokens, colors, typography, layout, and styling rules when planning, designing, or implementing UIs:\n\n${designMd}`;
@@ -65,7 +66,8 @@ export function registerPrompts(server) {
         // Handle individual skills
         const skill = skills.find((s) => `fw_skill_${s.name}` === promptName);
         if (skill) {
-            let text = `Please operate as the following Forgewright Skill:\n\n${skill.content}\n\nExecute the duties for this role based on the current context.`;
+            const content = skill.content ?? loadSkillOverlay(skill.name).content;
+            let text = `Please operate as the following Forgewright Skill:\n\n${content}\n\nExecute the duties for this role based on the current context.`;
             const stylingSkills = [
                 'ui-designer',
                 'frontend-engineer',

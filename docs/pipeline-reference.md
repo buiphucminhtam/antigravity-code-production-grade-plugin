@@ -56,11 +56,139 @@ increases retries, delays synthesis, weakens verification, or is unlikely to
 complete its bounded role. The chosen topology uses the fewest independent
 workers and the smallest capable model/tier that can finish correctly and fast.
 
+The Lite runtime also bounds skill-overlay context before prompt assembly.
+`context_budget.max_skill_descriptions_tokens` applies an ordered-prefix budget
+using the deterministic `utf8_bytes_div_4_ceil` estimate over each exact
+rendered `LITE.md` overlay. Every configured skill path is still validated
+before either the skill-count cap or context budget can defer it. Routing output
+reports the estimated usage and deferred skill names. This is a local,
+provider-neutral estimate, not an exact provider token count or a measured
+token-savings claim.
+
+Deferred overlay bodies are not read during budget selection: the router uses
+the verified `LITE.md` file byte size for its conservative estimate and reads
+only admitted startup overlays. MCP skill discovery is metadata-only. The
+canonical `fw_load_skill_overlay` tool resolves one exact discovered skill name,
+rejects traversal, symlinks, missing or ambiguous names, and caps the returned
+overlay at 48 KiB and 12,000 estimated tokens while reporting a SHA-256 digest
+and size metadata. In Lite mode the agent loop advertises only the current
+deferred inventory and the exact namespaced loader, permits one successful load
+per deferred skill, and rejects speculative, unlisted, or duplicate loads. If
+the loader is unavailable, the prompt records that limitation instead of
+claiming the overlay was loaded. These are deterministic local controls; live
+provider token savings remain unverified until structured usage is available.
+
+## Trajectory lifecycle and quiescence
+
+The canonical MCP runtime opens one contained `forgewright-trajectory-event/v1`
+ledger after acquiring its process lease. Persisted events use canonical
+safe-integer JSON, contiguous sequence numbers, causal references, SHA-256
+previous-hash links, bounded record/ledger sizes, private paths, fsynced atomic
+commits, and whole-chain fail-closed reconstruction. The advisory head is
+rebuildable; the event chain remains authoritative.
+
+Each MCP tool call receives a child scope and operation record. Only a digest of
+deterministically ordered JSON arguments is persisted. Authorization denials,
+middleware blocks, returned errors, cached success, thrown errors, and normal
+success all traverse lifecycle accounting. Cancellation is persisted before
+abort propagation. Disposers persist descriptors before becoming visible, run
+child-before-parent and LIFO, coalesce duplicate finalization, and continue
+after normalized cleanup failures.
+
+Finalization closes admissions, drains admitted cooperative operations until a
+bounded deadline, fences late non-cooperative results, closes scopes, runs every
+trusted disposer, binds the ledger predecessor tip into a quiescence record,
+and, while durable storage remains available, appends exactly one terminal
+event. Only zero unresolved operations, scopes, and disposers may claim
+`confirmed`; timeout, storage uncertainty, or uncertain cancellation remains
+`not_confirmed` and cannot manufacture a terminal success. Runtime shutdown
+then attempts lease release and server close in order. Hash chaining detects
+corruption but is not same-user authenticity. Explicit trajectory reuse is
+accepted only through the validated checkpoint-store recovery API with exact
+tip and writer-epoch fencing; automatic production startup resume remains
+disabled, and pending disposer callbacks are rejected rather than rebound.
+
+## Execution containment and runtime trust
+
+The canonical MCP startup pins a real workspace, regular owner-controlled
+execution-policy file identity and digest, deployment mode, containment profile,
+and optional production caller identity. Production mode fails closed without a
+safe caller ID and the `application` profile; unknown modes, broad/symlinked
+roots, policy replacement, or policy content drift are rejected. Every
+published `fw_*` tool has a declared effect. Unknown tools and undeclared
+filesystem, process, or network effects are denied before handlers while still
+settling through H2 lifecycle accounting. The bounded skill overlay is a
+separate exact-name read capability rather than a general filesystem grant.
+
+Actual state writes validate no-follow workspace/`.forgewright` ancestry,
+safe filenames, private modes, bounded state/lock sizes, exclusive temporary
+files, fsync, and atomic replacement. The Python filesystem MCP plane exposes
+only known methods and validates every path/source/destination against the
+canonical workspace, rejecting traversal, outside roots, malformed arguments,
+and symlinks before `call_tool`. The policy subprocess receives a minimized
+environment instead of inherited credentials.
+
+Webhook networking is absent by default. Loopback needs an explicit port;
+external delivery requires exact-host HTTPS allowlisting plus the validated
+production trust context. DNS answers must all be public, the transport pins the
+selected address, rejects redirects and remote-address mismatch, and omits raw
+workspace paths from payloads. These controls are application-level admission
+for canonical paths, not kernel egress blocking or a portable sandbox for
+arbitrary child processes. Same-user/root bypass and foreign tools remain
+explicit limitations; process effects stay disabled without a verified OS or
+container backend.
+
+## Proactive continuity and safe recovery
+
+The agent loop writes context-only checkpoints at semantic boundaries rather
+than timer or message-count thresholds: before model work, before material
+effects, after tool steps, pre-compaction, and handoff. Each checkpoint is
+project/session scoped, capped at 64 KiB, secret/scratchpad filtered, and bound
+to the current tree, rule-ledger head, optional trajectory/writer epoch, and
+capability hash. Hash-chained files and heads reject corruption or replay.
+
+Continuation carries explicit remaining step/tool counts and an expiry. Each
+consume request has a unique ID and nonce-bound append-only receipt; cumulative
+overrun, duplicate request, wrong nonce, stale tree/ledger/trajectory, or expiry
+fails fresh. Resume content is labeled `context-only` and always requires
+workspace re-grounding; it cannot authorize tools or completion.
+
+The TypeScript runtime adds a parallel private checkpoint store bound to the
+exact trajectory tip and a quiescent coordinator snapshot. Recovery advances
+the writer epoch by exactly one, uses expected-tip append fencing, restores only
+the original root scope, and refuses terminal, active, cancelled, finalizing,
+or pending-disposer state. Arbitrary cleanup callbacks are never deserialized or
+replayed; a checkpoint requiring disposer rebinding is rejected. Process lease
+ownership remains the outer single-writer fence.
+
+## Offline loop replay
+
+H4 journals versioned lifecycle, checkpoint, model, tool, approval, evidence,
+and terminal metadata as a bounded hash chain. Replay is offline and consumes
+the exact event order; it rejects missing, extra, reordered, corrupt, secret,
+or raw-reasoning records. The journal retains digests and normalized metadata,
+not raw prompts, provider responses, or tool payloads. Hashes detect mismatch
+but do not authenticate same-user rewrites; H5 remains the live-provider gate.
+
 ## Planning and optimization
 
 `QUICK` work uses `ACTION | TARGET | CHECK` and no numeric plan score. `STANDARD`/`DEEP` use the complexity-scaled thresholds in `skills/_shared/protocols/plan-quality-loop.md`. There is no universal 9/10 gate.
 
 Optimization needs an explicit target/SLA, measurement, a known platform/resource/cost constraint, or an evident algorithmic/reliability defect at required scale. Otherwise prefer a simple observable baseline and defer speculative optimization.
+
+`forge bench` measurement record v1 binds canonical task/verifier fingerprints,
+resolved settings, per-task provider topology, run identity, timestamps,
+end-to-end wall time, and a receipt for every attempt. Reports persist only
+SHA-256/byte counts for model and verifier output, never raw prompts or output.
+Usage is `reported` only when every attempt supplies a validated receipt;
+reported/unavailable counts expose partial coverage while aggregate totals stay
+`null` when incomplete. The strict paired path requires distinct runs, the same
+provider ecosystem/task topology/verifier contract, and permits a candidate
+model only through a separately bound settings snapshot. It computes quality,
+cost, provider-latency, and wall-time deltas and rejects self-pairs, mixed
+providers, or mismatched receipts. Local fixtures remain
+`production_evidence: missing`; the configured provider client rejected the
+live probe, so H5 production/canary/rollback evidence is not claimed.
 
 ## Evidence hierarchy
 
@@ -110,12 +238,14 @@ Code-change completion is fail-closed and exact-turn correlated:
 6. Payment, billing, IAP/in-app purchase, receipt validation, entitlements,
    subscription, and checkout are always `HARD` / `DEEP`, regardless of file
    count. Completion requires contract, runtime, and E2E evidence plus a
-   separate signed `review-2` using OpenSSH Ed25519.
+   separate keyless `review-2` from a reviewer identity different from the
+   implementer.
 7. `review-2` must bind the canonical SHA-256 digest of final evidence, exact
-   final tree, turn, acceptance IDs, and `negative_path_bindings`. Trust comes
-   only from external `FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS`, or fallback
-   `~/.forgewright/reviewers.allowed_signers`; review-1/self-authored JSON is
-   `UNVERIFIED`.
+   final tree, turn, workspace, acceptance IDs, and `negative_path_bindings`.
+   Review-1, same-identity, malformed, stale, replayed, or mismatched JSON is
+   `UNVERIFIED`. The keyless record detects evidence mismatch but does not
+   authenticate reviewer identity against same-user forgery; the record must
+   disclose that limitation.
 
 ## Requirement-locked test oracles
 
@@ -136,14 +266,12 @@ replay protects this contract, and the focused live weak-model smoke must leave
 the test unchanged and report `REQUIREMENT_BLOCKED` when the product decision is
 unresolved.
 
-Local-first/provider-neutral operation is the default. Keep private keys and
-other secrets outside the workspace. Attest a final record with:
+Local-first/provider-neutral operation is the default. Create the bounded
+review record with no key or external trust file:
 
 ```sh
-FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS=/absolute/path/reviewers.allowed_signers \
-python3 scripts/lite/review_attest.py sign \
-  --evidence .forgewright/verify/<turn>.json \
-  --private-key /absolute/path/reviewer_ed25519
+python3 scripts/lite/review_attest.py create \
+  --evidence .forgewright/verify/<turn>.json
 ```
 
 Generated evidence files are local runtime artifacts. Project source, tests, and this documented contract remain the durable source of truth.

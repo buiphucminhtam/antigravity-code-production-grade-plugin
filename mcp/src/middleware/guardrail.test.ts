@@ -6,12 +6,37 @@ import { ProcessPolicyEvaluator } from './guardrail.js';
 
 function policyScript(body: string): { root: string; script: string } {
   const root = mkdtempSync(join(tmpdir(), 'forgewright-policy-evaluator-'));
+  const policyDir = join(root, '.forgewright');
+  mkdirSync(policyDir, { recursive: true });
+  writeFileSync(
+    join(policyDir, 'execution-policy.yaml'),
+    'mode: strict\nrequire_verify: true\nmax_escalations: 3\nrefresh_interval_ticks: 10\ndeny_patterns:\n  - "blocked"\n',
+  );
   const script = join(root, 'policy-check.sh');
   writeFileSync(script, `#!/usr/bin/env bash\n${body}\n`, { mode: 0o700 });
   return { root, script };
 }
 
 describe('ProcessPolicyEvaluator', () => {
+  it('does not leak unrelated parent secrets into the policy subprocess', async () => {
+    const workspace = mkdtempSync(join(tmpdir(), 'forgewright-policy-env-'));
+    const policyDir = join(workspace, '.forgewright');
+    mkdirSync(policyDir, { recursive: true });
+    writeFileSync(
+      join(policyDir, 'execution-policy.yaml'),
+      'mode: strict\nrequire_verify: true\nmax_escalations: 3\nrefresh_interval_ticks: 10\ndeny_patterns:\n  - "blocked"\n',
+    );
+    const script = join(workspace, 'check.sh');
+    writeFileSync(
+      script,
+      '#!/usr/bin/env bash\n[[ -z "${FORGEWRIGHT_TEST_SECRET:-}" ]] || exit 9\nexit 0\n',
+      { mode: 0o700 },
+    );
+    vi.stubEnv('FORGEWRIGHT_TEST_SECRET', 'must-not-leak');
+    const evaluator = new ProcessPolicyEvaluator({ cwd: workspace, scriptPath: script });
+
+    await expect(evaluator.evaluate('tool', {})).resolves.toMatchObject({ action: 'allow' });
+  });
   afterEach(() => {
     vi.unstubAllEnvs();
   });
@@ -158,5 +183,11 @@ describe('ProcessPolicyEvaluator', () => {
       action: 'config-error',
       reason: expect.stringContaining('output limit'),
     });
+  });
+  it('fails closed after a script or policy content replacement', async () => {
+    const { root, script } = policyScript('exit 0');
+    const evaluator = new ProcessPolicyEvaluator({ scriptPath: script, cwd: root });
+    writeFileSync(script, '#!/usr/bin/env bash\necho replaced >&2\nexit 0\n', { mode: 0o700 });
+    await expect(evaluator.evaluate('Bash', {})).resolves.toMatchObject({ action: 'config-error' });
   });
 });

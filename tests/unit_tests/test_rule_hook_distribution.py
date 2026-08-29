@@ -425,11 +425,15 @@ def test_installer_preserves_unrelated_verify_and_context_hooks(tmp_path: Path) 
     seed_user_configs(home)
 
     unrelated_verify = "bash /opt/team/verify-gate.sh --platform CLAUDE"
+    unrelated_relative_verify = "bash tools/verify-gate.sh --platform CLAUDE"
     unrelated_context = "python3 /opt/team/rule-context-hook.py --custom"
     claude_path = home / ".claude" / "settings.json"
     claude = load_json(claude_path)
     claude["hooks"]["Stop"].append(
         {"hooks": [{"type": "command", "command": unrelated_verify}]}
+    )
+    claude["hooks"]["Stop"].append(
+        {"hooks": [{"type": "command", "command": unrelated_relative_verify}]}
     )
     claude["hooks"]["SessionStart"].append(
         {"hooks": [{"type": "command", "command": unrelated_context}]}
@@ -442,6 +446,10 @@ def test_installer_preserves_unrelated_verify_and_context_hooks(tmp_path: Path) 
     result = load_json(claude_path)
     assert any(
         hook.get("command") == unrelated_verify
+        for hook in lifecycle_commands(result, "Stop")
+    )
+    assert any(
+        hook.get("command") == unrelated_relative_verify
         for hook in lifecycle_commands(result, "Stop")
     )
     assert any(

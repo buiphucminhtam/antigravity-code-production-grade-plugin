@@ -11,11 +11,24 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createHash } from 'node:crypto';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { registerPrompts } from './api/prompts.js';
 import { registerTools } from './api/tools.js';
 import { LifecycleLeaseStore, type LifecycleLease } from './runtime/lifecycle-lease.js';
+import {
+  McpRuntimeLifecycle,
+  RuntimeShutdownController,
+  StartupFailureCleanupController,
+  lifecycleShutdownTimeoutMs,
+  openRuntimeAfterLease,
+  type RuntimeCloseResult,
+  type RuntimeShutdownReason,
+} from './runtime/mcp-runtime-lifecycle.js';
+import { ToolExecutionGateway } from './runtime/tool-execution-gateway.js';
+import { ExecutionContainment, loadRuntimeTrustContext } from './runtime/execution-containment.js';
 import { setWorkspaceRoot } from './state/pipeline-manager.js';
-import { setMcpServer } from './state/rpc-client.js';
+import { setMcpServer, setRuntimeTrustContext } from './state/rpc-client.js';
 
 const server = new Server(
   {
@@ -30,56 +43,98 @@ const server = new Server(
   },
 );
 
-// Detect and set workspace root BEFORE registering handlers
-setWorkspaceRoot();
-setMcpServer(server);
-
-registerPrompts(server);
-registerTools(server);
-
 const leaseStore = new LifecycleLeaseStore();
 let activeLease: LifecycleLease | null = null;
-let shutdownPromise: Promise<void> | null = null;
+let runtime: McpRuntimeLifecycle | null = null;
+let shutdownController: RuntimeShutdownController | null = null;
+let shutdownPromise: Promise<RuntimeCloseResult> | null = null;
 
-function workspaceId(): string {
-  return createHash('sha256').update(process.cwd()).digest('hex');
+function workspaceId(workspace = process.cwd()): string {
+  return createHash('sha256').update(workspace).digest('hex');
 }
 
 function sessionId(): string {
-  return (
-    process.env.FORGEWRIGHT_SESSION_ID ??
-    process.env.CODEX_THREAD_ID ??
-    `mcp-process-${process.pid}`
-  );
+  return process.env.FORGEWRIGHT_SESSION_ID ?? `mcp-process-${process.pid}`;
 }
 
-async function shutdown(reason: string): Promise<void> {
+const DEFERRED_SKILL_NAME = /^[a-z0-9][a-z0-9-]{0,63}$/;
+
+export function deferredSkillAllowlist(
+  raw = process.env.FORGEWRIGHT_DEFERRED_SKILLS_JSON,
+): string[] {
+  if (raw === undefined || raw.trim() === '') return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error('FORGEWRIGHT_DEFERRED_SKILLS_JSON must be valid JSON');
+  }
+  if (
+    !Array.isArray(parsed) ||
+    parsed.some((name) => typeof name !== 'string' || !DEFERRED_SKILL_NAME.test(name))
+  ) {
+    throw new Error('FORGEWRIGHT_DEFERRED_SKILLS_JSON must be an array of safe skill names');
+  }
+  if (new Set(parsed).size !== parsed.length) {
+    throw new Error('FORGEWRIGHT_DEFERRED_SKILLS_JSON must not contain duplicate skill names');
+  }
+  return parsed;
+}
+
+async function releaseActiveLease(): Promise<void> {
+  const lease = activeLease;
+  activeLease = null;
+  if (lease === null) return;
+  const result = await leaseStore.release(lease.leaseId, lease.ownerToken, lease.version);
+  if (result !== 'released' && result !== 'closed') {
+    throw new Error(`LEASE_RELEASE_REFUSED:${result}`);
+  }
+}
+
+async function closeWithoutLifecycle(): Promise<RuntimeCloseResult> {
+  const diagnostics: string[] = [];
+  try {
+    await releaseActiveLease();
+  } catch {
+    diagnostics.push('LEASE_RELEASE_FAILED');
+  }
+  try {
+    await server.close();
+  } catch {
+    diagnostics.push('SERVER_CLOSE_FAILED');
+  }
+  return { outcome: 'failed', quiescence: 'not_confirmed', diagnostics };
+}
+
+function shutdown(reason: RuntimeShutdownReason): Promise<RuntimeCloseResult> {
   if (shutdownPromise !== null) return shutdownPromise;
-  shutdownPromise = (async () => {
-    const lease = activeLease;
-    activeLease = null;
-    if (lease !== null) {
-      const result = await leaseStore.release(lease.leaseId, lease.ownerToken, lease.version);
-      if (result !== 'released' && result !== 'closed') {
-        console.error(`[Forgewright Global MCP] Lease close refused: ${result} (${reason})`);
-      }
-    }
-    await server.close().catch(() => undefined);
-  })();
+  shutdownPromise = shutdownController?.close(reason) ?? closeWithoutLifecycle();
   return shutdownPromise;
 }
 
+function reportDiagnostics(result: RuntimeCloseResult): void {
+  if (result.diagnostics.length === 0) return;
+  console.error(`[Forgewright Global MCP] Shutdown diagnostics: ${result.diagnostics.join(',')}`);
+}
+
 function installShutdownHandlers(): void {
-  process.stdin.once('end', () => void shutdown('stdin-eof'));
-  process.stdin.once('close', () => void shutdown('stdin-close'));
+  process.stdin.once('end', () => void shutdown('stdin-eof').then(reportDiagnostics));
+  process.stdin.once('close', () => void shutdown('stdin-close').then(reportDiagnostics));
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     process.once(signal, () => {
-      void shutdown(signal).finally(() => process.exit(0));
+      void shutdown(signal)
+        .then(reportDiagnostics)
+        .finally(() => process.exit(0));
     });
   }
 }
 
-async function run() {
+export async function run(): Promise<void> {
+  setWorkspaceRoot();
+  setMcpServer(server);
+  registerPrompts(server);
+  const trust = loadRuntimeTrustContext();
+
   const reconciled = await leaseStore.reconcile();
   for (const result of reconciled) {
     if (result.result === 'identity_mismatch' || result.result === 'reconcile_error') {
@@ -93,26 +148,79 @@ async function run() {
   if (!Number.isSafeInteger(ttlMs) || ttlMs <= 0) {
     throw new Error('FORGEWRIGHT_MCP_LEASE_TTL_MS must be a positive integer');
   }
+  const exactWorkspaceId = workspaceId(trust.workspace);
+  const exactSessionId = sessionId();
+  const shutdownTimeoutMs = lifecycleShutdownTimeoutMs();
   activeLease = await leaseStore.acquire({
-    workspaceId: workspaceId(),
-    sessionId: sessionId(),
+    workspaceId: exactWorkspaceId,
+    sessionId: exactSessionId,
     identity,
     ttlMs,
+  });
+
+  const startupFailureCleanup = new StartupFailureCleanupController({
+    timeoutMs: shutdownTimeoutMs,
+    releaseLease: releaseActiveLease,
+    closeServer: () => server.close(),
+  });
+
+  try {
+    runtime = await openRuntimeAfterLease(
+      () =>
+        McpRuntimeLifecycle.open({
+          workspaceId: exactWorkspaceId,
+          sessionId: exactSessionId,
+        }),
+      startupFailureCleanup,
+    );
+  } catch (error) {
+    const diagnostics = await startupFailureCleanup.close();
+    if (diagnostics.length > 0) {
+      console.error(`[Forgewright Global MCP] Shutdown diagnostics: ${diagnostics.join(',')}`);
+    }
+    throw error;
+  }
+
+  shutdownController = new RuntimeShutdownController({
+    runtime,
+    timeoutMs: shutdownTimeoutMs,
+    releaseLease: releaseActiveLease,
+    closeServer: () => server.close(),
+    log: (message) => console.error(message),
+  });
+
+  setRuntimeTrustContext(trust, exactWorkspaceId, exactSessionId);
+  const gateway = new ToolExecutionGateway({
+    ...runtime.gatewayContext,
+    containment: new ExecutionContainment(trust),
+  });
+  registerTools(server, gateway, {
+    sessionId: exactSessionId,
+    deferredSkillNames: deferredSkillAllowlist(),
   });
   installShutdownHandlers();
   const transport = new StdioServerTransport();
   try {
     await server.connect(transport);
     console.error(
-      `[Forgewright Global MCP] Running — workspace: ${process.cwd()} lease: ${activeLease.leaseId}`,
+      `[Forgewright Global MCP] Running — workspace: ${process.cwd()} lease: ${activeLease.leaseId} trajectory: ${runtime.trajectoryId}`,
     );
   } catch (error) {
-    await shutdown('connect-failed');
+    reportDiagnostics(await shutdown('connect-failed'));
     throw error;
   }
 }
 
-run().catch((error) => {
-  console.error('[Forgewright Global MCP] Fatal error:', error);
-  void shutdown('fatal').finally(() => process.exit(1));
-});
+function isMainModule(): boolean {
+  const entry = process.argv[1];
+  return entry !== undefined && pathToFileURL(resolve(entry)).href === import.meta.url;
+}
+
+if (isMainModule()) {
+  run().catch((error) => {
+    console.error('[Forgewright Global MCP] Fatal error:', error);
+    void shutdown('fatal')
+      .then(reportDiagnostics)
+      .finally(() => process.exit(1));
+  });
+}

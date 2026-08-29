@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Create a signed Forgewright review-2 record with an existing SSH key."""
+"""Create a keyless Forgewright review-2 record bound to final evidence."""
 
 from __future__ import annotations
 
 import argparse
-import base64
 import hashlib
 import json
 import os
@@ -29,17 +28,12 @@ from evidence_common import (  # noqa: E402
 
 REVIEW_SCHEMA = "review-2"
 REVIEW_NAMESPACE = "forgewright-review-v2"
+KEYLESS_TRUST_LIMITATION = (
+    "Keyless review binds exact evidence but does not authenticate reviewer identity "
+    "against same-user forgery."
+)
 MAX_EVIDENCE_BYTES = 4 * 1024 * 1024
 MAX_REVIEW_BYTES = 256 * 1024
-MAX_SIGNATURE_BYTES = 64 * 1024
-MAX_KEY_BYTES = 128 * 1024
-MAX_ALLOWED_SIGNERS_BYTES = 64 * 1024
-_ED25519_KEY_TYPES = {
-    "ssh-ed25519",
-    "ssh-ed25519-cert-v01@openssh.com",
-    "sk-ssh-ed25519@openssh.com",
-    "sk-ssh-ed25519-cert-v01@openssh.com",
-}
 
 
 def _canonical_json(value: Any) -> bytes:
@@ -68,96 +62,6 @@ def _verify_dir(workspace: Path) -> Path:
         if stat.S_ISLNK(info.st_mode):
             raise ValueError(".forgewright/verify must not use symlinked directories")
     return verify_dir
-
-
-def _secure_external_file(
-    raw_path: str,
-    workspace: Path,
-    *,
-    label: str,
-    max_bytes: int,
-    forbidden_mode_bits: int,
-) -> tuple[Path, bytes]:
-    if not isinstance(raw_path, str) or not raw_path.strip():
-        raise ValueError(f"{label} is required")
-    candidate = Path(raw_path).expanduser()
-    if not candidate.is_absolute():
-        raise ValueError(f"{label} must be an absolute path")
-    try:
-        info = candidate.lstat()
-    except OSError as error:
-        raise ValueError(f"{label} cannot be read") from error
-    if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode):
-        raise ValueError(f"{label} must be a regular non-symlink file")
-    resolved = candidate.resolve(strict=True)
-    if _within(resolved, workspace.resolve()):
-        raise ValueError(f"{label} must resolve outside the workspace")
-    if forbidden_mode_bits and stat.S_IMODE(info.st_mode) & forbidden_mode_bits:
-        raise ValueError(f"{label} has unsafe permissions")
-    uid = getattr(os, "getuid", None)
-    if uid is not None and info.st_uid != uid():
-        raise ValueError(f"{label} is not owned by the current user")
-    if info.st_size > max_bytes:
-        raise ValueError(f"{label} exceeds the bounded size limit")
-    try:
-        payload = resolved.read_bytes()
-    except OSError as error:
-        raise ValueError(f"{label} cannot be read") from error
-    if len(payload) > max_bytes:
-        raise ValueError(f"{label} exceeds the bounded size limit")
-    return resolved, payload
-
-
-def _validate_allowed_signers(payload: bytes) -> None:
-    if not payload or len(payload) > MAX_ALLOWED_SIGNERS_BYTES:
-        raise ValueError("allowed_signers file is missing or exceeds the size limit")
-    try:
-        text = payload.decode("utf-8")
-    except UnicodeDecodeError as error:
-        raise ValueError("allowed_signers file is not valid UTF-8") from error
-    if "\x00" in text:
-        raise ValueError("allowed_signers file contains NUL bytes")
-    valid_key_line = False
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        if len(line) > 16 * 1024:
-            raise ValueError("allowed_signers line exceeds the size limit")
-        fields = stripped.split()
-        if len(fields) < 2:
-            continue
-        for index, key_type in enumerate(fields[1:], start=1):
-            if key_type not in _ED25519_KEY_TYPES:
-                continue
-            if index + 1 >= len(fields):
-                continue
-            try:
-                base64.b64decode(fields[index + 1], validate=True)
-            except (ValueError, TypeError):
-                continue
-            valid_key_line = True
-            break
-    if not valid_key_line:
-        raise ValueError("allowed_signers file has no valid Ed25519 signer entry")
-
-
-def _allowed_signers(workspace: Path) -> tuple[Path, bytes]:
-    configured = os.environ.get("FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS")
-    raw_path = (
-        configured
-        if configured is not None
-        else "~/.forgewright/reviewers.allowed_signers"
-    )
-    path, payload = _secure_external_file(
-        raw_path,
-        workspace,
-        label="allowed_signers file",
-        max_bytes=MAX_ALLOWED_SIGNERS_BYTES,
-        forbidden_mode_bits=0o022,
-    )
-    _validate_allowed_signers(payload)
-    return path, payload
 
 
 def _evidence_path(raw_path: str, workspace: Path, verify_dir: Path) -> Path:
@@ -248,60 +152,18 @@ def _atomic_write(path: Path, payload: bytes) -> None:
         raise
 
 
-def _sign(review: dict[str, Any], private_key: Path) -> bytes:
-    payload = _canonical_json(review)
-    with tempfile.TemporaryDirectory(prefix="forgewright-review-") as directory:
-        payload_path = Path(directory) / "payload"
-        payload_path.write_bytes(payload)
-        result = subprocess.run(
-            [
-                "ssh-keygen",
-                "-Y",
-                "sign",
-                "-f",
-                str(private_key),
-                "-n",
-                REVIEW_NAMESPACE,
-                str(payload_path),
-            ],
-            capture_output=True,
-            timeout=15,
-            check=False,
-        )
-        if result.returncode != 0:
-            raise ValueError("ssh-keygen could not sign the review payload")
-        signature_path = Path(f"{payload_path}.sig")
-        try:
-            signature = signature_path.read_bytes()
-        except OSError as error:
-            raise ValueError("ssh-keygen did not produce a signature") from error
-    if len(signature) > MAX_SIGNATURE_BYTES or b"\x00" in signature:
-        raise ValueError("SSH signature exceeds the bounded size limit")
-    if not signature.startswith(
-        b"-----BEGIN SSH SIGNATURE-----"
-    ) or not signature.rstrip().endswith(b"-----END SSH SIGNATURE-----"):
-        raise ValueError("ssh-keygen did not produce an armored SSH signature")
-    return signature
-
-
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
-    sign = subparsers.add_parser("sign", help="sign a final evidence review")
-    sign.add_argument("--evidence", required=True, help="final evidence JSON")
-    sign.add_argument(
-        "--private-key",
-        "--key",
-        dest="private_key",
-        default=os.environ.get("FORGEWRIGHT_REVIEW_PRIVATE_KEY"),
-    )
-    sign.add_argument("--output", "--out", dest="output", default=None)
-    sign.add_argument("--finding", action="append", default=[])
-    sign.add_argument("--limitation", action="append", default=[])
+    create = subparsers.add_parser("create", help="create a final evidence review")
+    create.add_argument("--evidence", required=True, help="final evidence JSON")
+    create.add_argument("--output", "--out", dest="output", default=None)
+    create.add_argument("--finding", action="append", default=[])
+    create.add_argument("--limitation", action="append", default=[])
     return parser
 
 
-def _run_sign(args: argparse.Namespace) -> int:
+def _run_create(args: argparse.Namespace) -> int:
     workspace = Path(
         subprocess.check_output(
             ["git", "rev-parse", "--show-toplevel"], text=True, timeout=5
@@ -323,26 +185,6 @@ def _run_sign(args: argparse.Namespace) -> int:
     _canonical_json(evidence)
     _validate_final_evidence(evidence, workspace)
     output = _output_path(args.output, evidence, workspace, verify_dir)
-    private_key, _ = _secure_external_file(
-        args.private_key or "",
-        workspace,
-        label="private key",
-        max_bytes=MAX_KEY_BYTES,
-        forbidden_mode_bits=0o077,
-    )
-    try:
-        key_probe = subprocess.run(
-            ["ssh-keygen", "-y", "-f", str(private_key)],
-            capture_output=True,
-            timeout=15,
-            check=False,
-        )
-    except (OSError, subprocess.SubprocessError) as error:
-        raise ValueError("private key could not be inspected") from error
-    key_type = key_probe.stdout.split(b" ", 1)[0].decode("ascii", "ignore")
-    if key_probe.returncode != 0 or key_type not in _ED25519_KEY_TYPES:
-        raise ValueError("private key must be an OpenSSH Ed25519 key")
-    allowed_path, _ = _allowed_signers(workspace)
     reviewer = evidence["reviewer"]
     evidence_digest = hashlib.sha256(_canonical_json(evidence)).hexdigest()
     review: dict[str, Any] = {
@@ -360,22 +202,21 @@ def _run_sign(args: argparse.Namespace) -> int:
         ),
         "negative_path_bindings": evidence["negative_path_bindings"],
         "findings": list(args.finding),
-        "limitations": list(args.limitation),
+        "limitations": list(
+            dict.fromkeys([KEYLESS_TRUST_LIMITATION, *args.limitation])
+        ),
         "timestamp_utc": datetime.now(timezone.utc)
         .isoformat(timespec="microseconds")
         .replace("+00:00", "Z"),
     }
-    signature = _sign(review, private_key)
-    review["signature"] = signature.decode("utf-8")
     serialized = _canonical_json(review)
     if len(serialized) > MAX_REVIEW_BYTES:
         raise ValueError("review record exceeds the bounded size limit")
     _atomic_write(output, serialized + b"\n")
-    _ = allowed_path  # Trust-root validation is deliberately completed before writing.
     print(
         json.dumps(
             {
-                "status": "signed",
+                "status": "created",
                 "review_path": str(output),
                 "reviewer_id": reviewer["id"],
             }
@@ -387,8 +228,8 @@ def _run_sign(args: argparse.Namespace) -> int:
 def main() -> int:
     try:
         args = _parser().parse_args()
-        if args.command == "sign":
-            return _run_sign(args)
+        if args.command == "create":
+            return _run_create(args)
         raise ValueError("unsupported command")
     except (OSError, subprocess.SubprocessError, ValueError) as error:
         print(f"[REVIEW-ATTEST] ERROR: {error}", file=sys.stderr)

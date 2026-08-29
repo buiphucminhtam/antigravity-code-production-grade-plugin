@@ -81,12 +81,14 @@ subscription, and checkout are mandatory `HARD` and `DEEP` work regardless of
 file count. There is no small-file `QUICK` escape. Such work cannot pass without
 an independent reviewer and domain-appropriate contract, runtime, and E2E
 evidence, including relevant negative paths; the reviewer state must be
-`reviewer.status: independent-approved` with a current signed `review-2`
-record. The review must use OpenSSH Ed25519, verify against external
-`FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS` or
-`~/.forgewright/reviewers.allowed_signers`, and cover the canonical final
-evidence digest, exact tree/turn, every acceptance ID, and exact
-`negative_path_bindings`. Review-1 or self-authored JSON is `UNVERIFIED`.
+`reviewer.status: independent-approved` with a current keyless `review-2`
+record. The review must bind the canonical final-evidence digest, exact tree,
+turn, workspace, every acceptance ID, and exact `negative_path_bindings`, and
+its reviewer identity must differ from `implementer_id`. Review-1,
+self-authored or same-identity review, and marker-only approval are
+`UNVERIFIED`. These bindings detect evidence mismatch but do not
+cryptographically authenticate the reviewer or prevent same-user forgery; the
+gate and completion report must state that trust limitation honestly.
 
 ### Completion Evidence Schema
 

@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import base64
 import hashlib
 import json
 import os
@@ -11,7 +10,6 @@ import re
 import stat
 import subprocess
 import sys
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -47,19 +45,15 @@ from evidence_common import (
 STALENESS_SECS = int(os.environ.get("FORGEWRIGHT_STALENESS_SECS", "3600"))
 REVIEW_SCHEMA = "review-2"
 REVIEW_NAMESPACE = "forgewright-review-v2"
+KEYLESS_TRUST_LIMITATION = (
+    "Keyless review binds exact evidence but does not authenticate reviewer identity "
+    "against same-user forgery."
+)
 MAX_EVIDENCE_BYTES = 4 * 1024 * 1024
 MAX_REVIEW_BYTES = 256 * 1024
-MAX_SIGNATURE_BYTES = 64 * 1024
-MAX_ALLOWED_SIGNERS_BYTES = 64 * 1024
 MAX_REPLAY_TIMEOUT_SECS = 300.0
 DEFAULT_REPLAY_TIMEOUT_SECS = 300.0
 MAX_REPLAY_DETAIL_CHARS = 4096
-_ED25519_KEY_TYPES = {
-    "ssh-ed25519",
-    "ssh-ed25519-cert-v01@openssh.com",
-    "sk-ssh-ed25519@openssh.com",
-    "sk-ssh-ed25519-cert-v01@openssh.com",
-}
 
 _FORGED_OUTPUT_PATTERNS = [
     re.compile(r"^\[REDACTED\]$", re.MULTILINE),
@@ -416,168 +410,6 @@ def _canonical_json(value: Any) -> bytes:
         separators=(",", ":"),
         allow_nan=False,
     ).encode("utf-8")
-
-
-def _within(path: Path, directory: Path) -> bool:
-    try:
-        return path == directory or directory in path.parents
-    except (OSError, ValueError):
-        return False
-
-
-def _secure_external_file(
-    raw_path: str,
-    workspace: Path,
-    *,
-    label: str,
-    max_bytes: int,
-    forbidden_mode_bits: int,
-) -> tuple[Path | None, list[str]]:
-    errors: list[str] = []
-    if not isinstance(raw_path, str) or not raw_path.strip():
-        return None, [f"HARD: {label} is required"]
-    candidate = Path(raw_path).expanduser()
-    if not candidate.is_absolute():
-        return None, [f"HARD: {label} must be an absolute path"]
-    try:
-        info = candidate.lstat()
-        resolved = candidate.resolve(strict=True)
-    except OSError:
-        return None, [f"HARD: {label} cannot be read"]
-    if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode):
-        errors.append(f"HARD: {label} must be a regular non-symlink file")
-    if _within(resolved, workspace.resolve()):
-        errors.append(f"HARD: {label} must resolve outside the workspace")
-    if stat.S_IMODE(info.st_mode) & forbidden_mode_bits:
-        errors.append(f"HARD: {label} has unsafe permissions")
-    uid = getattr(os, "getuid", None)
-    if uid is not None and info.st_uid != uid():
-        errors.append(f"HARD: {label} is not owned by the current user")
-    if info.st_size > max_bytes:
-        errors.append(f"HARD: {label} exceeds the bounded size limit")
-    return (resolved if not errors else None), errors
-
-
-def _allowed_signers_errors(payload: bytes) -> list[str]:
-    if not payload or len(payload) > MAX_ALLOWED_SIGNERS_BYTES:
-        return ["HARD: allowed_signers file is missing or exceeds the size limit"]
-    try:
-        text = payload.decode("utf-8")
-    except UnicodeDecodeError:
-        return ["HARD: allowed_signers file is not valid UTF-8"]
-    if "\x00" in text:
-        return ["HARD: allowed_signers file contains NUL bytes"]
-    valid_key_line = False
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        if len(line) > 16 * 1024:
-            return ["HARD: allowed_signers line exceeds the size limit"]
-        fields = stripped.split()
-        if len(fields) < 2:
-            continue
-        for index, key_type in enumerate(fields[1:], start=1):
-            if key_type not in _ED25519_KEY_TYPES:
-                continue
-            if index + 1 >= len(fields):
-                continue
-            try:
-                base64.b64decode(fields[index + 1], validate=True)
-            except (ValueError, TypeError):
-                continue
-            valid_key_line = True
-            break
-    return (
-        []
-        if valid_key_line
-        else ["HARD: allowed_signers file has no valid Ed25519 signer entry"]
-    )
-
-
-def _review_allowed_signers(workspace: Path) -> tuple[bytes | None, list[str]]:
-    configured = os.environ.get("FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS")
-    raw_path = (
-        configured
-        if configured is not None
-        else "~/.forgewright/reviewers.allowed_signers"
-    )
-    path, errors = _secure_external_file(
-        raw_path,
-        workspace,
-        label="allowed_signers file",
-        max_bytes=MAX_ALLOWED_SIGNERS_BYTES,
-        forbidden_mode_bits=0o022,
-    )
-    if errors or path is None:
-        return None, errors
-    try:
-        payload = path.read_bytes()
-    except OSError:
-        return None, ["HARD: allowed_signers file cannot be read"]
-    if len(payload) > MAX_ALLOWED_SIGNERS_BYTES:
-        return None, ["HARD: allowed_signers file exceeds the size limit"]
-    errors = _allowed_signers_errors(payload)
-    return (payload if not errors else None), errors
-
-
-def _signature_errors(signature: Any) -> list[str]:
-    if not isinstance(signature, str) or not signature.strip():
-        return ["HARD: review-2 signature is required"]
-    raw = signature.encode("utf-8", "strict")
-    if len(raw) > MAX_SIGNATURE_BYTES or b"\x00" in raw:
-        return ["HARD: review-2 signature exceeds the bounded size limit"]
-    if not raw.startswith(
-        b"-----BEGIN SSH SIGNATURE-----"
-    ) or not raw.rstrip().endswith(b"-----END SSH SIGNATURE-----"):
-        return ["HARD: review-2 signature must be armored OpenSSH output"]
-    return []
-
-
-def _verify_review_signature(
-    review: dict[str, Any], allowed_signers: bytes, reviewer_id: str
-) -> list[str]:
-    signature = review.get("signature")
-    errors = _signature_errors(signature)
-    if errors:
-        return errors
-    unsigned = dict(review)
-    unsigned.pop("signature", None)
-    try:
-        payload = _canonical_json(unsigned)
-    except (TypeError, ValueError, UnicodeError):
-        return ["HARD: review-2 signed payload is not canonicalizable"]
-    with tempfile.TemporaryDirectory(prefix="forgewright-review-verify-") as directory:
-        allowed_signers_path = Path(directory) / "allowed_signers"
-        allowed_signers_path.write_bytes(allowed_signers)
-        allowed_signers_path.chmod(0o600)
-        signature_path = Path(directory) / "review.sig"
-        signature_path.write_bytes(signature.encode("utf-8"))
-        try:
-            result = subprocess.run(
-                [
-                    "ssh-keygen",
-                    "-Y",
-                    "verify",
-                    "-f",
-                    str(allowed_signers_path),
-                    "-I",
-                    reviewer_id,
-                    "-n",
-                    REVIEW_NAMESPACE,
-                    "-s",
-                    str(signature_path),
-                ],
-                input=payload,
-                capture_output=True,
-                timeout=15,
-                check=False,
-            )
-        except (OSError, subprocess.SubprocessError):
-            return ["HARD: ssh-keygen signature verification could not run"]
-    if result.returncode != 0:
-        return ["HARD: review-2 OpenSSH signature verification failed"]
-    return []
 
 
 def _check_stubs(files: list[str]) -> list[str]:
@@ -953,7 +785,6 @@ def _validate_hard_requirements(
                     "findings",
                     "limitations",
                     "timestamp_utc",
-                    "signature",
                 }
                 if not isinstance(review, dict):
                     errors.append("HARD: reviewer evidence must be a JSON object")
@@ -1011,6 +842,10 @@ def _validate_hard_requirements(
                     errors.append("HARD: reviewer evidence findings must be a list")
                 if not isinstance(review.get("limitations"), list):
                     errors.append("HARD: reviewer evidence limitations must be a list")
+                elif KEYLESS_TRUST_LIMITATION not in review["limitations"]:
+                    errors.append(
+                        "HARD: keyless review must disclose its reviewer-authentication limitation"
+                    )
                 errors.extend(
                     _validate_staleness({"timestamp_utc": review.get("timestamp_utc")})
                 )
@@ -1023,14 +858,6 @@ def _validate_hard_requirements(
                         )
                 except (KeyError, TypeError, ValueError, OverflowError):
                     errors.append("HARD: reviewer evidence timestamp is invalid")
-                allowed_signers, trust_errors = _review_allowed_signers(project_root)
-                errors.extend(trust_errors)
-                if allowed_signers is not None:
-                    errors.extend(
-                        _verify_review_signature(
-                            review, allowed_signers, str(reviewer.get("id"))
-                        )
-                    )
     if ev.get("tier") not in STRONG_TIERS:
         errors.append(f"HARD: tier must be one of {sorted(STRONG_TIERS)}")
     return errors

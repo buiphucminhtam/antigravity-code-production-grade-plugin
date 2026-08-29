@@ -1,14 +1,33 @@
 import { randomUUID } from 'node:crypto';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { ToolExecutionGateway } from '../runtime/tool-execution-gateway.js';
+import { loadSkillOverlay, SkillOverlayError } from '../parsers/skill-parser.js';
 import { startPipeline, getState, advancePhase, requestGateApproval, approveGate, updateSubTask, updateSelfHealing, failPipeline, logTokenUsage, checkPipelineCompliance, PIPELINE_PHASES, } from '../state/pipeline-manager.js';
-export function registerTools(server, toolGateway = new ToolExecutionGateway()) {
+export function registerTools(server, toolGateway = new ToolExecutionGateway(), context = {}) {
     // stdio serves one MCP client per server process. Keep its cache namespace
     // stable across calls while keeping separate server instances isolated.
-    const sessionId = `${process.env.FORGEWRIGHT_SESSION_ID ?? 'mcp'}:${randomUUID()}`;
+    const sessionId = context.sessionId ?? `${process.env.FORGEWRIGHT_SESSION_ID ?? 'mcp'}:${randomUUID()}`;
+    let turnNumber = 0;
+    const deferredSkillNames = new Set(context.deferredSkillNames ?? []);
+    const loadedSkills = new Set();
     server.setRequestHandler(ListToolsRequestSchema, async () => {
         return {
             tools: [
+                ...(deferredSkillNames.size > 0
+                    ? [
+                        {
+                            name: 'fw_load_skill_overlay',
+                            description: 'Load one bounded Forgewright skill LITE overlay by exact skill name.',
+                            inputSchema: {
+                                type: 'object',
+                                properties: {
+                                    name: { type: 'string', description: 'Exact skill directory name.' },
+                                },
+                                required: ['name'],
+                            },
+                        },
+                    ]
+                    : []),
                 {
                     name: 'fw_start_pipeline',
                     description: 'Initialize the Forgewright pipeline for a new project/session. Use this when the user specifies a goal (e.g. Build a SaaS, add a feature).',
@@ -194,9 +213,44 @@ export function registerTools(server, toolGateway = new ToolExecutionGateway()) 
         name: request.params.name,
         arguments: (request.params.arguments ?? {}),
         sessionId,
-        turnNumber: 1,
+        turnNumber: ++turnNumber,
     }, async () => {
         try {
+            if (request.params.name === 'fw_load_skill_overlay') {
+                const name = request.params.arguments?.name;
+                if (typeof name !== 'string') {
+                    return { isError: true, content: [{ type: 'text', text: 'INVALID_SKILL_NAME' }] };
+                }
+                if (!deferredSkillNames.has(name)) {
+                    return {
+                        isError: true,
+                        content: [{ type: 'text', text: 'SKILL_OVERLAY_NOT_ALLOWED' }],
+                    };
+                }
+                if (loadedSkills.has(name)) {
+                    return {
+                        isError: true,
+                        content: [{ type: 'text', text: 'SKILL_OVERLAY_ALREADY_LOADED' }],
+                    };
+                }
+                try {
+                    const overlay = loadSkillOverlay(name);
+                    loadedSkills.add(name);
+                    return {
+                        content: [{ type: 'text', text: overlay.content }],
+                        structuredContent: {
+                            name: overlay.name,
+                            digest: overlay.digest,
+                            bytes: overlay.bytes,
+                            tokens: overlay.tokens,
+                        },
+                    };
+                }
+                catch (error) {
+                    const code = error instanceof SkillOverlayError ? error.code : 'UNKNOWN_SKILL';
+                    return { isError: true, content: [{ type: 'text', text: code }] };
+                }
+            }
             if (request.params.name === 'fw_start_pipeline') {
                 const result = await startPipeline(request.params.arguments?.mode);
                 return { content: [{ type: 'text', text: result }] };

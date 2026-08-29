@@ -254,6 +254,14 @@ At boot, the kernel uses a compact 6-row routing table to avoid loading the full
 
 `kernel/INDEX.md` is loaded on-demand only when no compact match applies.
 
+Mode routing also applies an estimated startup context budget to ordered
+`LITE.md` overlays. Skills that do not fit remain a name-only deferred
+inventory. The canonical MCP server lists skill metadata without reading full
+`SKILL.md` bodies and exposes `fw_load_skill_overlay` for one exact, contained,
+size-bounded `LITE.md`. The Lite agent loop publishes the qualified loader name
+only for the current deferred set and blocks unlisted or repeated loads, so
+specialist context is paid for only when the running task materially needs it.
+
 ---
 
 ## Layer 4: Controls
@@ -312,6 +320,7 @@ Key middleware behaviors:
         <li>Project + session + turn + monotonic sequence</li>
         <li>Exact tree, ledger offset/head, prior checkpoint hash</li>
         <li>Objective, acceptance IDs, verified fact bindings, next action</li>
+        <li>Semantic boundary plus bounded step/tool continuation budget</li>
       </ul>
     </article>
     <article class="fluxmem-panel">
@@ -319,6 +328,7 @@ Key middleware behaviors:
       <ul>
         <li>Scope or durable decision changes</li>
         <li>Material verifier results</li>
+        <li>Before model work, before effects, and after tool steps</li>
         <li>Supported pre-compaction event or handoff</li>
         <li>STUCK/block or terminal boundary</li>
       </ul>
@@ -328,7 +338,9 @@ Key middleware behaviors:
       <ul>
         <li>Verify checksum/hash chain and expiry</li>
         <li>Require exact workspace, session, tree, and ledger head</li>
+        <li>Bind trajectory tip/capability and advance writer epoch exactly once</li>
         <li>Corrupt/mismatched state &rarr; explicit fresh start</li>
+        <li>Replay, expiry, budget overrun, active work, or pending disposer &rarr; reject</li>
         <li>Always re-ground against current workspace/runtime</li>
       </ul>
     </article>
@@ -366,7 +378,7 @@ Forgewright exposes two MCP servers for IDE integration:
 
 | Server | Transport | Tools | Purpose |
 |--------|-----------|-------|---------|
-| `forgewright` | stdio (npx tsx) | Pipeline mgmt, skill invocation, memory ops | Orchestration |
+| `forgewright` | stdio (npx tsx) | Pipeline mgmt, metadata-only skill discovery, bounded on-demand `LITE.md` loading, memory ops | Orchestration |
 | `gitnexus` | stdio | 16 tools: query, context, impact, detect_changes, rename, cypher, etc. | Code Intelligence |
 
 The canonical Forgewright MCP process acquires an external
@@ -393,8 +405,45 @@ support explicit:
 | Resume binding | Workspace, session, turn, checkpoint hash, ledger offset/head, capability snapshot, issue/expiry |
 | Failure policy | Unknown schema, operation, or capability fails closed |
 
-This contract does not yet complete the planned `TrajectoryLedger`, execution
-containment, full-loop record/replay, or live provider certification.
+H2 now adds a provider-neutral `forgewright-trajectory-event/v1` contract and
+canonical MCP lifecycle coordinator. Each runtime opens a contained,
+append-only SHA-256 chain; gateway calls become child scopes and operations;
+root cancellation is durable before abort propagation; trusted disposers are
+registered by digest/idempotency key and run child-before-parent LIFO; and
+shutdown records a predecessor-bound quiescence result and terminal event before
+lease/server cleanup. The chain detects corruption, not authenticity against a
+same-OS-user rewrite. Non-cooperative timeout is recorded as `not_confirmed`,
+and explicit trajectory-ID reuse fails closed because restart/resume rebinding
+is not yet authorized.
+
+This integrates the H2 contract on the canonical local path. H2 completion uses
+a keyless independent `review-2` bound to the exact evidence digest, tree,
+turn, workspace, acceptance IDs, and negative paths. This binding detects
+mismatch but does not authenticate reviewer identity against same-user forgery.
+H2 does not complete H3 execution containment, H5 live provider certification,
+or H6 restart/evaluator handoff. H4 supplies a local offline, versioned
+hash-chain journal with strict cursor replay; it stores normalized metadata and
+digests only, does not authenticate same-user rewrites, and is not provider evidence.
+
+H3 adds application-level containment on both canonical tool planes. The
+TypeScript gateway pins runtime identity/policy and rejects undeclared effects;
+the Python filesystem MCP path validates allowlisted methods and canonical
+no-symlink workspace paths; state persistence uses bounded private atomic
+writes and only reclaims an aged cross-process lock after its recorded PID is
+dead; and webhook delivery is loopback-only by default with explicit
+production identity, HTTPS host, port, DNS/address, IPv6 transition/site-local,
+redirect, and rebinding checks for external destinations. Denials remain
+H2-accounted. This is not an
+OS sandbox: arbitrary process execution and kernel egress isolation remain
+disabled/unavailable until a verified platform backend exists.
+
+H5 measurement infrastructure keeps provider execution and accounting
+separable. Each benchmark attempt can contribute an exact-bound usage receipt;
+the aggregate records completeness, provider topology, resolved settings, and
+quality/cost/latency deltas without persisting prompts or outputs. A paired A/B
+receipt remains local evidence until the same contract succeeds in one
+supported live provider ecosystem. The currently configured provider client
+rejected the live probe, so production activation and outcomes remain missing.
 
 Configuration via `~/.cursor/mcp.json` (Cursor) or equivalent:
 
@@ -629,4 +678,4 @@ The architecture is governed by the [10 Principles](../VISION.md), summarized:
 
 ---
 
-*Last updated: 2026-08-23*
+*Last updated: 2026-08-29*

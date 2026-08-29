@@ -11,7 +11,12 @@ if (!process.argv.includes('--skip-build')) {
 }
 const mcpOnly = spawnSync(process.execPath, [script, '--mcp-only'], { cwd: root, encoding: 'utf8' });
 assert.equal(mcpOnly.status, 0, mcpOnly.stderr);
-assert.equal(JSON.parse(mcpOnly.stdout).mcp.nonMutatingTool, 'fw_get_current_phase');
+const mcpReceipt = JSON.parse(mcpOnly.stdout).mcp;
+assert.equal(mcpReceipt.nonMutatingTool, 'fw_get_current_phase');
+assert.equal(mcpReceipt.trajectory.terminalOutcome, 'completed');
+assert.equal(mcpReceipt.trajectory.quiescence, 'confirmed');
+assert.equal(mcpReceipt.trajectory.rawArgumentsPersisted, false);
+assert.ok(mcpReceipt.trajectory.eventCount >= 8);
 
 const denied = spawnSync(process.execPath, [script, '--live'], { cwd: root, encoding: 'utf8', env: { ...process.env, FORGEWRIGHT_LIVE_SMOKE: '' } });
 assert.notEqual(denied.status, 0);

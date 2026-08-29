@@ -12,6 +12,7 @@ EXPECTED_IDS = {
     *(f"P{phase}.{item}" for phase in range(3) for item in range(1, 6)),
     *(f"P3.{item}" for item in range(1, 5)),
 }
+EXPECTED_MANIFEST_IDS = EXPECTED_IDS | {"H0", "H1", "H2", "H3", "H4", "H5"}
 COMPLETION_AXES = {
     "implementation": {"done", "partial", "missing"},
     "integration": {"canonical", "partial", "isolated", "not-applicable"},
@@ -35,7 +36,7 @@ def _manifest() -> dict:
     return json.loads(MANIFEST.read_text(encoding="utf-8"))
 
 
-def test_completion_manifest_covers_every_roadmap_deliverable_once() -> None:
+def test_completion_manifest_covers_every_declared_local_deliverable_once() -> None:
     assert _manifest()["schema"] == "forgewright-roadmap-completion/v2"
     assert set(_manifest()["axis_definitions"]) == set(COMPLETION_AXES)
     roadmap_ids = re.findall(
@@ -45,7 +46,39 @@ def test_completion_manifest_covers_every_roadmap_deliverable_once() -> None:
 
     assert set(roadmap_ids) == EXPECTED_IDS
     assert len(manifest_ids) == len(set(manifest_ids))
-    assert set(manifest_ids) == EXPECTED_IDS
+    assert set(manifest_ids) == EXPECTED_MANIFEST_IDS
+
+    h2 = next(item for item in _manifest()["deliverables"] if item["id"] == "H2")
+    assert h2["implementation"] == "done"
+    assert h2["integration"] == "canonical"
+    assert h2["activation"] == "canonical-mcp"
+    assert h2["production_evidence"] == "missing"
+    assert h2["outcome"] == "met-locally"
+
+    h3 = next(item for item in _manifest()["deliverables"] if item["id"] == "H3")
+    assert h3["implementation"] == "done"
+    assert h3["integration"] == "canonical"
+    assert h3["activation"] == "canonical-mcp"
+    assert h3["production_evidence"] == "missing"
+    assert h3["outcome"] == "met-locally"
+
+    h4 = next(item for item in _manifest()["deliverables"] if item["id"] == "H4")
+    assert h4["implementation"] == "done"
+    assert h4["integration"] == "isolated"
+    assert h4["activation"] == "local"
+    assert h4["production_evidence"] == "missing"
+    assert h4["outcome"] == "met-locally"
+
+    h5 = next(item for item in _manifest()["deliverables"] if item["id"] == "H5")
+    assert h5["implementation"] == "done"
+    assert h5["integration"] == "partial"
+    assert h5["activation"] == "local"
+    assert h5["production_evidence"] == "missing"
+    assert h5["outcome"] == "partially-met"
+
+    h1 = next(item for item in _manifest()["deliverables"] if item["id"] == "H1")
+    assert h1["integration"] == "isolated"
+    assert h1["activation"] == "library-only"
 
 
 def test_harness_upgrade_dependencies_precede_live_provider_routing() -> None:
@@ -280,7 +313,12 @@ def test_all_declared_roadmap_verifiers_replay_on_unchanged_tree(
         timeout=480,
         check=False,
     )
-    assert replayed.returncode == 0, replayed.stderr
+    report_diagnostic = (
+        report_path.read_text(encoding="utf-8")
+        if report_path.exists()
+        else "missing report"
+    )
+    assert replayed.returncode == 0, replayed.stderr + "\n" + report_diagnostic
 
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["status"] == "pass"
@@ -288,7 +326,7 @@ def test_all_declared_roadmap_verifiers_replay_on_unchanged_tree(
     assert report["source_tree_unchanged"] is True
     assert report["snapshot_matches_source"] is True
     assert report["execution_tree_unchanged"] is True
-    assert {item["id"] for item in report["deliverables"]} == EXPECTED_IDS
+    assert {item["id"] for item in report["deliverables"]} == EXPECTED_MANIFEST_IDS
     assert all(item["status"] == "pass" for item in report["deliverables"])
 
 

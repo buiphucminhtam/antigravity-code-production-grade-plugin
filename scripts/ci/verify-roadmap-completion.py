@@ -19,7 +19,13 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts" / "lite"))
-from evidence_common import worktree_fingerprint  # noqa: E402
+from evidence_common import (  # noqa: E402
+    _actual_record,
+    _git_paths,
+    _ignored_verify_path,
+    _untracked_record,
+    worktree_fingerprint,
+)
 
 
 DEFAULT_MANIFEST = ROOT / "docs" / "roadmap-completion.json"
@@ -53,6 +59,7 @@ VERIFIER_VOLATILE_MOUNTS = {
     ".forgewright/audit": "runtime audit events emitted by MCP smoke tests",
     "mcp/.forgewright": "MCP verification and quality-gate event ledgers",
     "mcp/node_modules/.vite": "Vitest dependency and result cache",
+    "src/cli/node_modules/.vite": "CLI Vitest dependency and result cache",
     "src/cli/dist": "CLI build output exercised by the onboarding verifier",
 }
 
@@ -275,7 +282,11 @@ def _mount_verifier_volatiles(
     mounts: list[dict[str, str]] = []
     for relative, reason in VERIFIER_VOLATILE_MOUNTS.items():
         source = workspace / relative
-        target = volatile_root / relative
+        target = (
+            volatile_root / "src-cli-vite-cache"
+            if relative == "src/cli/node_modules/.vite"
+            else volatile_root / relative
+        )
         target.parent.mkdir(parents=True, exist_ok=True)
         source.parent.mkdir(parents=True, exist_ok=True)
         if source.exists() or source.is_symlink():
@@ -300,6 +311,31 @@ def _write_report(report: dict[str, Any], path: Path | None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(output, encoding="utf-8")
     path.chmod(0o600)
+
+
+def _covered_file_records(workspace: Path) -> dict[str, str]:
+    """Return path-keyed records for exact tree-change diagnostics."""
+
+    tracked = _git_paths(workspace, ["ls-files", "-z"])
+    untracked = _git_paths(
+        workspace, ["ls-files", "--others", "--exclude-standard", "-z"]
+    )
+    ignored = _git_paths(
+        workspace,
+        ["ls-files", "--others", "--ignored", "--exclude-standard", "-z"],
+    )
+    records: dict[str, str] = {}
+    for relative in sorted(set(tracked)):
+        if not _ignored_verify_path(relative):
+            records[relative] = _actual_record(workspace, relative)
+    for relative in sorted(set((*untracked, *ignored))):
+        if _ignored_verify_path(relative):
+            continue
+        for record in _untracked_record(workspace, relative):
+            parts = record.split("|", 3)
+            key = parts[1] if len(parts) > 1 else relative
+            records[key] = record
+    return records
 
 
 def main() -> int:
@@ -347,15 +383,22 @@ def main() -> int:
             snapshot_source_tree = worktree_fingerprint(workspace)
             mounts = _mount_verifier_volatiles(workspace, replay_root / "volatile")
             execution_before = worktree_fingerprint(workspace)
+            execution_records_before = _covered_file_records(workspace)
             environment = os.environ.copy()
             environment["PYTHONDONTWRITEBYTECODE"] = "1"
             environment["TMPDIR"] = str(replay_root / "tmp")
             Path(environment["TMPDIR"]).mkdir(parents=True, exist_ok=True)
             results = [_run_verifier(item, workspace, environment) for item in selected]
             execution_after = worktree_fingerprint(workspace)
+            execution_records_after = _covered_file_records(workspace)
         source_after = worktree_fingerprint(ROOT)
         snapshot_matches_source = snapshot_source_tree == source_before
         execution_unchanged = execution_before == execution_after
+        execution_changed_paths = sorted(
+            path
+            for path in set((*execution_records_before, *execution_records_after))
+            if execution_records_before.get(path) != execution_records_after.get(path)
+        )
         source_unchanged = source_before == source_after
         passed = (
             all(item["status"] == "pass" for item in results)
@@ -377,6 +420,7 @@ def main() -> int:
             "snapshot_strategy": snapshot_strategy,
             "execution_tree_sha": execution_before,
             "execution_tree_unchanged": execution_unchanged,
+            "execution_changed_paths": execution_changed_paths,
             "volatile_mounts": mounts,
             "deliverables": results,
         }

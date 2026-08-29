@@ -20,8 +20,9 @@ def _result(
     status: str,
     mode: str | None,
     source: str,
-    skills: list[dict[str, str]] | None = None,
+    skills: list[dict[str, Any]] | None = None,
     errors: list[str] | None = None,
+    context_budget: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
         "status": status,
@@ -29,6 +30,14 @@ def _result(
         "source": source,
         "skills": skills or [],
         "errors": errors or [],
+        "context_budget": context_budget
+        or {
+            "limit": None,
+            "estimated_used": 0,
+            "estimator": "utf8_bytes_div_4_ceil",
+            "deferred_skills": [],
+            "deferred_count": 0,
+        },
     }
 
 
@@ -76,16 +85,45 @@ def _enabled_value(settings: Any, skill: str) -> str:
     raise ValueError(f"skills[{skill!r}].enabled must be auto, true, or false")
 
 
-def _max_skills(config: dict[str, Any]) -> int:
+def _context_budget(config: dict[str, Any]) -> tuple[int, int]:
+    """Parse the two context limits using strict, provider-neutral semantics."""
     budget = config.get("context_budget", {})
     if not isinstance(budget, dict):
         raise ValueError("context_budget must be an object")
-    value = budget.get("max_skills_per_mode", 12)
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+
+    max_skills = budget.get("max_skills_per_mode", 12)
+    if (
+        isinstance(max_skills, bool)
+        or not isinstance(max_skills, int)
+        or max_skills < 0
+    ):
         raise ValueError(
             "context_budget.max_skills_per_mode must be a non-negative integer"
         )
-    return value
+
+    descriptions = budget.get("max_skill_descriptions_tokens", 8000)
+    if (
+        isinstance(descriptions, bool)
+        or not isinstance(descriptions, int)
+        or descriptions < 0
+    ):
+        raise ValueError(
+            "context_budget.max_skill_descriptions_tokens must be a non-negative integer"
+        )
+    return max_skills, descriptions
+
+
+def _estimate_overlay_tokens(skill: dict[str, str]) -> int:
+    """Estimate rendered overlay cost as ceil(UTF-8 bytes / 4).
+
+    This deterministic heuristic is intentionally local/provider-neutral; it is
+    an estimate, not an exact provider tokenizer count.  Use file metadata so a
+    deferred overlay body is not read merely to decide whether it fits.
+    """
+    content_bytes = Path(skill["lite_path"]).stat().st_size
+    prefix = f"\n## Skill-Specific Instructions: {skill['name']}\n".encode("utf-8")
+    rendered_bytes = len(prefix) + content_bytes + len(b"\n")
+    return (rendered_bytes + 3) // 4
 
 
 def _contains_path(path: Path, root: Path) -> bool:
@@ -99,14 +137,23 @@ def _contains_path(path: Path, root: Path) -> bool:
 def _verified_skill(skill_name: str, *, skills_root: Path) -> dict[str, str]:
     if not isinstance(skill_name, str) or not skill_name.strip():
         raise ValueError("mode_skill_map contains an invalid skill name")
-    candidate = (skills_root / skill_name).resolve()
+    candidate_path = skills_root / skill_name
+    if candidate_path.is_symlink():
+        raise ValueError(f"symlinked skill directory is not allowed: {skill_name}")
+    candidate = candidate_path.resolve()
     if not _contains_path(candidate, skills_root):
         raise ValueError(f"skill path escapes skills root: {skill_name}")
     if not candidate.is_dir():
         raise ValueError(f"missing skill directory: {skill_name}")
 
-    skill_path = (candidate / "SKILL.md").resolve()
-    lite_path = (candidate / "LITE.md").resolve()
+    skill_source = candidate / "SKILL.md"
+    lite_source = candidate / "LITE.md"
+    if skill_source.is_symlink():
+        raise ValueError(f"symlinked SKILL.md is not allowed: {skill_name}")
+    if lite_source.is_symlink():
+        raise ValueError(f"symlinked LITE.md is not allowed: {skill_name}")
+    skill_path = skill_source.resolve()
+    lite_path = lite_source.resolve()
     if not _contains_path(skill_path, skills_root) or not _contains_path(
         lite_path, skills_root
     ):
@@ -228,7 +275,7 @@ def route_skills(
             raise ValueError("config root must be an object")
         mode_map = _mode_skill_map(document)
         settings = _skill_settings(document)
-        cap = _max_skills(document)
+        cap, description_budget = _context_budget(document)
     except (OSError, json.JSONDecodeError, ValueError) as error:
         return _result(
             status="error", mode=requested_mode, source=source, errors=[str(error)]
@@ -319,11 +366,45 @@ def route_skills(
             errors=[str(error)],
         )
 
+    capped = verified[:cap] if cap else []
+    loaded: list[dict[str, Any]] = []
+    estimated_used = 0
+    try:
+        estimates = [_estimate_overlay_tokens(skill) for skill in capped]
+        for skill, estimated_tokens in zip(capped, estimates):
+            if (
+                description_budget == 0
+                or estimated_used + estimated_tokens > description_budget
+            ):
+                break
+            enriched = dict(skill)
+            enriched["estimated_tokens"] = estimated_tokens
+            loaded.append(enriched)
+            estimated_used += estimated_tokens
+    except (OSError, UnicodeError, ValueError) as error:
+        return _result(
+            status="error",
+            mode=selected_mode,
+            source=selected_source,
+            errors=[str(error)],
+        )
+
+    loaded_names = {skill["name"] for skill in loaded}
+    deferred_names = [
+        skill["name"] for skill in verified if skill["name"] not in loaded_names
+    ]
     return _result(
         status="ok",
         mode=selected_mode,
         source=selected_source,
-        skills=verified[:cap] if cap else [],
+        skills=loaded,
+        context_budget={
+            "limit": description_budget,
+            "estimated_used": estimated_used,
+            "estimator": "utf8_bytes_div_4_ceil",
+            "deferred_skills": deferred_names,
+            "deferred_count": len(deferred_names),
+        },
     )
 
 

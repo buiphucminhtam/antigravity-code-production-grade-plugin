@@ -893,7 +893,14 @@ class LocalCI:
         self.run("cli-tests", [self.node, cli_vitest, "run"], cwd=ROOT / "src" / "cli")
         self.run(
             "python-unit-tests",
-            [self.python, "-m", "pytest", "tests/unit_tests/"],
+            [
+                self.python,
+                "-m",
+                "pytest",
+                "-p",
+                "no:cacheprovider",
+                "tests/unit_tests/",
+            ],
             timeout=900,
         )
 

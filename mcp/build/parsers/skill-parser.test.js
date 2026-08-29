@@ -2,7 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import { basename, join } from 'path';
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { getAllSkills, getSharedProtocols, _setRootOverride } from './skill-parser.js';
+import { getAllSkills, getSharedProtocols, loadSkillOverlay, _setRootOverride, } from './skill-parser.js';
 const fixtureRoots = [];
 function createFixture() {
     const root = fs.mkdtempSync(join(os.tmpdir(), 'forgewright-skill-parser-'));
@@ -99,19 +99,61 @@ describe('Skill Parser', () => {
             expect(() => getAllSkills()).not.toThrow();
             expect(getAllSkills()).toEqual([]);
         });
-        it('discovers skills in nested real directories', () => {
+        it('lists skills without reading SKILL.md bodies', () => {
             const { root, skillsDir } = createFixture();
             const nestedSkill = join(skillsDir, 'group', 'nested-skill', 'SKILL.md');
             fs.mkdirSync(join(skillsDir, 'group', 'nested-skill'), { recursive: true });
             fs.writeFileSync(nestedSkill, 'nested skill');
             _setRootOverride(root);
+            const read = vi.spyOn(fs, 'readFileSync');
             expect(getAllSkills()).toMatchObject([
                 {
                     name: basename(join(skillsDir, 'group', 'nested-skill')),
-                    content: 'nested skill',
                     filePath: fs.realpathSync(nestedSkill),
                 },
             ]);
+            expect(read).not.toHaveBeenCalled();
+        });
+        it('loads only an exact bounded LITE overlay with digest metadata', () => {
+            const { root, skillsDir } = createFixture();
+            fs.mkdirSync(join(skillsDir, 'bounded-skill'));
+            fs.writeFileSync(join(skillsDir, 'bounded-skill', 'SKILL.md'), 'metadata');
+            fs.writeFileSync(join(skillsDir, 'bounded-skill', 'LITE.md'), 'bounded overlay');
+            _setRootOverride(root);
+            expect(loadSkillOverlay('bounded-skill')).toMatchObject({
+                name: 'bounded-skill',
+                content: 'bounded overlay',
+                bytes: 15,
+                tokens: 4,
+            });
+            expect(() => loadSkillOverlay('../outside')).toThrowError('INVALID_SKILL_NAME');
+            expect(() => loadSkillOverlay('missing')).toThrowError('UNKNOWN_SKILL');
+        });
+        it('rejects symlinked and oversized LITE overlays', () => {
+            const { root, skillsDir, outsideDir } = createFixture();
+            fs.mkdirSync(join(skillsDir, 'linked'));
+            fs.writeFileSync(join(skillsDir, 'linked', 'SKILL.md'), 'metadata');
+            fs.writeFileSync(join(outsideDir, 'LITE.md'), 'external');
+            fs.symlinkSync(join(outsideDir, 'LITE.md'), join(skillsDir, 'linked', 'LITE.md'));
+            fs.mkdirSync(join(skillsDir, 'large'));
+            fs.writeFileSync(join(skillsDir, 'large', 'SKILL.md'), 'metadata');
+            fs.writeFileSync(join(skillsDir, 'large', 'LITE.md'), 'x'.repeat(48 * 1024 + 1));
+            _setRootOverride(root);
+            expect(() => loadSkillOverlay('linked')).toThrowError('SYMLINK_REJECTED');
+            expect(() => loadSkillOverlay('large')).toThrowError('OVERLAY_TOO_LARGE');
+        });
+        it('loads a uniquely discovered nested skill and rejects duplicate basenames', () => {
+            const { root, skillsDir } = createFixture();
+            const nested = join(skillsDir, 'group', 'nested-skill');
+            fs.mkdirSync(nested, { recursive: true });
+            fs.writeFileSync(join(nested, 'SKILL.md'), 'metadata only');
+            fs.writeFileSync(join(nested, 'LITE.md'), 'nested overlay');
+            _setRootOverride(root);
+            expect(loadSkillOverlay('nested-skill')).toMatchObject({ content: 'nested overlay' });
+            const duplicate = join(skillsDir, 'other', 'nested-skill');
+            fs.mkdirSync(duplicate, { recursive: true });
+            fs.writeFileSync(join(duplicate, 'SKILL.md'), 'duplicate metadata');
+            expect(() => loadSkillOverlay('nested-skill')).toThrowError('AMBIGUOUS_SKILL');
         });
     });
 });

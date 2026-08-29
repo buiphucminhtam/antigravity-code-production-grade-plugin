@@ -1,7 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { createHash } from 'node:crypto';
+import { _resetRpcClientForTests, _setWebhookPublisherFactoryForTests, setRuntimeTrustContext, } from './rpc-client.js';
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'forgewright-test-'));
 process.env.CURSOR_WORKSPACE_ROOT = tmpDir;
 const STATE_FILE = path.join(tmpDir, '.forgewright', 'pipeline-state.json');
@@ -11,9 +13,11 @@ function cleanState() {
 }
 describe('Pipeline Manager', () => {
     beforeEach(() => {
+        _resetRpcClientForTests();
         cleanState();
     });
     afterEach(() => {
+        _resetRpcClientForTests();
         cleanState();
     });
     afterAll(() => {
@@ -46,6 +50,36 @@ describe('Pipeline Manager', () => {
         expect(state.currentMode).toBe('Full Build');
         expect(state.currentPhase).toBe(1);
         expect(state.status).toBe('IN_PROGRESS');
+    });
+    it('shares validated webhook authority with pipeline service publication only', async () => {
+        const { startPipeline, resetWorkspaceRoot } = await import('../state/pipeline-manager.js');
+        const observed = [];
+        _setWebhookPublisherFactoryForTests((_workspace, _session, options) => ({
+            publish: vi.fn(() => observed.push(options.callerIdentity)),
+        }));
+        resetWorkspaceRoot();
+        await startPipeline('Local');
+        expect(observed.at(-1)).toBeUndefined();
+        cleanState();
+        resetWorkspaceRoot();
+        const profileDigest = createHash('sha256').update('production:application').digest('hex');
+        const workspaceId = createHash('sha256').update(tmpDir).digest('hex');
+        setRuntimeTrustContext({
+            mode: 'production',
+            workspace: tmpDir,
+            callerId: 'production-caller',
+            profile: 'application',
+            profileDigest,
+            policyDigest: 'd'.repeat(64),
+        }, workspaceId, 'session-a');
+        await startPipeline('Production');
+        expect(observed.at(-1)).toMatchObject({
+            mode: 'production',
+            callerId: 'production-caller',
+            workspaceId,
+            profileDigest,
+            policyDigest: 'd'.repeat(64),
+        });
     });
     it('advancePhase increments phase', async () => {
         const { startPipeline, advancePhase, getState, resetWorkspaceRoot } = await import('../state/pipeline-manager.js');

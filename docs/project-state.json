@@ -103,7 +103,7 @@
     {
       "id": "docs-continuity",
       "title": "Enforce continuously updated project intelligence and generated HTML/CSS documentation",
-      "status": "done",
+      "status": "in_progress",
       "priority": "critical",
       "owner": "Forgewright maintainers",
       "target_date": null,
@@ -198,7 +198,7 @@
     {
       "id": "trajectory-lifecycle",
       "title": "Add the canonical trajectory ledger and reversible lifecycle receipts",
-      "status": "planned",
+      "status": "done",
       "priority": "critical",
       "owner": "Runtime maintainers",
       "target_date": null,
@@ -212,7 +212,7 @@
     {
       "id": "execution-containment",
       "title": "Add filesystem, network, identity, and trust-boundary containment",
-      "status": "planned",
+      "status": "done",
       "priority": "critical",
       "owner": "Runtime maintainers",
       "target_date": null,
@@ -226,7 +226,7 @@
     {
       "id": "record-replay",
       "title": "Record, normalize, and strictly replay the full agent loop",
-      "status": "planned",
+      "status": "done",
       "priority": "high",
       "owner": "Runtime maintainers",
       "target_date": null,
@@ -240,7 +240,7 @@
     {
       "id": "production-evidence",
       "title": "Add provider adapters and complete paired live routing evidence",
-      "status": "planned",
+      "status": "in_progress",
       "priority": "high",
       "owner": "Runtime maintainers",
       "target_date": null,
@@ -267,7 +267,7 @@
     },
     {
       "id": "evidence-trust-boundary",
-      "title": "Harden completion evidence with exact acceptance/negative traceability, execution manifests, and signed review trust",
+      "title": "Harden completion evidence with exact acceptance/negative traceability, execution manifests, and keyless review binding",
       "status": "done",
       "priority": "critical",
       "owner": "Forgewright maintainers",
@@ -762,6 +762,72 @@
       ]
     },
     {
+      "id": "skill-overlay-context-budget",
+      "title": "Enforce the configured estimated token budget for Lite skill overlays",
+      "type": "feature",
+      "status": "done",
+      "priority": "high",
+      "owner": "Runtime maintainers",
+      "acceptance": [
+        "All configured skill paths are validated before count or context limits can defer an overlay.",
+        "Ordered Lite overlays never exceed the configured provider-neutral estimate budget and routing reports estimated usage plus deferred skills.",
+        "Budget selection uses verified file metadata and does not read the body of an overlay that remains deferred.",
+        "MCP skill discovery is metadata-only and the exact-name loader rejects traversal, symlinks, missing or ambiguous skills, and overlays above its byte or estimated-token bounds.",
+        "The Lite agent loop advertises only its current deferred inventory and exact namespaced loader, allows one successful load per deferred skill, and rejects unlisted or duplicate loads.",
+        "The UTF-8 byte estimator is explicitly approximate and cannot be presented as an exact provider token count or measured savings claim."
+      ],
+      "references": [
+        {
+          "path": "docs/pipeline-reference.md",
+          "anchor": "runtime-and-subagent-economics"
+        }
+      ]
+    },
+    {
+      "id": "benchmark-measurement-record",
+      "title": "Emit comparable measurement records from the local benchmark runner",
+      "type": "feature",
+      "status": "done",
+      "priority": "high",
+      "owner": "CLI maintainers",
+      "acceptance": [
+        "Benchmark reports bind canonical task/verifier fingerprints, provider topology, resolved settings, run identity, and wall time.",
+        "Every attempt emits a validated reported/unavailable usage receipt; completeness counts are explicit and incomplete aggregates remain null rather than zero.",
+        "Reports store only output SHA-256 and byte counts, never raw prompts, model output, verifier output, provider options, or keys.",
+        "The paired path rejects self-pairs, mixed/cross-provider runs and topology/suite/verifier mismatches while computing quality, cost, provider latency, and end-to-end deltas.",
+        "Legacy metadata comparison cannot authorize a paired receipt, and local records keep production evidence missing."
+      ],
+      "references": [
+        {
+          "path": "docs/active-roadmap.md"
+        },
+        {
+          "path": "docs/pipeline-reference.md",
+          "anchor": "planning-and-optimization"
+        }
+      ]
+    },
+    {
+      "id": "bounded-continuity-recovery",
+      "title": "Add proactive semantic checkpoints, bounded continuation, and safe trajectory recovery",
+      "type": "feature",
+      "status": "done",
+      "priority": "high",
+      "owner": "Runtime maintainers",
+      "acceptance": [
+        "The agent checkpoints before model/effect boundaries and after tool steps without timer or message-count triggers.",
+        "Checkpoint and receipt chains bind workspace, session, tree, ledger, optional trajectory/capability, expiry, nonce, and cumulative step/tool budgets while remaining context-only.",
+        "Replay, corruption, wrong head/tip/epoch, expiry, and budget overrun fail fresh without tool or completion authority.",
+        "Trajectory recovery advances writer epoch exactly once at a quiescent root and rejects active work, terminal state, cancellation/finalization, or pending disposer callbacks."
+      ],
+      "references": [
+        {
+          "path": "docs/pipeline-reference.md",
+          "anchor": "proactive-continuity-and-safe-recovery"
+        }
+      ]
+    },
+    {
       "id": "wire-docs-gate",
       "title": "Wire the change-aware Docs Hub gate into precommit, full local CI, and required release checks",
       "type": "feature",
@@ -856,7 +922,7 @@
     },
     {
       "id": "close-evidence-bypasses",
-      "title": "Close legacy evidence, traceability, payment routing, RED-GREEN, signed-review, and dirty-tree bypasses",
+      "title": "Close legacy evidence, traceability, payment routing, RED-GREEN, keyless-review, and dirty-tree bypasses",
       "type": "bug",
       "status": "done",
       "priority": "critical",
@@ -866,10 +932,10 @@
         "Every acceptance ID maps to exact concrete invoked test references and the machine-derived execution manifest matches the command.",
         "Every negative_paths entry has an exact negative_path_bindings record with an ID, acceptance IDs, and invoked refs.",
         "Every final-tree verifier is replayed from its exact stored argv; a nonzero, missing, timed-out, or worktree-mutating command blocks completion.",
-        "Payment, billing, IAP, receipt, entitlement, subscription, and checkout work is always HARD/DEEP and requires contract, runtime, E2E, and signed review-2 evidence.",
+        "Payment, billing, IAP, receipt, entitlement, subscription, and checkout work is always HARD/DEEP and requires contract, runtime, E2E, and independent keyless review-2 evidence.",
         "Fixes require the same verifier RED to GREEN chain; HARD fixes also require pre-mutation GREEN, mutation failure, and exact final GREEN with tree restoration.",
-        "Only OpenSSH Ed25519 review-2 signatures trusted by external FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS or ~/.forgewright/reviewers.allowed_signers can approve HARD work; review-1/self-authored JSON is UNVERIFIED.",
-        "Any staged, unstaged, tracked, or untracked nonignored source change invalidates prior evidence; secrets and private keys stay outside the workspace.",
+        "Keyless review-2 must bind the exact final-evidence digest, tree, turn, workspace, acceptance IDs, and negative paths while keeping reviewer identity different from implementer_id; review-1 and same-identity JSON are UNVERIFIED.",
+        "Any staged, unstaged, tracked, or untracked nonignored source change invalidates prior evidence.",
         "Verifier-owned evidence and volatile runtime memory, session, telemetry, cache, and review-handoff state cannot invalidate evidence merely by operating; arbitrary ignored project content remains fingerprinted.",
         "An opaque platform-native Codex turn_id cannot shadow current evidence; selection is frozen once, while mapped-but-invalid selectors and non-correlated responses block.",
         "Evidence and linked review reads are bounded regular-file operations that reject symlinks, path escape, and schema-v2 turn-to-filename mismatches."
@@ -886,12 +952,12 @@
     "lifecycle": "active",
     "health": "on_track",
     "phase": "SUSTAIN",
-    "summary": "README now presents the Continuous Project Control Center as a primary capability, including the Mermaid pipeline, runtime/token-aware dispatch order, exact generated-site paths, and baseline/checkpoint/gate/final-build lifecycle. Every request identifies its active execution runtime before dispatch planning; candidate subagent models use current official token prices as cost evidence, while routing prioritizes effectiveness, wall-clock speed, total tokens, then estimated token cost. Small coupled work records no-spawn. Provider-native lifecycle hooks now inject a bounded inventory for every active canonical kernel rule across Codex, Claude, Gemini, Antigravity, and Cursor; project adapters resolve the Git root, while global installs use the trusted absolute framework runtime to validate and read the current project's manifest without executing project-supplied hook code. The off kill switch remains available. Rule-context failures are fail-open and do not replace existing Stop or security gates. Static validation now locks the exact six-rule ID-to-source inventory, while installer and doctor migrations recognize only exact trusted Forgewright-owned commands and preserve similarly named user hooks. The Stop lifecycle adds a read-only Docs continuity check that defaults to observe, derives custom JSON/YAML/asset sources from the current manifest, rejects unsafe catalog paths, binds cached fingerprints to current manifest semantics, and permits at most one stale-receipt refresh request in enforce mode before allowing UNVERIFIED. Docs Hub flow pages render every canonical ordered flow as a Mermaid-derived static SVG with visible arrows, Mermaid source, and accessible ordered-step fallback. Every material project update resolves the continuous Docs Hub contract; missing, legacy, or proportional projects are non-destructively initialized or migrated first. Documentation writes still use a pre-write governance gate that defaults to updating canonical truth and rejects duplicate, out-of-scope, transient, generated-source, or unresolved stale-truth artifacts. Requirement-locked test-oracle enforcement remains active across the delivery pipeline. H0 and the H1 HarnessAdapter compatibility contract are complete locally, with bounded Stop re-entry/single replay, exact MCP ownership leases, and project/session continuity integrated as safety controls; these controls do not complete the still-planned H2 TrajectoryLedger, H3 containment, H4 full replay, H5 live provider evidence, or H6 fresh-evaluator handoff. The GitNexus index and generated agent context are refreshed against commit f8a6e0e7 with 23,440 symbols, 34,647 relationships, and 300 execution flows.",
-    "updated_at": "2026-08-25T13:44:48+07:00",
+    "summary": "Continuous Docs Hub, runtime/token-aware dispatch, provider-neutral rule hooks, bounded Stop replay, requirement-locked tests, and exact schema-v2 evidence remain active. H0 through H4 meet bounded local gates: deferred skills load on demand, canonical lifecycle/containment/checkpoint recovery pass locally, and privacy-safe offline full-loop replay is independently approved. Review-2 is keyless and exact-evidence-bound, so it detects mismatch but does not authenticate reviewer identity against same-user forgery. H5 structured usage and paired A/B infrastructure is locally verified with digest-only reports and explicit completeness, but the configured provider client rejected the live probe; production canary/rollback evidence remains missing. Automatic production resume, portable OS process isolation, and H6 fresh-evaluator handoff also remain pending. GitNexus counts remain the recorded baseline until the final index refresh.",
+    "updated_at": "2026-08-29T00:08:00+07:00",
     "blockers": [
       {
-        "id": "live-provider-credentials",
-        "title": "Live provider credentials are unavailable for H5 paired routing evidence.",
+        "id": "live-provider-client-migration",
+        "title": "The configured provider rejects the current client as unsupported; H5 live paired evidence requires migration to a supported runtime/account, not another key-check workflow.",
         "owner": "Runtime maintainers"
       },
       {
@@ -906,12 +972,30 @@
         "title": "Cursor CLI is unavailable locally and Antigravity lacks a live first-party hook validator; these adapters currently rely on native-schema review plus deterministic shell and payload canaries.",
         "owner": "Runtime maintainers",
         "mitigation": "Keep both adapters fail-open and in observe mode, preserve their static contract tests, and run a live host canary before enabling any stronger behavior."
+      },
+      {
+        "id": "trajectory-restart-recovery",
+        "title": "Safe-boundary writer-epoch recovery works locally, but automatic production resume and arbitrary pending-disposer rebinding remain unavailable.",
+        "owner": "Runtime maintainers",
+        "mitigation": "Enable resume only from exact quiescent checkpoints under the process lease; reject active work and pending disposers until a trusted handler registry can prove exact rebinding."
+      },
+      {
+        "id": "keyless-review-authentication",
+        "title": "Keyless review bindings detect evidence mismatch but do not authenticate reviewer identity against same-user forgery.",
+        "owner": "Forgewright maintainers",
+        "mitigation": "Require reviewer and implementer identities to differ, bind exact evidence/tree/turn/workspace/acceptance/negative paths, disclose the limitation, and use external process controls when stronger identity assurance is required."
+      },
+      {
+        "id": "application-containment-boundary",
+        "title": "H3 enforces canonical application paths but does not provide portable kernel isolation for arbitrary child processes or foreign tools.",
+        "owner": "Runtime maintainers",
+        "mitigation": "Keep process/network effects disabled unless explicitly contained; add a verified Linux or container backend before enabling arbitrary commands, and retain same-user/root limitations in evidence."
       }
     ],
     "next_actions": [
       {
-        "id": "trajectory-lifecycle",
-        "title": "Implement the H2 TrajectoryLedger, cancellation/disposer semantics, and quiescence receipts.",
+        "id": "live-provider-evidence",
+        "title": "Run the locally verified H5 receipt and paired A/B contract in a supported provider runtime, then collect canary and rollback evidence.",
         "owner": "Runtime maintainers",
         "due_date": null
       }

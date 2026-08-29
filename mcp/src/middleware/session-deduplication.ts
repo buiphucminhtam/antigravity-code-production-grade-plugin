@@ -22,6 +22,7 @@ const SIDE_EFFECT_TOOLS = new Set([
   'Task', // Creates new agents
   'NotebookEdit',
   'CallMcpTool', // May have side effects
+  'fw_load_skill_overlay', // Per-session one-time admission is stateful
 ]);
 
 interface DedupEntry {
@@ -215,6 +216,7 @@ export class SessionDeduplicationMiddleware {
   /** Main deduplication check — runs before every tool call. */
   before_tool(ctx: ToolContext): MiddlewareResult {
     this.metrics.totalCalls++;
+    if (!this.enabled) return { action: 'pass', context: ctx };
 
     // Initialize per-tool metrics
     if (!this.metrics.byTool[ctx.call.toolName]) {
@@ -274,6 +276,7 @@ export class SessionDeduplicationMiddleware {
 
   /** Store the result after tool execution (only for pending misses). */
   after_tool(ctx: ToolContext): void {
+    if (!this.enabled) return;
     if (!ctx.call.result) return;
 
     const result = ctx.call.result;

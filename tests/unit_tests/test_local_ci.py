@@ -76,6 +76,11 @@ def test_precommit_runs_mandatory_docs_continuity_gate() -> None:
     assert steps["cli-build"][-2:] == ["run", "build:cli"]
     assert steps["docs-continuity"][-2:] == ["--staged", "--json"]
     assert "src/cli/dist/index.js" in steps["docs-continuity"]
+    assert steps["python-unit-tests"][-3:] == [
+        "-p",
+        "no:cacheprovider",
+        "tests/unit_tests/",
+    ]
 
 
 def test_timeout_terminates_spawned_process_tree(tmp_path: Path) -> None:

@@ -1,7 +1,7 @@
 import fs from 'fs';
+import { createHash } from 'node:crypto';
 import { dirname, join, basename, relative, isAbsolute, sep } from 'path';
 import { fileURLToPath } from 'url';
-import * as jsyaml from 'js-yaml';
 import { z } from 'zod';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -28,22 +28,17 @@ export const FrontmatterSchema = z.object({
     version: z.string().optional(),
     tags: z.array(z.string()).optional(),
 });
-function parseFrontmatter(content) {
-    const frontmatterRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/;
-    const match = content.match(frontmatterRegex);
-    if (!match) {
-        return { data: {}, body: content };
-    }
-    const [, yamlString, body] = match;
-    try {
-        const data = jsyaml.load(yamlString);
-        return { data, body };
-    }
-    catch (e) {
-        console.error('Failed to parse YAML frontmatter:', e);
-        return { data: {}, body: content };
+export class SkillOverlayError extends Error {
+    code;
+    constructor(code) {
+        super(code);
+        this.code = code;
+        this.name = 'SkillOverlayError';
     }
 }
+const OVERLAY_MAX_BYTES = 48 * 1024;
+const OVERLAY_MAX_TOKENS = 12_000;
+const SKILL_NAME = /^[a-z0-9][a-z0-9-]{0,63}$/;
 function isWithinRoot(root, candidate) {
     const relativePath = relative(root, candidate);
     return (relativePath === '' ||
@@ -121,18 +116,13 @@ export function getAllSkills() {
             const safeFilePath = resolveContainedPath(filePath, skillsRoot);
             if (!safeFilePath)
                 continue;
-            const content = fs.readFileSync(safeFilePath, 'utf-8');
-            const { data } = parseFrontmatter(content);
             const folderName = basename(dirname(safeFilePath));
-            const name = data.name || folderName;
-            const description = data.description || `Forgewright Skill: ${name}`;
+            const name = folderName;
+            const description = `Forgewright Skill: ${name}`;
             skills.push({
                 name,
                 description,
-                version: data.version,
-                tags: data.tags,
                 filePath: safeFilePath,
-                content,
             });
         }
         catch (e) {
@@ -140,6 +130,49 @@ export function getAllSkills() {
         }
     }
     return skills;
+}
+export function loadSkillOverlay(name) {
+    if (!SKILL_NAME.test(name))
+        throw new SkillOverlayError('INVALID_SKILL_NAME');
+    const skillsRoot = resolveSkillsRoot();
+    if (!skillsRoot)
+        throw new SkillOverlayError('UNKNOWN_SKILL');
+    const matches = findAllSkillFiles(skillsRoot, skillsRoot)
+        .filter((filePath) => basename(dirname(filePath)) === name)
+        .map((filePath) => dirname(filePath));
+    if (matches.length === 0)
+        throw new SkillOverlayError('UNKNOWN_SKILL');
+    if (matches.length > 1)
+        throw new SkillOverlayError('AMBIGUOUS_SKILL');
+    const skillDir = matches[0];
+    const litePath = join(skillDir, 'LITE.md');
+    try {
+        if (fs.lstatSync(skillDir).isSymbolicLink() || fs.lstatSync(litePath).isSymbolicLink()) {
+            throw new SkillOverlayError('SYMLINK_REJECTED');
+        }
+        const safePath = resolveContainedPath(litePath, skillsRoot);
+        if (!safePath || !fs.statSync(safePath).isFile())
+            throw new SkillOverlayError('UNKNOWN_SKILL');
+        const bytes = fs.statSync(safePath).size;
+        if (bytes > OVERLAY_MAX_BYTES)
+            throw new SkillOverlayError('OVERLAY_TOO_LARGE');
+        const content = fs.readFileSync(safePath, 'utf8');
+        const tokens = Math.ceil(Buffer.byteLength(content, 'utf8') / 4);
+        if (tokens > OVERLAY_MAX_TOKENS)
+            throw new SkillOverlayError('OVERLAY_TOO_LARGE');
+        return {
+            name,
+            content,
+            bytes,
+            tokens,
+            digest: createHash('sha256').update(content, 'utf8').digest('hex'),
+        };
+    }
+    catch (error) {
+        if (error instanceof SkillOverlayError)
+            throw error;
+        throw new SkillOverlayError('UNKNOWN_SKILL');
+    }
 }
 export function getSharedProtocols() {
     const skillsRoot = resolveSkillsRoot();

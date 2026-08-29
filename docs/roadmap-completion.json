@@ -190,6 +190,78 @@
       "rollback": "Disable paid review routing when avoided-defect evidence does not exceed cost."
     },
     {
+      "id": "H0", "implementation": "done", "integration": "canonical", "activation": "local", "production_evidence": "not-required", "outcome": "met-locally",
+      "evidence": ["docs/roadmap-completion.json", "scripts/ci/verify-roadmap-completion.py", "tests/unit_tests/test_roadmap_completion.py"],
+      "verification": {
+        "command": ["python3", "scripts/ci/verify-roadmap-completion.py", "--check-contract"], "timeout_seconds": 180,
+        "acceptance_ids": ["H0-roadmap-manifest-contract"],
+        "test_refs": ["scripts/ci/verify-roadmap-completion.py"],
+        "negative_paths": [{"id": "H0-roadmap-contract-validation", "claim": "a malformed completion contract is rejected before replay", "test_refs": ["scripts/ci/verify-roadmap-completion.py"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Restore the previous canonical completion manifest and rerun its contract verifier."
+    },
+    {
+      "id": "H1", "implementation": "done", "integration": "isolated", "activation": "library-only", "production_evidence": "missing", "outcome": "met-locally",
+      "evidence": ["mcp/src/runtime/harness-adapter.ts", "mcp/src/runtime/harness-adapter.test.ts"],
+      "verification": {
+        "command": ["npm", "--prefix", "mcp", "test", "--", "--reporter=basic", "--no-cache", "src/runtime/harness-adapter.test.ts"], "timeout_seconds": 180,
+        "acceptance_ids": ["H1-harness-capability-contract"],
+        "test_refs": ["mcp/src/runtime/harness-adapter.test.ts#fails closed when a required lifecycle operation is unsupported", "mcp/src/runtime/harness-adapter.test.ts#requires start and every advertised non-start capability implementation"],
+        "negative_paths": [{"id": "H1-advertised-capability-without-method", "claim": "advertised lifecycle capabilities without implementations are rejected", "test_refs": ["mcp/src/runtime/harness-adapter.test.ts#requires start and every advertised non-start capability implementation"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Restore the prior adapter negotiation path and retain fail-closed host capability checks."
+    },
+    {
+      "id": "H2", "implementation": "done", "integration": "canonical", "activation": "canonical-mcp", "production_evidence": "missing", "outcome": "met-locally",
+      "evidence": ["schemas/trajectory-event.v1.schema.json", "mcp/src/runtime/harness-adapter.ts", "mcp/src/runtime/harness-adapter.test.ts", "mcp/src/runtime/lifecycle-lease.test.ts", "mcp/src/runtime/trajectory-ledger.ts", "mcp/src/runtime/trajectory-ledger.test.ts", "mcp/src/runtime/lifecycle-coordinator.ts", "mcp/src/runtime/lifecycle-coordinator.test.ts", "mcp/src/runtime/mcp-runtime-lifecycle.ts", "mcp/src/runtime/mcp-runtime-lifecycle.test.ts", "mcp/src/runtime/tool-execution-gateway.ts", "mcp/src/runtime/tool-execution-gateway.test.ts", "mcp/src/api/tools.ts", "mcp/src/api/tools.gateway.test.ts", "mcp/src/index.ts", "scripts/ci/verify-harness-upgrade.sh", "scripts/ci/run-required-checks.sh"],
+      "verification": {
+        "command": ["npm", "--prefix", "mcp", "test", "--", "--reporter=basic", "--no-cache", "src/runtime/harness-adapter.test.ts", "src/runtime/lifecycle-lease.test.ts", "src/runtime/trajectory-ledger.test.ts", "src/runtime/lifecycle-coordinator.test.ts", "src/runtime/mcp-runtime-lifecycle.test.ts", "src/runtime/tool-execution-gateway.test.ts", "src/api/tools.gateway.test.ts"], "timeout_seconds": 180,
+        "acceptance_ids": ["H2-deterministic-reconstruction", "H2-cancellation-before-abort", "H2-disposer-lifo-idempotency", "H2-timeout-late-fence", "H2-no-post-terminal", "H2-gateway-accounting", "H2-gateway-drain-race", "H2-shutdown-ordering", "H2-predecessor-validation", "H2-ancestor-symlink-safety", "H2-dynamic-capacity"],
+        "test_refs": ["mcp/src/runtime/trajectory-ledger.test.ts#deterministically derives lifecycle state", "mcp/src/runtime/lifecycle-coordinator.test.ts#persists parent cancellation before abort propagation and acknowledgement", "mcp/src/runtime/lifecycle-coordinator.test.ts#runs child-before-parent LIFO, continues after failure, and coalesces finalize/dispose", "mcp/src/runtime/lifecycle-coordinator.test.ts#times out a noncooperative operation and fences its late result", "mcp/src/runtime/trajectory-ledger.test.ts#honors expected tips and refuses appends after terminal", "mcp/src/runtime/trajectory-ledger.test.ts#rejects symlinked trajectory directories and event files", "mcp/src/runtime/trajectory-ledger.test.ts#reserves ordinary capacity for cancellation, finalization, and terminal controls", "mcp/src/runtime/tool-execution-gateway.test.ts#records lifecycle scopes and operations without persisting raw tool arguments", "mcp/src/runtime/tool-execution-gateway.test.ts#returns an admitted cooperative result while lifecycle finalization drains its scope", "mcp/src/runtime/mcp-runtime-lifecycle.test.ts#cancels before finalizing a signal and cleans up in exact order"],
+        "negative_paths": [{"id": "H2-late-result-fence", "claim": "a noncooperative late operation is fenced after finalization timeout", "test_refs": ["mcp/src/runtime/lifecycle-coordinator.test.ts#times out a noncooperative operation and fences its late result"]}, {"id": "H2-post-terminal-rejection", "claim": "trajectory events cannot append after terminal", "test_refs": ["mcp/src/runtime/trajectory-ledger.test.ts#honors expected tips and refuses appends after terminal"]}, {"id": "H2-ancestor-symlink-rejection", "claim": "symlinked ledger ancestry is rejected", "test_refs": ["mcp/src/runtime/trajectory-ledger.test.ts#rejects symlinked trajectory directories and event files"]}, {"id": "H2-dynamic-capacity-reserve", "claim": "control records retain capacity after ordinary records exhaust their budget", "test_refs": ["mcp/src/runtime/trajectory-ledger.test.ts#reserves ordinary capacity for cancellation, finalization, and terminal controls"]}, {"id": "H2-gateway-argument-secrecy", "claim": "gateway lifecycle accounting persists only an input digest, not raw arguments", "test_refs": ["mcp/src/runtime/tool-execution-gateway.test.ts#records lifecycle scopes and operations without persisting raw tool arguments"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Disable lifecycle injection and restore prior direct gateway dispatch while retaining existing ledger bytes for audit and recovery analysis."
+    },
+    {
+      "id": "H3", "implementation": "done", "integration": "canonical", "activation": "canonical-mcp", "production_evidence": "missing", "outcome": "met-locally",
+      "evidence": ["mcp/src/runtime/execution-containment.ts", "mcp/src/runtime/execution-containment.test.ts", "mcp/src/runtime/tool-execution-gateway.ts", "mcp/src/runtime/tool-execution-gateway.test.ts", "mcp/src/infrastructure/adapters/FileSystemStateRepository.ts", "mcp/src/infrastructure/adapters/FileSystemStateRepository.test.ts", "mcp/src/infrastructure/adapters/HttpWebhookEventPublisher.ts", "mcp/src/infrastructure/adapters/HttpWebhookEventPublisher.test.ts", "mcp/src/state/rpc-client.ts", "mcp/src/state/rpc-client.test.ts", "mcp/src/middleware/guardrail.ts", "mcp/src/middleware/guardrail.test.ts", "scripts/runtime/forgewright-orchestrator.py", "tests/unit_tests/test_forgewright_orchestrator.py", "scripts/ci/verify-h3-containment.sh", "scripts/ci/run-required-checks.sh"],
+      "verification": {
+        "command": ["bash", "scripts/ci/verify-h3-containment.sh"], "timeout_seconds": 180,
+        "acceptance_ids": ["H3-pinned-trust-context", "H3-unknown-effect-deny", "H3-filesystem-plane", "H3-network-deny-default", "H3-state-path-containment", "H3-policy-environment", "H3-lifecycle-denial"],
+        "test_refs": ["scripts/ci/verify-h3-containment.sh"],
+        "negative_paths": [{"id": "H3-path-escape-symlink", "claim": "filesystem traversal, outside-root absolute paths, unsafe filenames, symlinked state/tool paths, and aged locks whose recorded PID is still live are rejected before mutation", "test_refs": ["scripts/ci/verify-h3-containment.sh"]}, {"id": "H3-network-private-rebinding", "claim": "external HTTP, credentials, private/metadata IPv4, site-local or IPv4-transition IPv6, redirects, and remote-address rebinding never reach an authorized transport result", "test_refs": ["scripts/ci/verify-h3-containment.sh"]}, {"id": "H3-production-identity-missing", "claim": "production startup without a validated caller identity and application profile fails closed", "test_refs": ["scripts/ci/verify-h3-containment.sh"]}, {"id": "H3-policy-or-capability-drift", "claim": "policy identity/content swaps, unknown tools, and undeclared filesystem, process, or network effects are denied before handlers", "test_refs": ["scripts/ci/verify-h3-containment.sh"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Remove containment injection and production trust activation while retaining fail-closed policy validation, then disable external webhooks and filesystem tool routing until the regression is corrected."
+    },
+    {
+      "id": "H4", "implementation": "done", "integration": "isolated", "activation": "local", "production_evidence": "missing", "outcome": "met-locally",
+      "evidence": ["scripts/runtime/agent_loop_replay.py", "scripts/runtime/forgewright-orchestrator.py", "tests/unit_tests/test_agent_loop_replay.py", "tests/unit_tests/test_forgewright_orchestrator.py", "scripts/ci/verify-h4-replay.sh", "scripts/ci/run-required-checks.sh", "scripts/ci/verify-harness-upgrade.sh"],
+      "verification": {
+        "command": ["bash", "scripts/ci/verify-h4-replay.sh", "tests/unit_tests/test_agent_loop_replay.py", "tests/unit_tests/test_forgewright_orchestrator.py"], "timeout_seconds": 180,
+        "acceptance_ids": ["H4-offline-full-loop-roundtrip", "H4-semantic-order-correlation", "H4-private-digest-metadata", "H4-success-failure-terminal-replay", "H4-whole-loop-writer-lease"],
+        "test_refs": ["tests/unit_tests/test_agent_loop_replay.py", "tests/unit_tests/test_forgewright_orchestrator.py#test_agent_loop_record_replay_is_strict_and_offline"],
+        "negative_paths": [{"id": "H4-replay-integrity", "claim": "missing, extra, reordered, mismatched, corrupt, secret-bearing, oversized, concurrent-writer, startup-failure, and unrelated-failure paths are rejected or replayed only at their exact recorded boundary", "test_refs": ["tests/unit_tests/test_agent_loop_replay.py", "tests/unit_tests/test_forgewright_orchestrator.py#test_agent_loop_record_replay_is_strict_and_offline"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Disable offline journal use and retain the immutable local records for investigation; do not infer live-provider activation or evidence."
+    },
+    {
+      "id": "H5", "implementation": "done", "integration": "partial", "activation": "local", "production_evidence": "missing", "outcome": "partially-met",
+      "evidence": ["src/cli/src/bench/types.ts", "src/cli/src/bench/runner.ts", "src/cli/src/bench/compare.ts", "src/cli/tests/bench-comparable.test.ts", "src/cli/tests/bench-runner.test.ts", "scripts/ci/verify-h5-measurement.sh", "scripts/ci/run-required-checks.sh"],
+      "verification": {
+        "command": ["bash", "scripts/ci/verify-h5-measurement.sh", "src/cli/tests/bench-comparable.test.ts", "src/cli/tests/bench-runner.test.ts"], "timeout_seconds": 180,
+        "acceptance_ids": ["H5-structured-usage-receipts", "H5-provider-topology-binding", "H5-privacy-safe-report", "H5-paired-ab-receipt", "H5-explicit-usage-completeness"],
+        "test_refs": ["src/cli/tests/bench-comparable.test.ts", "src/cli/tests/bench-runner.test.ts"],
+        "negative_paths": [{"id": "H5-invalid-pair-or-private-output", "claim": "self-pairs, cross-provider or mixed-provider runs, topology/suite/verifier mismatches, invalid usage observations, and raw prompt/output persistence are rejected", "test_refs": ["src/cli/tests/bench-comparable.test.ts", "src/cli/tests/bench-runner.test.ts"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Disable structured usage and paired receipt publication while retaining digest-only local reports; keep production evidence missing until a supported provider run succeeds."
+    },
+    {
       "id": "P3.1", "implementation": "done", "integration": "canonical", "activation": "local", "production_evidence": "not-required", "outcome": "met-locally",
       "evidence": ["scripts/ci/local-ci.py", "scripts/ci/local-ci.mjs", "scripts/ci/run-required-checks.sh", "scripts/ci/verify-roadmap-completion.py", "tests/unit_tests/test_ci_workflow.py", "tests/unit_tests/test_local_ci.py"],
       "verification": {

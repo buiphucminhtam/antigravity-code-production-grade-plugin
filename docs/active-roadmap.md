@@ -2,7 +2,7 @@
 
 > **North star:** cost per verified, accepted engineering task.
 > **Scope:** the core engineering loop first; game, XR, research, and growth remain optional capability packs until the core loop has production evidence.
-> **Status date:** 2026-08-23.
+> **Status date:** 2026-08-29.
 
 ## Product Goal
 
@@ -30,10 +30,10 @@ The product promise is:
 |---|---|---|
 | Product truth | `product-manifest.json`, deterministic validator, required aggregate gate, and an explicit five-document claim inventory cover core public facts plus high-risk testing, GitNexus, ADR, and historical marketing claims | Remaining legacy/status and domain-specific documentation inventory is pending |
 | Runtime | The TypeScript MCP stdio server is declared as the canonical locally-tested production path; CLI and Python/shell paths coexist | Live provider/MCP smoke and legacy-path equivalence evidence are pending |
-| Safety controls | Registered canonical MCP tools traverse `ToolExecutionGateway` authorization, sanitization, offload, quality, verification, and telemetry hooks | Production identity/policy, CLI/external-tool traversal, and filesystem/network containment are not wired |
-| Legacy agent loop | Local hardening now caches a bounded namespaced tool catalog and enforces turn, tool-call, context, output, response, and timeout limits | Live MCP/provider smoke evidence and legacy-path enforcement equivalence remain pending |
+| Safety controls | Canonical MCP tools traverse the gateway with pinned trust/capability admission, contained state/filesystem paths, minimized policy execution, and deny-by-default webhook destinations | Portable kernel isolation, arbitrary child-process containment, and production host evidence remain pending |
+| Legacy agent loop | Local hardening caches a bounded namespaced tool catalog, enforces turn/tool/context/output/response/timeout limits, loads deferred Lite overlays on demand, and supports privacy-safe offline full-loop replay | Live provider usage/cost evidence and legacy-path production equivalence remain pending |
 | Model selection | A deterministic `ModelCallGateway` foundation implements injected capability probing and risk-tier selection in library tests | The canonical MCP path does not originate live provider calls or run the probe at startup |
-| Evaluation | Schema-v2 local validator rejects mock/incomplete/mismatched reports; a frozen 100-task routing corpus covers all required roadmap categories and reports per-category Wilson 95% confidence intervals | No reproducible paired live baseline or live provider evidence |
+| Evaluation | Schema-v2 validation rejects mock/incomplete/mismatched reports; `forge bench` now emits privacy-safe, exact-bound usage receipts, completeness counts, provider topology, settings snapshots, and reproducible paired A/B deltas | The configured live provider client rejected authentication, so live paired baseline/canary/rollback evidence remains missing |
 | Cost control | The model-gateway library atomically reserves and settles in-process task/account budgets | It is not integrated into canonical live provider calls, so operational overshoot/cost evidence is missing |
 | State | Canonical MCP state uses typed fail-closed persistence, schema validation, lock-backed transactions, and bounded history | Production recovery and cross-process operational evidence remain missing |
 | CI/release | A required provider-neutral local control plane invokes product truth, Python units, MCP lint/format/build/test/coverage, CLI tests, production dependency audit, compatibility checks, package smoke checks, review, and clean-install evidence | Runtime smoke remains opt-in; hosted CI is not part of the canonical PASS/FAIL contract |
@@ -148,34 +148,46 @@ A phase is complete only when all of the following are true:
 
 This dependency order supersedes the old priority of building live provider adapters first. A live routing result is not accepted until the host lifecycle, trajectory, containment, and replay boundaries it depends on are mechanically verifiable.
 
-Current local status (2026-08-23): H0 and the H1 compatibility contract have
-executable evidence. The same safety tranche also delivers bounded Stop
-re-entry/single replay, exact MCP ownership leases, and context-only continuity.
-Those supporting controls do **not** complete H2 or H6: there is not yet a
-canonical `TrajectoryLedger`, full disposer/quiescence contract, or fresh
-evaluator for resumed long-running work.
+Current local status (2026-08-29): H0 through H4 have executable local
+evidence. H2 is integrated on the canonical MCP path; H3 adds pinned runtime
+trust, fail-closed tool capabilities, workspace/state path containment,
+filesystem-MCP admission, minimized policy subprocess environment, and
+deny-by-default webhook destinations. The runtime opens a provider-neutral append-only
+trajectory, accounts tool scopes/operations, persists cancellation and
+child-before-parent LIFO disposer outcomes, records confirmed or unconfirmed
+quiescence, seals one terminal event, and only then attempts lease/server
+shutdown. H3 is application-level containment for canonical handlers, not a
+portable kernel sandbox for arbitrary child processes. Production evidence and
+automatic production resume and arbitrary disposer rebinding remain missing;
+proactive context-only checkpoints, bounded continuation, quiescent
+writer-epoch recovery, and offline H4 journal replay pass locally. H5 now has
+privacy-safe structured usage receipts and paired A/B comparison infrastructure,
+but live provider evidence remains blocked; H6 fresh evaluation remains ordered
+downstream work. H2 local evidence includes capacity,
+predecessor-binding, gateway-drain, shutdown-bound, Docs, and keyless exact-tree
+review gates; reviewer identity is not cryptographically authenticated.
 
 | ID | Deliverable | Dependencies | Exit evidence |
 |---|---|---|---|
 | H0 | Roadmap truth reset: independent completion axes, exact executable verifier contracts, and cross-document status alignment | None | Manifest v2 contract passes; all declared verifier argv replay green; Docs Hub gate passes; independent diff/evidence review approves the exact tree |
 | H1 | `HarnessAdapter v1` with explicit `forgewright-owned-loop` and `native-host-loop` modes plus typed start/resume/fork/steer/interrupt capability negotiation | H0 | Contract tests reject unsupported lifecycle operations and prevent provider-specific model IDs from leaking into the core contract |
-| H2 | Canonical append-only `TrajectoryLedger` plus reversible lifecycle/disposers, cancellation propagation, and quiescence receipts | H1 | Deterministic reconstruction, disposer idempotency, cancellation, timeout, and no-post-terminal-event tests pass |
-| H3 | Execution containment and trust boundary: retain output filtering as a named firewall, add real filesystem/network containment, production identity/policy hooks, and explicit trust gates | H1, H2 | Escape, unauthorized tool, network-deny, filesystem-deny, and trust-boundary negative tests pass on the canonical path |
-| H4 | Record → normalize → replay the real agent loop without provider keys, with strict consumption checks | H2, H3 | Full-loop fixture replay reproduces lifecycle/model/tool/approval/evidence events and fails on missing, extra, or reordered events |
-| H5 | Provider adapters and paired live routing evidence inside one selected provider ecosystem | H4 | Capability probe, resolved snapshot, usage receipt, verifier quality, shadow/canary comparison, and rollback receipt are present |
+| H2 | **Met locally:** append-only `TrajectoryLedger`, cancellation propagation, reversible/LIFO disposers, bounded quiescence, gateway accounting, and finalize-before-lease/server shutdown | H1 | Dynamic capacity, predecessor validation, gateway drain, shutdown-wide deadline, local process replay, Docs gate, and keyless exact-tree review pass; production/restart evidence remains missing |
+| H3 | **Met locally at application layer:** retain output filtering as a named firewall; add pinned trust context, capability admission, application-level filesystem/network containment for state/filesystem paths and webhooks, production identity/policy hooks, and explicit trust gates | H1, H2 | Escape, unauthorized/unknown tool, IPv4/IPv6 private-transition and rebinding deny, live-owner lock preservation, filesystem deny/symlink, policy drift/environment, missing-production-identity, and lifecycle-denial tests pass; arbitrary process OS sandbox remains unavailable |
+| H4 | **Met locally, offline:** record → normalize → replay the agent-loop fixture without provider keys, with strict consumption checks | H2, H3 | Versioned hash-chain replay covers lifecycle/model/tool/approval/evidence events and rejects missing, extra, reordered, corrupt, secret-bearing, or oversized records; it is not live-provider evidence |
+| H5 | **Provider adapters infrastructure met locally; live outcome pending:** provider-neutral usage receipts and paired A/B comparison inside one provider ecosystem | H4 | Local tests bind suite/verifier/provider topology/settings, hide raw prompts/outputs, reject invalid pairs, and compute quality/cost/latency deltas; capability probe, live canary, rollback, and production receipts remain missing |
 | H6 | Optional long-running handoff mode with structured checkpoint and fresh evaluator | H5 | Interrupted work resumes from a bounded handoff, and a fresh evaluator independently accepts or rejects the final evidence |
 
 ## Current Blockers
 
 | Blocker | Impact | Required action |
 |---|---|---|
-| Live provider credentials are unavailable for H5 paired routing evidence | Paired live routing, usage, canary, and rollback receipts cannot be collected | Provision credentials when H5 begins; keep activation and production-evidence axes false until then |
+| The configured live provider client rejects authentication as an unsupported client and requires migration | Paired live routing, usage, canary, and rollback receipts cannot be certified | Migrate to a supported provider runtime/account under explicit authorization; do not add another key-check workflow or upgrade fixture evidence |
 | An existing canonical MCP runtime without a valid ownership marker cannot be adopted when its dependency-lock digest differs from the repository | Automated migration must preserve the foreign runtime rather than manufacture ownership proof | Perform a user-authorized clean reinstall or supply independently verified ownership evidence |
 
 ## Next Execution Slice
 
-1. Implement H2 `TrajectoryLedger`, cancellation/disposer semantics, and quiescence receipts on top of the completed H1 contract.
-2. Implement H3 after H2; do not treat output filtering or ownership leases as filesystem/network containment.
-3. Build H4 only after lifecycle and containment events have canonical typed forms.
-4. Begin H5 paired live routing only after H4 replay consumes the full fixture with no missing or extra events.
-5. Keep H6 optional until the single-run harness path has production evidence; reuse the continuity schema as context, not as completion authority.
+1. Activate the H5 receipt adapter only in a supported provider runtime, then collect paired baseline/canary/rollback evidence without persisting raw prompts or outputs.
+2. Keep recovery at quiescent boundaries and reject pending disposer callbacks; do not deserialize arbitrary cleanup code.
+3. Keep arbitrary process execution disabled until a verified OS/container backend exists; application checks are not kernel isolation.
+4. Keep H5 production evidence missing until the supported provider returns bound live usage and both sides pass the same verifier contract.
+5. Keep H6 optional until the single-run harness path has production evidence; reuse continuity as context, not completion authority.

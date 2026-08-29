@@ -1,0 +1,445 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forgewright.dev/schemas/trajectory-event.v1.schema.json",
+  "title": "Forgewright Trajectory Event v1",
+  "description": "Canonical provider-neutral lifecycle event persisted by TrajectoryLedger. Hashes provide rewrite evidence, not authenticity against a same-OS-user rewrite.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "ledgerId",
+    "sequence",
+    "eventId",
+    "kind",
+    "occurredAtMs",
+    "causalEventIds",
+    "payload",
+    "previousHash",
+    "hash"
+  ],
+  "properties": {
+    "schema": { "const": "forgewright-trajectory-event/v1" },
+    "ledgerId": { "$ref": "#/$defs/ledgerId" },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "eventId": { "$ref": "#/$defs/opaqueId" },
+    "kind": { "type": "string" },
+    "occurredAtMs": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "causalEventIds": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/opaqueId" }
+    },
+    "payload": { "type": "object" },
+    "previousHash": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }]
+    },
+    "hash": { "$ref": "#/$defs/digest" }
+  },
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": { "const": "trajectory.opened" },
+            "payload": { "$ref": "#/$defs/trajectoryOpened" }
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "trajectory.recovered" },
+            "payload": { "$ref": "#/$defs/trajectoryRecovered" }
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "trajectory.terminal" },
+            "payload": { "$ref": "#/$defs/trajectoryTerminal" }
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "scope.opened" },
+            "payload": { "$ref": "#/$defs/scopeOpened" }
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "scope.closed" },
+            "payload": { "$ref": "#/$defs/scopeClosed" }
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "operation.started" },
+            "payload": { "$ref": "#/$defs/operationStarted" }
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "operation.settled" },
+            "payload": { "$ref": "#/$defs/operationSettled" }
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "disposer.registered" },
+            "payload": { "$ref": "#/$defs/disposerRegistered" }
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "disposer.started" },
+            "payload": { "$ref": "#/$defs/disposerStarted" }
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "disposer.settled" },
+            "payload": { "$ref": "#/$defs/disposerSettled" }
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "cancellation.requested" },
+            "payload": { "$ref": "#/$defs/cancellationRequested" }
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "cancellation.acknowledged" },
+            "payload": { "$ref": "#/$defs/cancellationAcknowledged" }
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "finalization.started" },
+            "payload": { "$ref": "#/$defs/finalizationStarted" }
+          }
+        },
+        {
+          "properties": {
+            "kind": { "const": "finalization.receipt" },
+            "payload": { "$ref": "#/$defs/finalizationReceipt" }
+          }
+        }
+      ]
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "trajectory.recovered",
+              "scope.closed",
+              "operation.settled",
+              "disposer.started",
+              "disposer.settled",
+              "cancellation.requested",
+              "cancellation.acknowledged",
+              "finalization.started",
+              "finalization.receipt",
+              "trajectory.terminal"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "causalEventIds": { "maxItems": 1 }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "ledgerId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "opaqueId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "code": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "outcome": { "enum": ["completed", "failed", "cancelled", "timed_out"] },
+    "quiescence": { "enum": ["confirmed", "not_confirmed"] },
+    "trajectoryOpened": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "objectiveDigest",
+        "workspaceId",
+        "sessionId",
+        "origin",
+        "writerEpoch",
+        "rootScopeId"
+      ],
+      "properties": {
+        "objectiveDigest": { "$ref": "#/$defs/digest" },
+        "workspaceId": { "$ref": "#/$defs/opaqueId" },
+        "sessionId": { "$ref": "#/$defs/opaqueId" },
+        "origin": { "$ref": "#/$defs/code" },
+        "writerEpoch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "rootScopeId": { "$ref": "#/$defs/opaqueId" }
+      }
+    },
+    "trajectoryRecovered": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "checkpointHash",
+        "previousWriterEpoch",
+        "writerEpoch",
+        "reasonCode"
+      ],
+      "properties": {
+        "checkpointHash": { "$ref": "#/$defs/digest" },
+        "previousWriterEpoch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "writerEpoch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "reasonCode": { "$ref": "#/$defs/code" }
+      }
+    },
+    "trajectoryTerminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outcome",
+        "summaryDigest",
+        "cleanupOutcome",
+        "quiescence",
+        "receiptEventId"
+      ],
+      "properties": {
+        "outcome": { "$ref": "#/$defs/outcome" },
+        "summaryDigest": { "$ref": "#/$defs/digest" },
+        "cleanupOutcome": { "enum": ["completed", "failed", "timed_out"] },
+        "quiescence": { "$ref": "#/$defs/quiescence" },
+        "receiptEventId": { "$ref": "#/$defs/opaqueId" }
+      }
+    },
+    "scopeOpened": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scopeId", "parentScopeId", "scopeType"],
+      "properties": {
+        "scopeId": { "$ref": "#/$defs/opaqueId" },
+        "parentScopeId": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/opaqueId" }]
+        },
+        "scopeType": { "$ref": "#/$defs/code" }
+      }
+    },
+    "scopeClosed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scopeId", "outcome"],
+      "properties": {
+        "scopeId": { "$ref": "#/$defs/opaqueId" },
+        "outcome": { "$ref": "#/$defs/outcome" }
+      }
+    },
+    "operationStarted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operationId", "scopeId", "operationType", "inputDigest"],
+      "properties": {
+        "operationId": { "$ref": "#/$defs/opaqueId" },
+        "scopeId": { "$ref": "#/$defs/opaqueId" },
+        "operationType": { "$ref": "#/$defs/code" },
+        "inputDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "operationSettled": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operationId",
+        "outcome",
+        "outputDigest",
+        "errorCode",
+        "lateResultDiscarded"
+      ],
+      "properties": {
+        "operationId": { "$ref": "#/$defs/opaqueId" },
+        "outcome": { "$ref": "#/$defs/outcome" },
+        "outputDigest": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }]
+        },
+        "errorCode": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/code" }]
+        },
+        "lateResultDiscarded": { "type": "boolean" }
+      }
+    },
+    "disposerRegistered": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "disposerId",
+        "scopeId",
+        "ordinal",
+        "idempotencyKey",
+        "resourceType",
+        "resourceDigest"
+      ],
+      "properties": {
+        "disposerId": { "$ref": "#/$defs/opaqueId" },
+        "scopeId": { "$ref": "#/$defs/opaqueId" },
+        "ordinal": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "idempotencyKey": { "$ref": "#/$defs/opaqueId" },
+        "resourceType": { "$ref": "#/$defs/code" },
+        "resourceDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "disposerStarted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposerId"],
+      "properties": { "disposerId": { "$ref": "#/$defs/opaqueId" } }
+    },
+    "disposerSettled": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposerId", "outcome", "errorCode"],
+      "properties": {
+        "disposerId": { "$ref": "#/$defs/opaqueId" },
+        "outcome": { "$ref": "#/$defs/outcome" },
+        "errorCode": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/code" }]
+        }
+      }
+    },
+    "cancellationRequested": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scopeId", "reasonCode"],
+      "properties": {
+        "scopeId": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/opaqueId" }]
+        },
+        "reasonCode": { "$ref": "#/$defs/code" }
+      }
+    },
+    "cancellationAcknowledged": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requestEventId", "scopeId", "observedOperationCount"],
+      "properties": {
+        "requestEventId": { "$ref": "#/$defs/opaqueId" },
+        "scopeId": { "$ref": "#/$defs/opaqueId" },
+        "observedOperationCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "finalizationStarted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reasonCode", "deadlineAtMs"],
+      "properties": {
+        "reasonCode": { "$ref": "#/$defs/code" },
+        "deadlineAtMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "finalizationReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "disposedCount",
+        "failedDisposerCount",
+        "timedOutDisposerCount",
+        "unresolvedOperationCount",
+        "unresolvedScopeCount",
+        "unresolvedDisposerCount",
+        "deadlineAtMs",
+        "quiescence",
+        "predecessorSequence",
+        "predecessorHash",
+        "receiptDigest"
+      ],
+      "properties": {
+        "status": { "enum": ["complete", "partial", "failed", "timed_out"] },
+        "disposedCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "failedDisposerCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "timedOutDisposerCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "unresolvedOperationCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "unresolvedScopeCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "unresolvedDisposerCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "deadlineAtMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "quiescence": { "$ref": "#/$defs/quiescence" },
+        "predecessorSequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "predecessorHash": { "$ref": "#/$defs/digest" },
+        "receiptDigest": { "$ref": "#/$defs/digest" }
+      }
+    }
+  }
+}

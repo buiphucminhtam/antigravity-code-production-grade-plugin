@@ -6,6 +6,26 @@ ROOT = Path(__file__).resolve().parents[2]
 LOCAL_CI = ROOT / "scripts" / "ci" / "local-ci.py"
 HOOK = ROOT / ".husky" / "pre-commit"
 REQUIRED_CHECKS = ROOT / "scripts" / "ci" / "run-required-checks.sh"
+HARNESS_UPGRADE = ROOT / "scripts" / "ci" / "verify-harness-upgrade.sh"
+
+H2_MCP_TEST_COMMAND = (
+    "npm --prefix mcp test -- --reporter=basic --no-cache "
+    "src/runtime/harness-adapter.test.ts "
+    "src/runtime/lifecycle-lease.test.ts "
+    "src/runtime/trajectory-ledger.test.ts "
+    "src/runtime/lifecycle-coordinator.test.ts "
+    "src/runtime/mcp-runtime-lifecycle.test.ts "
+    "src/runtime/tool-execution-gateway.test.ts "
+    "src/api/tools.gateway.test.ts"
+)
+H2_MCP_TEST_COMMAND_FOCUSED = """npm --prefix mcp test -- --reporter=basic --no-cache \\
+  src/runtime/harness-adapter.test.ts \\
+  src/runtime/lifecycle-lease.test.ts \\
+  src/runtime/trajectory-ledger.test.ts \\
+  src/runtime/lifecycle-coordinator.test.ts \\
+  src/runtime/mcp-runtime-lifecycle.test.ts \\
+  src/runtime/tool-execution-gateway.test.ts \\
+  src/api/tools.gateway.test.ts"""
 
 
 def test_ci_is_local_first_and_host_provider_neutral():
@@ -59,6 +79,7 @@ def test_roadmap_evidence_verifier_is_in_required_release_checks():
 
 def test_harness_upgrade_regressions_are_explicit_required_checks():
     required = REQUIRED_CHECKS.read_text(encoding="utf-8")
+    focused = HARNESS_UPGRADE.read_text(encoding="utf-8")
     assert (
         "run_required stop-gate-regression python3 -m pytest -q tests/lite/test_gate.py"
         in required
@@ -67,8 +88,31 @@ def test_harness_upgrade_regressions_are_explicit_required_checks():
         "run_required continuity-regression python3 -m pytest -q "
         "tests/unit_tests/test_continuity_checkpoint.py" in required
     )
+    assert f"run_required harness-lifecycle-contract {H2_MCP_TEST_COMMAND}" in required
+    assert H2_MCP_TEST_COMMAND_FOCUSED in focused
+    assert "npm --prefix mcp run build" in focused
+    assert "node tests/golden/runtime-smoke.test.mjs --skip-build" in focused
+    assert "run_required h2-evidence bash scripts/ci/verify-h2-evidence.sh" in required
     assert (
-        "run_required harness-lifecycle-contract npm --prefix mcp test -- "
-        "src/runtime/harness-adapter.test.ts src/runtime/lifecycle-lease.test.ts"
+        "run_required orchestration-efficiency "
+        "bash scripts/ci/verify-orchestration-efficiency.sh" in required
+    )
+    assert (
+        "run_required h3-containment bash scripts/ci/verify-h3-containment.sh"
         in required
+    )
+    assert (
+        "run_required h4-record-replay bash scripts/ci/verify-h4-replay.sh" in required
+    )
+    assert (
+        "run_required h5-measurement-ab bash scripts/ci/verify-h5-measurement.sh"
+        in required
+    )
+    assert (
+        "run_required python-unit-tests python3 -m pytest -p no:cacheprovider "
+        "tests/unit_tests/" in required
+    )
+    assert (
+        "run_required continuity-recovery "
+        "bash scripts/ci/verify-continuity-recovery.sh" in required
     )

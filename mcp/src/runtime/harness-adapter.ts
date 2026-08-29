@@ -65,6 +65,8 @@ const PRECOMPACT_CAPABILITIES = new Set<PrecompactCapability>([
   'material-event-fallback',
   'unsupported',
 ]);
+const SHA256_HEX = /^[a-f0-9]{64}$/;
+const SAFE_IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 
 export class HarnessCompatibilityError extends Error {
   constructor(readonly code: string) {
@@ -78,7 +80,59 @@ function stableHash(value: unknown): string {
 }
 
 function validIsoDate(value: string): boolean {
-  return typeof value === 'string' && Number.isFinite(Date.parse(value));
+  if (
+    typeof value !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)
+  ) {
+    return false;
+  }
+  const timestamp = Date.parse(value);
+  const canonicalValue = value.includes('.') ? value : value.replace('Z', '.000Z');
+  return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === canonicalValue;
+}
+
+function canonicalOperations(
+  operations: Record<LifecycleOperation, boolean>,
+): Record<LifecycleOperation, boolean> {
+  return Object.fromEntries(
+    OPERATIONS.map((operation) => [operation, operations[operation]]),
+  ) as Record<LifecycleOperation, boolean>;
+}
+
+function validateResumeBinding(binding: ResumeBinding): void {
+  const identifiers: Array<
+    [keyof Pick<ResumeBinding, 'workspaceId' | 'sessionId' | 'turnId'>, string]
+  > = [
+    ['workspaceId', 'workspace_id'],
+    ['sessionId', 'session_id'],
+    ['turnId', 'turn_id'],
+  ];
+  for (const [field, errorField] of identifiers) {
+    if (typeof binding[field] !== 'string' || !SAFE_IDENTIFIER.test(binding[field])) {
+      throw new HarnessCompatibilityError(`resume_binding_invalid_${errorField}`);
+    }
+  }
+  if (!Number.isSafeInteger(binding.ledgerOffset) || binding.ledgerOffset < 0) {
+    throw new HarnessCompatibilityError('resume_binding_invalid_ledger_offset');
+  }
+  const hashes: Array<
+    [keyof Pick<ResumeBinding, 'checkpointHash' | 'ledgerHeadHash' | 'capabilityHash'>, string]
+  > = [
+    ['checkpointHash', 'checkpoint_hash'],
+    ['ledgerHeadHash', 'ledger_head_hash'],
+    ['capabilityHash', 'capability_hash'],
+  ];
+  for (const [field, errorField] of hashes) {
+    if (typeof binding[field] !== 'string' || !SHA256_HEX.test(binding[field])) {
+      throw new HarnessCompatibilityError(`resume_binding_invalid_${errorField}`);
+    }
+  }
+  if (!validIsoDate(binding.issuedAt) || !validIsoDate(binding.expiresAt)) {
+    throw new HarnessCompatibilityError('resume_token_invalid_time');
+  }
+  if (Date.parse(binding.issuedAt) > Date.parse(binding.expiresAt)) {
+    throw new HarnessCompatibilityError('resume_token_invalid_time_range');
+  }
 }
 
 export function negotiateHarnessAdapter(
@@ -107,6 +161,18 @@ export function negotiateHarnessAdapter(
       throw new HarnessCompatibilityError(`invalid_operation_capability:${operation}`);
     }
   }
+  if (typeof adapter.start !== 'function') {
+    throw new HarnessCompatibilityError('missing_operation_implementation:start');
+  }
+  for (const operation of OPERATIONS) {
+    if (
+      operation !== 'start' &&
+      adapter.capabilities.operations[operation] &&
+      typeof adapter[operation] !== 'function'
+    ) {
+      throw new HarnessCompatibilityError(`missing_operation_implementation:${operation}`);
+    }
+  }
   for (const operation of required) {
     if (!OPERATIONS.includes(operation)) {
       throw new HarnessCompatibilityError(`unknown_operation:${String(operation)}`);
@@ -125,7 +191,11 @@ export function negotiateHarnessAdapter(
     operations: { ...adapter.capabilities.operations },
     precompact: adapter.capabilities.precompact,
   };
-  return { ...contract, capabilityHash: stableHash(contract) };
+  const canonicalContract = {
+    ...contract,
+    operations: canonicalOperations(adapter.capabilities.operations),
+  };
+  return { ...contract, capabilityHash: stableHash(canonicalContract) };
 }
 
 export function validateResumeToken(
@@ -149,9 +219,7 @@ export function validateResumeToken(
       throw new HarnessCompatibilityError(`resume_binding_mismatch:${field}`);
     }
   }
-  if (!validIsoDate(token.issuedAt) || !validIsoDate(token.expiresAt)) {
-    throw new HarnessCompatibilityError('resume_token_invalid_time');
-  }
+  validateResumeBinding(token);
   if (Date.parse(token.expiresAt) < now.getTime()) {
     throw new HarnessCompatibilityError('resume_token_expired');
   }

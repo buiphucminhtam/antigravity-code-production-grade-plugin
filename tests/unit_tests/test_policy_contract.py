@@ -68,8 +68,45 @@ def test_payment_work_requires_reviewer_and_domain_evidence() -> None:
 
     assert "reviewer.status: independent-approved" in verify
     assert "reviewer.status: independent-approved" in quality
-    assert "independent-approved reviewer" in pipeline
+    assert "independent-approved keyless `review-2`" in pipeline
     assert "negative paths" in verify
+
+
+def test_hard_review_is_independent_keyless_and_evidence_bound() -> None:
+    paths = (
+        "kernel/VERIFY.md",
+        "kernel/ESCALATE.md",
+        "skills/_shared/protocols/verification.md",
+        "skills/_shared/protocols/quality-gate.md",
+        "skills/_shared/protocols/pipeline-operating-contract.md",
+    )
+    documents = {path: _normalized(_read(path)) for path in paths}
+    combined = " ".join(documents.values())
+
+    for text in documents.values():
+        assert "keyless `review-2`" in text
+        assert "canonical final-evidence digest" in text
+        assert "exact tree" in text
+        assert "turn" in text
+        assert "workspace" in text
+        assert "acceptance IDs" in text
+        assert "negative" in text
+
+    assert "reviewer.status: independent-approved" in combined
+    assert "implementer_id" in combined
+    assert "different from the reviewer identity" in combined
+    assert "does not cryptographically authenticate the reviewer" in combined
+    assert "same-user forgery" in combined
+
+    retired_requirements = (
+        "OpenSSH",
+        "Ed25519",
+        "FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS",
+        "reviewers.allowed_signers",
+        "--private-key",
+        "signed `review-2`",
+    )
+    assert not any(requirement in combined for requirement in retired_requirements)
 
 
 def test_completion_evidence_requires_schema_v2_traceability() -> None:

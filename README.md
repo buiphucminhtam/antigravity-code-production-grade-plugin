@@ -125,12 +125,17 @@ flowchart LR
 | Verification | Schema-v2 evidence binds acceptance IDs, exact argv, negative paths, output digest, and exact worktree | A Stop event replays the canonical evidence command at most once |
 | Stop re-entry | At most two distinct invalid attempts are recorded per session/turn/tree scope; identical re-entry or exhausted budget terminates the host interaction | Termination never upgrades `completion_state`; suppressed retries remain `unverified` |
 | Runtime lifecycle | MCP instances reconcile prior leases at startup and hold owner-token leases bound to PID start, PGID, parent identity, command digest, session, TTL, and version | Only the positive PID of an exact owned lease may receive TERM/KILL; dead leases close without a signal, while reused, rotated, unowned, or in-flight processes are preserved |
-| Context continuity | Material events write project/session-scoped `forgewright-continuity/v1` checkpoints whose head binds the complete prior-hash chain | Checkpoints are context-only; head/chain/tree/ledger mismatch requires fresh grounding and cannot authorize tools or completion |
+| Trajectory lifecycle | The canonical MCP path opens a `forgewright-trajectory-event/v1` hash-chained ledger, accounts each tool call, persists cancellation/LIFO disposer events, and supports exact-tip writer-epoch recovery at quiescent checkpoints | Hashes detect corruption rather than authenticate same-user rewrites; timeout records `not_confirmed`, and recovery refuses active work or pending disposer callbacks rather than replaying arbitrary cleanup code |
+| Application containment | Canonical tool effects use pinned runtime/policy trust, fail-closed capability admission, contained state/filesystem paths, minimized policy subprocess environment, and deny-by-default webhook destinations | This is not a kernel sandbox; arbitrary process execution, foreign tools, same-user bypass, and kernel egress isolation remain outside the local claim |
+| Context continuity | The agent proactively checkpoints before model/effect boundaries and after tool steps; checkpoints bind project/session/tree/ledger plus optional runtime trajectory/capability state and carry replay-safe step/tool limits | Checkpoints remain context-only; mismatch, corruption, expiry, replay, or budget overrun requires a fresh start and never authorizes tools or completion |
 
 The current local upgrade completes the Stop/replay boundary, the
-`HarnessAdapter v1` contract, MCP ownership leases, and event-driven continuity.
-`TrajectoryLedger`, execution containment, full-loop record/replay, and live
-provider evidence remain ordered work in the [active roadmap](docs/active-roadmap.md).
+`HarnessAdapter v1` contract, MCP ownership leases, event-driven continuity,
+the H2 trajectory lifecycle and H3 application-containment gates on the
+canonical MCP path. Safe-boundary checkpoint/resume is available locally;
+offline full-loop record/replay is locally verified; live provider evidence, portable OS process isolation,
+arbitrary disposer rebinding, and fresh-evaluator handoff remain ordered work in the
+[active roadmap](docs/active-roadmap.md).
 The design choices and their primary-source evidence are recorded in the
 [harness runtime research and decision log](docs/harness-runtime-research.md).
 
@@ -371,6 +376,17 @@ A unified management dashboard for handling multiple projects simultaneously. Mo
 ### 6. Token Tracking & Cost Analytics
 
 Track reported LLM usage, estimate API costs from configured pricing, and surface optimization opportunities. Budgets and alerts reduce runaway-loop risk, but provider billing remains authoritative and must be reconciled when usage metadata or prices are unavailable.
+
+`forge bench` now binds per-attempt usage availability, provider topology,
+resolved settings, and paired quality/cost/latency deltas while storing only
+output digests and byte counts. Local A/B receipts never claim live production
+evidence; the current live provider client must be migrated before canary and
+rollback outcomes can be certified.
+
+Lite routing also keeps deferred specialist overlays out of the startup prompt.
+The MCP catalog lists skill metadata without reading full skill bodies, and a
+bounded exact-name loader can add one routed `LITE.md` only when the active task
+materially needs it; unlisted and duplicate loads are rejected locally.
 **[Read the Token Management Guide ➔](docs/guides/token-management.md)**
 
 ### 7. MCP Tool Sandbox

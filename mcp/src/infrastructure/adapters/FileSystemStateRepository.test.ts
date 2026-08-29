@@ -1,6 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { spawnSync } from 'child_process';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_STATE, parsePipelineState } from '../../core/models/PipelineState.js';
 import { FileSystemStateRepository, StatePersistenceError } from './FileSystemStateRepository.js';
@@ -21,6 +22,12 @@ function stateFile(root: string): string {
   return path.join(root, '.forgewright', 'pipeline-state.json');
 }
 
+function outside(root: string): string {
+  const directory = path.join(root, '..', `${path.basename(root)}-outside`);
+  fs.mkdirSync(directory, { recursive: true });
+  return directory;
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   for (const directory of workspaces.splice(0)) {
@@ -29,6 +36,45 @@ afterEach(() => {
 });
 
 describe('FileSystemStateRepository', () => {
+  it('rejects unsafe workspace components, traversal filenames, and preserves external sentinels', async () => {
+    const root = workspace();
+    const external = outside(root);
+    const sentinel = path.join(external, 'sentinel');
+    fs.writeFileSync(sentinel, 'safe');
+    fs.symlinkSync(external, path.join(root, '.forgewright'));
+    expect(() => repository(root)).toThrow(StatePersistenceError);
+    expect(fs.readFileSync(sentinel, 'utf-8')).toBe('safe');
+
+    const clean = workspace();
+    expect(
+      () => new FileSystemStateRepository(clean, '../escape.json', parsePipelineState),
+    ).toThrow(StatePersistenceError);
+  });
+
+  it('rejects symlinked state and lock files and oversized state without changing external targets', async () => {
+    const root = workspace();
+    const external = outside(root);
+    const sentinel = path.join(external, 'sentinel');
+    fs.writeFileSync(sentinel, 'safe');
+    fs.mkdirSync(path.join(root, '.forgewright'));
+    fs.symlinkSync(sentinel, stateFile(root));
+    expect(() => repository(root)).toThrow(StatePersistenceError);
+    fs.unlinkSync(stateFile(root));
+    fs.symlinkSync(sentinel, `${stateFile(root)}.lock`);
+    expect(() => repository(root)).toThrow(StatePersistenceError);
+    expect(fs.readFileSync(sentinel, 'utf-8')).toBe('safe');
+
+    fs.unlinkSync(`${stateFile(root)}.lock`);
+    await expect(
+      repository(root, { maxStateBytes: 20 }).save(DEFAULT_STATE),
+    ).rejects.toBeInstanceOf(StatePersistenceError);
+  });
+  it.each([0, -1, Number.NaN, Infinity, 17 * 1024 * 1024])(
+    'rejects invalid state size cap %s',
+    (maxStateBytes) => {
+      expect(() => repository(workspace(), { maxStateBytes })).toThrow(StatePersistenceError);
+    },
+  );
   it('loads valid legacy raw state and migrates it into a revisioned envelope on write', async () => {
     const root = workspace();
     const file = stateFile(root);
@@ -81,16 +127,41 @@ describe('FileSystemStateRepository', () => {
     expect(JSON.parse(fs.readFileSync(stateFile(root), 'utf-8')).revision).toBe(21);
   });
 
-  it('times out on a fresh cross-process lock and recovers a stale lock', async () => {
+  it('never reclaims a live owner by age and recovers only a dead stale owner', async () => {
     const root = workspace();
-    const repo = repository(root, { lockTimeoutMs: 40, lockStaleMs: 10_000, lockRetryMs: 5 });
+    const repo = repository(root, { lockTimeoutMs: 40, lockStaleMs: 10, lockRetryMs: 5 });
     const lockFile = `${stateFile(root)}.lock`;
     fs.mkdirSync(path.dirname(lockFile), { recursive: true });
-    fs.writeFileSync(lockFile, 'held', 'utf-8');
+    const ownerToken = '00000000-0000-4000-8000-000000000000';
+    fs.writeFileSync(
+      lockFile,
+      JSON.stringify({
+        version: 1,
+        ownerToken,
+        pid: process.pid,
+        createdAtMs: Date.now() - 20_000,
+      }),
+      'utf-8',
+    );
+    const stale = new Date(Date.now() - 20_000);
+    fs.utimesSync(lockFile, stale, stale);
 
     await expect(repo.save(DEFAULT_STATE)).rejects.toThrow('Timed out acquiring state lock');
+    expect(fs.existsSync(lockFile)).toBe(true);
 
-    const stale = new Date(Date.now() - 20_000);
+    fs.unlinkSync(lockFile);
+    const deadOwner = spawnSync(process.execPath, ['-e', 'process.exit(0)']).pid;
+    expect(deadOwner).toBeTypeOf('number');
+    fs.writeFileSync(
+      lockFile,
+      JSON.stringify({
+        version: 1,
+        ownerToken,
+        pid: deadOwner,
+        createdAtMs: Date.now() - 20_000,
+      }),
+      'utf-8',
+    );
     fs.utimesSync(lockFile, stale, stale);
     await repo.save(DEFAULT_STATE);
     expect(fs.existsSync(lockFile)).toBe(false);
@@ -148,7 +219,7 @@ describe('FileSystemStateRepository', () => {
       withLock(operation: () => Promise<void>): Promise<void>;
     };
 
-    await expect(lockHarness.withLock(async () => undefined)).rejects.toBe(cleanupError);
+    await expect(lockHarness.withLock(async () => undefined)).resolves.toBeUndefined();
     readFileSync.mockRestore();
   });
 

@@ -27,7 +27,6 @@ import importlib.util
 import os
 import re
 import shutil
-import stat
 import subprocess
 import sys
 import tempfile
@@ -61,74 +60,6 @@ from evidence_common import (  # noqa: E402
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
-
-
-_REVIEW_FIXTURES: dict[Path, dict[str, object]] = {}
-
-
-def _generate_review_keypair(tmp: Path, prefix: str) -> dict[str, Path | list[Path]]:
-    """Generate a disposable external Ed25519 keypair beside, not inside, tmp."""
-    key_dir = Path(tempfile.mkdtemp(prefix=f"{tmp.name}_{prefix}_", dir=tmp.parent))
-    private_key = key_dir / "reviewer"
-    public_key = key_dir / "reviewer.pub"
-    subprocess.run(
-        [
-            "ssh-keygen",
-            "-q",
-            "-t",
-            "ed25519",
-            "-N",
-            "",
-            "-C",
-            f"{prefix}@forgewright.test",
-            "-f",
-            str(private_key),
-        ],
-        capture_output=True,
-        text=True,
-        timeout=15,
-        check=True,
-    )
-    private_key.chmod(0o600)
-    assert stat.S_IMODE(private_key.stat().st_mode) == 0o600
-    return {"dir": key_dir, "private_key": private_key, "public_key": public_key}
-
-
-def _make_review_fixture(tmp: Path) -> dict[str, object]:
-    """Create an external trusted review identity and allowed_signers root."""
-    keypair = _generate_review_keypair(tmp, "trusted-review")
-    public_key = keypair["public_key"]
-    assert isinstance(public_key, Path)
-    public_fields = public_key.read_text(encoding="utf-8").split()
-    allowed_signers = keypair["dir"] / "reviewers.allowed_signers"
-    allowed_signers.write_text(
-        f"human-42 {public_fields[0]} {public_fields[1]}\n", encoding="utf-8"
-    )
-    allowed_signers.chmod(0o644)
-    assert stat.S_IMODE(allowed_signers.stat().st_mode) == 0o644
-    fixture: dict[str, object] = {
-        **keypair,
-        "allowed_signers": allowed_signers,
-        "key_dirs": [keypair["dir"]],
-    }
-    _REVIEW_FIXTURES[tmp.resolve()] = fixture
-    return fixture
-
-
-def _review_fixture(tmp: Path) -> dict[str, object]:
-    fixture = _REVIEW_FIXTURES.get(tmp.resolve())
-    return fixture if fixture is not None else _make_review_fixture(tmp)
-
-
-def _cleanup_review_fixture(tmp: Path) -> None:
-    fixture = _REVIEW_FIXTURES.pop(tmp.resolve(), None)
-    if fixture is None:
-        return
-    key_dirs = fixture["key_dirs"]
-    assert isinstance(key_dirs, list)
-    for key_dir in key_dirs:
-        assert isinstance(key_dir, Path)
-        shutil.rmtree(key_dir, ignore_errors=True)
 
 
 def _run_py(
@@ -280,7 +211,6 @@ def _run_validate(
     files_str: str = "",
     turn: str = "test_turn",
     response: str = "VERIFY: tested",
-    review_allowed_signers: Path | None = None,
     extra_env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess:
     """Run verify_gate.py in a temp dir context."""
@@ -291,13 +221,6 @@ def _run_validate(
         "FORGEWRIGHT_TURN": turn,
         "FORGEWRIGHT_STALENESS_SECS": "3600",
     }
-    fixture = _REVIEW_FIXTURES.get(tmp.resolve())
-    if review_allowed_signers is not None:
-        env["FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS"] = str(review_allowed_signers)
-    elif fixture is not None:
-        allowed_signers = fixture["allowed_signers"]
-        assert isinstance(allowed_signers, Path)
-        env["FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS"] = str(allowed_signers)
     if extra_env:
         env.update(extra_env)
     return _run_py(VERIFY_PY, cwd=tmp, env=env)
@@ -397,29 +320,23 @@ def _add_hard_support(
     final["reviewer"]["evidence_ref"] = review_path.name
     final_path.write_text(json.dumps(final), encoding="utf-8")
 
-    # Prove that the legacy unsigned review-1 shape cannot satisfy HARD before
-    # replacing it with the signed review-2 record.
-    unsigned = _run_validate(
+    # Prove that the legacy review-1 shape cannot satisfy HARD before replacing
+    # it with the exact keyless review-2 record.
+    legacy = _run_validate(
         tmp,
         files_str="purchase.py",
         turn=final["turn"],
         response=_strict_response(final_path),
     )
-    assert unsigned.returncode == 1
-    assert "review-2" in unsigned.stderr
+    assert legacy.returncode == 1
+    assert "review-2" in legacy.stderr
 
-    fixture = _review_fixture(tmp)
-    private_key = fixture["private_key"]
-    allowed_signers = fixture["allowed_signers"]
-    assert isinstance(private_key, Path)
-    assert isinstance(allowed_signers, Path)
-    signed = _run_py(
+    created = _run_py(
         REVIEW_ATTEST,
-        ["sign", "--evidence", str(final_path), "--private-key", str(private_key)],
+        ["create", "--evidence", str(final_path)],
         cwd=tmp,
-        env={"FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS": str(allowed_signers)},
     )
-    assert signed.returncode == 0, signed.stderr
+    assert created.returncode == 0, created.stderr
 
 
 def _run_check(
@@ -509,19 +426,19 @@ def _run_rule_validator(
     )
 
 
-def _signed_hard_review(tmp: Path, turn: str = "signed-review") -> tuple[Path, str]:
-    """Build one valid signed HARD evidence chain for signed-review regressions."""
+def _keyless_hard_review(tmp: Path, turn: str = "keyless-review") -> tuple[Path, str]:
+    """Build one valid keyless HARD evidence chain for review regressions."""
     source = tmp / "purchase.py"
     source.write_text("purchase = 'red'\n", encoding="utf-8")
-    criteria = [{"id": "signed-review", "claim": "purchase handling is verified"}]
-    command = [sys.executable, "tests/evidence_contract_check.py", "signed-review"]
+    criteria = [{"id": "keyless-review", "claim": "purchase handling is verified"}]
+    command = [sys.executable, "tests/evidence_contract_check.py", "keyless-review"]
     refs = ["tests/evidence_contract_check.py"]
     red = _make_evidence(
         tmp,
         turn=f"{turn}-red",
         acceptance_criteria=criteria,
         command=command,
-        output="signed-review red\n",
+        output="keyless-review red\n",
         test_refs=refs,
         tier="runtime",
         change_kind="fix",
@@ -534,7 +451,7 @@ def _signed_hard_review(tmp: Path, turn: str = "signed-review") -> tuple[Path, s
         turn=f"{turn}-mutation",
         acceptance_criteria=criteria,
         command=command,
-        output="signed-review mutation\n",
+        output="keyless-review mutation\n",
         test_refs=refs,
         tier="runtime",
         change_kind="fix",
@@ -548,7 +465,7 @@ def _signed_hard_review(tmp: Path, turn: str = "signed-review") -> tuple[Path, s
         turn=turn,
         acceptance_criteria=criteria,
         command=command,
-        output="signed-review green\n",
+        output="keyless-review green\n",
         test_refs=refs,
         tier="runtime",
         change_kind="fix",
@@ -1320,10 +1237,8 @@ class TestDirtyBaseline:
 class TestEvidenceV2BypassRegressions:
     def setup_method(self):
         self.tmp = _make_temp_git_repo()
-        _make_review_fixture(self.tmp)
 
     def teardown_method(self):
-        _cleanup_review_fixture(self.tmp)
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def test_echo_v1_and_missing_acceptance_mapping_rejected(self):
@@ -1583,25 +1498,24 @@ class TestEvidenceV2BypassRegressions:
         review_path = self.tmp / ".forgewright" / "verify" / "pay-green-review.json"
         original_review = review_path.read_text(encoding="utf-8")
         tampered_review = json.loads(original_review)
-        tampered_review["findings"] = ["tampered finding"]
+        tampered_review["limitations"] = []
         review_path.write_text(json.dumps(tampered_review), encoding="utf-8")
         tampered = _run_validate(
             self.tmp, files_str="purchase.py", turn="pay-green", response=response
         )
         assert tampered.returncode == 1
-        assert "signature" in tampered.stderr
+        assert "reviewer-authentication limitation" in tampered.stderr
         review_path.write_text(original_review, encoding="utf-8")
 
-        missing_trust_root = _run_validate(
-            self.tmp,
-            files_str="purchase.py",
-            turn="pay-green",
-            response=response,
-            review_allowed_signers=self.tmp.parent
-            / "missing-reviewers.allowed_signers",
+        extra_signature = json.loads(original_review)
+        extra_signature["signature"] = "legacy-signature-must-not-be-required"
+        review_path.write_text(json.dumps(extra_signature), encoding="utf-8")
+        extra = _run_validate(
+            self.tmp, files_str="purchase.py", turn="pay-green", response=response
         )
-        assert missing_trust_root.returncode == 1
-        assert "allowed_signers" in missing_trust_root.stderr
+        assert extra.returncode == 1
+        assert "unexpected fields" in extra.stderr
+        review_path.write_text(original_review, encoding="utf-8")
 
         green_payload = json.loads(green.read_text(encoding="utf-8"))
         pre_path = (
@@ -1717,59 +1631,45 @@ class TestEvidenceV2BypassRegressions:
         assert same_tree.returncode == 1
         assert "distinct tree fingerprints" in same_tree.stderr
 
-    def test_signed_review_rejects_mutated_final_evidence(self):
-        final, response = _signed_hard_review(self.tmp, "signed-mutation")
+    def test_keyless_review_rejects_mutated_final_evidence(self):
+        final, response = _keyless_hard_review(self.tmp, "keyless-mutation")
         payload = json.loads(final.read_text(encoding="utf-8"))
-        payload["limitations"] = ["added after the review was signed"]
+        payload["limitations"] = ["added after the review was created"]
         final.write_text(json.dumps(payload), encoding="utf-8")
 
         result = _run_validate(
-            self.tmp, files_str="purchase.py", turn="signed-mutation", response=response
+            self.tmp,
+            files_str="purchase.py",
+            turn="keyless-mutation",
+            response=response,
         )
 
         assert result.returncode == 1
         assert "evidence_sha256" in result.stderr
 
-    def test_signed_review_rejects_untrusted_attacker_key(self):
-        final, response = _signed_hard_review(self.tmp, "signed-attacker")
-        fixture = _review_fixture(self.tmp)
-        attacker = _generate_review_keypair(self.tmp, "attacker-review")
-        key_dirs = fixture["key_dirs"]
-        assert isinstance(key_dirs, list)
-        attacker_dir = attacker["dir"]
-        attacker_key = attacker["private_key"]
-        assert isinstance(attacker_dir, Path)
-        assert isinstance(attacker_key, Path)
-        key_dirs.append(attacker_dir)
-        allowed_signers = fixture["allowed_signers"]
-        assert isinstance(allowed_signers, Path)
-        signed = _run_py(
+    def test_keyless_review_cli_rejects_legacy_private_key_flag(self):
+        final, _ = _keyless_hard_review(self.tmp, "keyless-no-key-flag")
+        result = _run_py(
             REVIEW_ATTEST,
-            ["sign", "--evidence", str(final), "--private-key", str(attacker_key)],
+            ["create", "--evidence", str(final), "--private-key", "/tmp/unused"],
             cwd=self.tmp,
-            env={"FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS": str(allowed_signers)},
-        )
-        assert signed.returncode == 0, signed.stderr
-
-        result = _run_validate(
-            self.tmp, files_str="purchase.py", turn="signed-attacker", response=response
         )
 
-        assert result.returncode == 1
-        assert "signature" in result.stderr
+        assert result.returncode == 2
+        assert "unrecognized arguments" in result.stderr
 
-    def test_signed_review_rejects_replayed_review_for_different_turn(self):
-        final, _ = _signed_hard_review(self.tmp, "signed-original")
+    def test_keyless_review_rejects_replayed_review_for_different_turn(self):
+        final, _ = _keyless_hard_review(self.tmp, "keyless-original")
         original = json.loads(final.read_text(encoding="utf-8"))
         replay = dict(original)
-        replay["turn"] = "signed-replay"
-        replay_path = self.tmp / ".forgewright" / "verify" / "signed-replay.json"
+        replay["turn"] = "keyless-replay"
+        replay_path = self.tmp / ".forgewright" / "verify" / "keyless-replay.json"
         replay_path.write_text(json.dumps(replay), encoding="utf-8")
 
         result = _run_validate(
             self.tmp,
             files_str="purchase.py",
-            turn="signed-replay",
+            turn="keyless-replay",
             response=_strict_response(replay_path),
         )
 

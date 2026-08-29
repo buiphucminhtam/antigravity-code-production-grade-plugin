@@ -621,6 +621,10 @@ function currentGate(command, platform) {
 function legacyVerifyGate(command, platform) {
   var script = gateCommand(command, platform);
   if (!script || path.basename(script) !== 'verify-gate.sh') return false;
+  if (!path.isAbsolute(script)) {
+    var relative = path.posix.normalize(script.replace(/\\/g, '/'));
+    return ['verify-gate.sh', 'legacy/verify-gate.sh', 'scripts/verify-gate.sh', 'scripts/lite/verify-gate.sh', '.forgewright/scripts/lite/verify-gate.sh'].includes(relative);
+  }
   var normalized = path.posix.normalize(script.replace(/\\/g, '/'));
   var installedLegacy = path.posix.normalize(path.dirname(process.env.GATE_SCRIPT).replace(/\\/g, '/') + '/verify-gate.sh');
   var framework = path.resolve(process.env.FORGEWRIGHT_DIR);
@@ -719,6 +723,10 @@ function currentGate(command, platform) {
 function legacyVerifyGate(command, platform) {
   var script = gateCommand(command, platform);
   if (!script || path.basename(script) !== 'verify-gate.sh') return false;
+  if (!path.isAbsolute(script)) {
+    var relative = path.posix.normalize(script.replace(/\\/g, '/'));
+    return ['verify-gate.sh', 'legacy/verify-gate.sh', 'scripts/verify-gate.sh', 'scripts/lite/verify-gate.sh', '.forgewright/scripts/lite/verify-gate.sh'].includes(relative);
+  }
   var normalized = path.posix.normalize(script.replace(/\\/g, '/'));
   var installedLegacy = path.posix.normalize(path.dirname(process.env.GATE_SCRIPT).replace(/\\/g, '/') + '/verify-gate.sh');
   var framework = path.resolve(process.env.FORGEWRIGHT_DIR);
@@ -879,6 +887,10 @@ function currentGate(command, platform) {
 function legacyVerifyGate(command, platform) {
   var script = gateCommand(command, platform);
   if (!script || path.basename(script) !== 'verify-gate.sh') return false;
+  if (!path.isAbsolute(script)) {
+    var relative = path.posix.normalize(script.replace(/\\/g, '/'));
+    return ['verify-gate.sh', 'legacy/verify-gate.sh', 'scripts/verify-gate.sh', 'scripts/lite/verify-gate.sh', '.forgewright/scripts/lite/verify-gate.sh'].includes(relative);
+  }
   var normalized = path.posix.normalize(script.replace(/\\/g, '/'));
   var installedLegacy = path.posix.normalize(path.dirname(process.env.GATE_SCRIPT).replace(/\\/g, '/') + '/verify-gate.sh');
   var framework = path.resolve(process.env.FORGEWRIGHT_DIR);
@@ -944,9 +956,17 @@ def owned_legacy_verify(command: str) -> bool:
     script = Path(parts[1].replace("\\", "/"))
     if script.name != "verify-gate.sh":
         return False
-    normalized = str(script.as_posix())
+    if not script.is_absolute():
+        return script.as_posix() in {
+            "verify-gate.sh",
+            "legacy/verify-gate.sh",
+            "scripts/verify-gate.sh",
+            "scripts/lite/verify-gate.sh",
+            ".forgewright/scripts/lite/verify-gate.sh",
+        }
+    normalized = script.as_posix()
     installed = (Path(os.environ["FORGEWRIGHT_DIR"]) / "scripts" / "lite" / "verify-gate.sh").as_posix()
-    framework = (Path(os.environ["FORGEWRIGHT_DIR"]).resolve()).as_posix()
+    framework = Path(os.environ["FORGEWRIGHT_DIR"]).resolve().as_posix()
     return normalized == installed or normalized == f"{framework}/verify-gate.sh" or normalized == f"{framework}/scripts/verify-gate.sh"
 legacy = re.compile(
     r'\n?\[\[hooks\.Stop\]\]\n'

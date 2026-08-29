@@ -190,7 +190,13 @@ same-HEAD source changes remain covered.
 ## Fixes and HARD
 Every fix uses the same command unchanged and must show observed RED then observed GREEN. Payment, billing, IAP/in-app purchase, receipt validation, entitlements, subscription, and checkout are mandatory `HARD` and `DEEP`, regardless of file count. Other HARD fixes require controlled mutation/backcheck: `RED → pre-mutation GREEN → mutation fail → exact final GREEN`, with the clean pre-mutation target tree restored. Completion is blocked until this sequence is observed.
 
-HARD completion requires contract, runtime, and E2E evidence plus a separate signed `review-2` approval. Trust only OpenSSH Ed25519 verification against `FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS` or `~/.forgewright/reviewers.allowed_signers`; signed final evidence must carry its SHA-256, exact tree, turn, acceptance IDs, and `negative_path_bindings`, with `reviewer.status: independent-approved`. Review-1/self-authored JSON is `UNVERIFIED`.
+HARD needs contract/runtime/E2E evidence plus a
+keyless `review-2` binding the canonical final-evidence digest, exact tree,
+turn, workspace, acceptance IDs, and `negative_path_bindings`. It sets
+`reviewer.status: independent-approved`; reviewer identity differs from
+`implementer_id`. Review-1, self/same-identity records, and markers are
+`UNVERIFIED`. Bindings detect mismatch, not reviewer authenticity; report the
+same-user-forgery limitation.
 
 ## Proportional Evidence
 `QUICK` may use one focused deterministic check; `STANDARD`/`DEEP` report every material claim. UI needs inspected/rendered evidence; logic needs executable tests; processes need reclaim/lease evidence. Keep execution local-first/provider-neutral; never store secrets or private keys.
@@ -226,13 +232,12 @@ Otherwise the step is `EASY`; `QUICK` work does not need ceremonial per-line tag
 2. Cross-validate only when disagreement or risk remains material — do not trigger a second model merely to satisfy a cascade.
 3. Integrate only verified output.
 
-For payment-domain and other HARD completion, the independent reviewer must be
-separate from the implementer and produce a signed `review-2` record using
-OpenSSH Ed25519. It must bind the canonical final-evidence digest, exact tree,
-turn, acceptance IDs, and `negative_path_bindings`, and verify against the
-external `FORGEWRIGHT_REVIEW_ALLOWED_SIGNERS` file or
-`~/.forgewright/reviewers.allowed_signers`. Review-1, self-authored JSON, or a
-marker-only approval is `UNVERIFIED`.
+Payment/HARD completion requires reviewer identity different from
+`implementer_id` and a keyless `review-2` binding canonical final-evidence digest, exact tree,
+turn, workspace, acceptance IDs, and `negative_path_bindings`, with
+`reviewer.status: independent-approved`. Review-1, same-identity records, and
+markers are `UNVERIFIED`. The binding does not authenticate identity; disclose
+same-user-forgery risk.
 
 ## Budget / Stop Condition
 Respect declared cost/token/deadline constraints. When the preferred escalation is unavailable, use the safest bounded path that still meets acceptance; for security/irreversible/public-contract work, report the unresolved blocker rather than silently weakening the gate. Do not invent extra work to consume remaining budget.
