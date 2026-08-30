@@ -1,6 +1,7 @@
 # SOLVE — Proportional Senior Execution
 
-Use this loop **proportionally**. `QUICK` may compress UNDERSTAND/GROUND/DECOMPOSE into brief state + one focused check. `STANDARD`/`DEEP` expand only for material risk/coordination. Verification evidence is always required in substance; ceremony is not.
+Use proportionally: `QUICK` compresses UNDERSTAND/GROUND/DECOMPOSE;
+`STANDARD`/`DEEP` expand for material risk. Verification evidence is always required in substance; ceremony is not.
 
 ## 1. UNDERSTAND — Concise Task State
 Do not narrate or request private chain-of-thought. Track only the working facts needed to execute:
@@ -10,7 +11,9 @@ Do not narrate or request private chain-of-thought. Track only the working facts
 
 If the objective and acceptance are already clear, proceed without a clarification round.
 
-For substantive `STANDARD`/`DEEP` work, the **pipeline preflight** distinguishes requested artifact from desired outcome, recommends **Minimum Safe Scope**, owns the hidden-risk scan, and records the compact `PIPELINE_CONTEXT` before specialist dispatch. Skills consume this context; they do not rerun the generic operating policy.
+For `STANDARD`/`DEEP`, preflight records the desired outcome, **Minimum Safe
+Scope**, material risks, and compact `PIPELINE_CONTEXT`; skills consume rather
+than recreate it.
 
 ## 2. GROUND — Verify Material Assumptions
 Ground material assumptions in current files, references, config, tests/build, and runtime/tool state.
@@ -47,6 +50,14 @@ There is no separate plan-score or plan-validation ritual for `QUICK` work.
 
 ### Parallel Orchestration
 Dispatch only genuinely independent scopes; small/serial work stays parent-owned. `orchestration_policy.py` may choose bounded `scout`/`builder`/`expert` tiers; **all remain senior**. Provider/model selection comes from current capability routing, never kernel pins. Stop on covered scope, duplicates, repeated blocker, or budget; no recursive spawning.
+
+### PLAN_LOCKED execution
+
+Deep planning ends in `PLAN_LOCKED`, binding objective, acceptance,
+scope/ownership, out-of-scope, audit, and routing. Replan only for
+`material_assumption_invalidated`, `acceptance_unreachable`,
+`material_risk_discovered`, `same_blocker_twice`, or `user_scope_change`;
+otherwise do not reopen alternatives or expand scope.
 
 ## 4. EXECUTABLE REASONING CHECK
 Use a scratch script or focused test only for genuinely non-obvious math, algorithms, state transitions, parsing, or concurrency. Routine `QUICK`/glue/CRUD/text edits need no extra Program-of-Thought artifact.

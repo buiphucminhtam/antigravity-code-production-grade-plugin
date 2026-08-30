@@ -41,16 +41,23 @@ def _assert_in_order(text: str, *fragments: str) -> None:
     assert positions == sorted(positions)
 
 
-def test_native_codex_default_is_luna_high_with_explicit_override_maps() -> None:
+def test_native_codex_defaults_and_tiers_are_phase_appropriate() -> None:
     config = yaml.safe_load(_read(CONFIG))
     codex = config["subagents"]["codex"]
 
     assert codex["default"] == {
         "model": "gpt-5.6-luna",
-        "reasoning_effort": "high",
+        "reasoning_effort": "medium",
     }
-    assert codex["tiers"] == {}
-    assert codex["agent_types"] == {}
+    assert codex["tiers"] == {
+        "scout": {"model": "gpt-5.6-luna", "reasoning_effort": "low"},
+        "builder": {"model": "gpt-5.6-terra", "reasoning_effort": "medium"},
+        "expert": {"model": "gpt-5.6-sol", "reasoning_effort": "high"},
+    }
+    assert codex["agent_types"] == {
+        "explorer": {"model": "gpt-5.6-luna", "reasoning_effort": "low"},
+        "worker": {"model": "gpt-5.6-terra", "reasoning_effort": "medium"},
+    }
 
 
 def test_model_tier_defines_precedence_and_capability_validation() -> None:
@@ -274,16 +281,16 @@ def test_resolver_handles_malformed_or_missing_config_and_capabilities() -> None
     }
 
 
-def test_luna_high_default_is_verified_only_for_exact_capability_pair() -> None:
+def test_luna_medium_default_is_verified_only_for_exact_capability_pair() -> None:
     resolver = _load_resolver()
     config = yaml.safe_load(_read(CONFIG))
     result = resolver.resolve_routing(
         config,
-        _capabilities({"id": "gpt-5.6-luna", "reasoning_efforts": ["high"]}),
+        _capabilities({"id": "gpt-5.6-luna", "reasoning_efforts": ["medium"]}),
     )
     assert result["spawn_agent_args"] == {
         "model": "gpt-5.6-luna",
-        "reasoning_effort": "high",
+        "reasoning_effort": "medium",
     }
     assert result["model_selection"] == "verified"
 
@@ -319,11 +326,11 @@ def test_cli_emits_spawn_args_and_audit_json(tmp_path: Path) -> None:
     assert output["audit"]["capability_source"] == "active spawn_agent schema"
 
 
-def test_template_and_reference_keep_comment_examples_but_parse_maps_as_mappings() -> (
-    None
-):
+def test_template_and_reference_define_phase_appropriate_routing_maps() -> None:
     for path in (TEMPLATE, TECHNICAL_REFERENCE):
         text = _read(path)
-        assert "tiers: {}" in text
-        assert "agent_types: {}" in text
-        assert "# expert:" in text or "# builder:" in text
+        assert 'scout: { model: "gpt-5.6-luna", reasoning_effort: "low" }' in text
+        assert 'builder: { model: "gpt-5.6-terra", reasoning_effort: "medium" }' in text
+        assert 'expert: { model: "gpt-5.6-sol", reasoning_effort: "high" }' in text
+        assert 'explorer: { model: "gpt-5.6-luna", reasoning_effort: "low" }' in text
+        assert 'worker: { model: "gpt-5.6-terra", reasoning_effort: "medium" }' in text

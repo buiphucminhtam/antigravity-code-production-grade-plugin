@@ -8,8 +8,8 @@ project:
   name: ""                          # Project name (auto-detected from git if empty)
   language: "typescript"             # typescript | go | python | rust | java
   framework: ""                     # nestjs | express | fastapi | gin | actix | spring
-  cloud: "aws"                      # aws | gcp | azure
-  architecture: "microservices"     # monolith | modular-monolith | microservices
+  cloud: ""                         # unset | aws | gcp | azure
+  architecture: "modular-monolith" # monolith | modular-monolith | microservices
 
 # Path mappings — customize to match your existing project structure.
 # All paths are relative to the project root.
@@ -52,13 +52,13 @@ preferences:
 features:
   frontend: true                     # Set false for API-only projects
   ai_ml: false                       # Auto-detected from imports if false
-  multi_tenancy: true                # Enable tenant isolation patterns
-  documentation_site: true           # Generate Docusaurus scaffold
+  multi_tenancy: false               # Enable only from an accepted tenancy requirement
+  documentation_site: false          # Enable only when a separate docs site is required
   payment_integration: false         # Include Stripe/payment service
   real_time: false                   # WebSocket/SSE support
   graphql: false                     # GraphQL API alongside REST
   grpc: false                        # gRPC inter-service communication
-  event_driven: true                 # Async messaging (Kafka/RabbitMQ/SQS)
+  event_driven: false                # Enable only from measured async/scale needs
 
 # Phase control — skip or customize pipeline phases.
 phases:
@@ -77,13 +77,11 @@ subagents:
   codex:
     default:
       model: "gpt-5.6-luna"
-      reasoning_effort: "high"
-    tiers: {}
-    # Examples (uncomment to configure):
-    # scout: { model: "gpt-5.6-luna", reasoning_effort: "medium" }
-    # builder: { model: "gpt-5.6-terra", reasoning_effort: "high" }
-    # expert: { model: "gpt-5.6-sol", reasoning_effort: "xhigh" }
-    agent_types: {}
-    # Examples (uncomment to configure):
-    # explorer: { model: "gpt-5.6-luna", reasoning_effort: "high" }
-    # worker: { model: "gpt-5.6-terra", reasoning_effort: "high" }
+      reasoning_effort: "medium"
+    tiers:
+      scout: { model: "gpt-5.6-luna", reasoning_effort: "low" }
+      builder: { model: "gpt-5.6-terra", reasoning_effort: "medium" }
+      expert: { model: "gpt-5.6-sol", reasoning_effort: "high" }
+    agent_types:
+      explorer: { model: "gpt-5.6-luna", reasoning_effort: "low" }
+      worker: { model: "gpt-5.6-terra", reasoning_effort: "medium" }

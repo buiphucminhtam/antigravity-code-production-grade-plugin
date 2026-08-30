@@ -16,6 +16,7 @@ tags: [ui-design, interface-design, ux-design, game-ui, web-ui, interaction-desi
 ## Protocols
 
 !`cat skills/_shared/game-visual-foundations.md 2>/dev/null || echo "=== Visual Foundations not loaded ==="`
+!`cat skills/_shared/protocols/visual-grounding.md 2>/dev/null || echo "=== Visual Grounding not loaded ==="`
 !`cat skills/_shared/protocols/ux-protocol.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/input-validation.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/tool-efficiency.md 2>/dev/null || true`
@@ -25,13 +26,27 @@ tags: [ui-design, interface-design, ux-design, game-ui, web-ui, interaction-desi
 !`cat skills/_shared/protocols/design-mindset-and-rules.md 2>/dev/null || true`
 !`cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"`
 
-**Fallback:** Work continuously. Print progress constantly.
+**Fallback:** Follow kernel proportional execution and report only material progress.
 
 ## Pipeline Input Boundary
 
 The pipeline owns visual-basis discovery and supplies `PIPELINE_CONTEXT.visual_basis` for material visual work. UI Designer consumes that basis and owns the **specialist UI contract**: information hierarchy, grid/layout, semantic tokens, typography, component anatomy/states, responsive/safe-area behavior, accessibility and visual rhythm.
 
 If a major UI task arrives without a reliable `visual_basis`, return `NEEDS_PIPELINE_GROUNDING`; do not independently reopen generic market/reference research. If UI analysis discovers a product/architecture/scope dependency, return `DOMAIN_FINDING`.
+
+## Mandatory UI/HUD Review Gate
+
+For every material screen or gameplay HUD, apply the source-backed gate in
+`skills/_shared/protocols/visual-grounding.md` before approval. At minimum,
+record primary task/content, overlay coverage and safe-area conditions,
+primary/secondary/tertiary scan order, alignment/proximity, semantic color plus
+redundant cues, actual-scale typography, measured contrast, component/state
+language and responsive/camera evidence. A static frame cannot prove gameplay,
+motion or interaction quality.
+
+Fixed values and component snippets below are illustrative implementation
+examples, not project defaults. The approved visual basis, target-platform
+requirements and mandatory UI/HUD gate override them.
 
 ## Identity
 
@@ -152,9 +167,10 @@ export interface ColorPalette {
 
 | Context | Minimum Ratio | Standard |
 |---------|---------------|----------|
-| Normal text (< 18px) | 4.5:1 | WCAG AA |
-| Large text (≥ 18px) | 3:1 | WCAG AA |
-| UI components | 3:1 | WCAG AA |
+| Normal text | 4.5:1 | WCAG AA |
+| Large text (per the applicable WCAG/platform definition) | 3:1 | WCAG AA |
+| Meaningful non-text UI | 3:1 | WCAG AA |
+| Standard game HUD text/visuals | 4.5:1 when Xbox XAG applies | Xbox XAG 102 |
 | Decorative elements | No requirement | — |
 
 ## Component Library
@@ -1255,6 +1271,7 @@ export function createAccessibleIcon(
 | 11 | Uniform line height multiplier | Headings float apart like they had a fight | Reduce multiplier to 1.1x-1.2x for massive headings; keep 1.4x-1.5x for body text. |
 | 12 | Excessive reading line width | Disrupted reading rhythm | Keep text width bound between 45 and 75 characters per line (sweet spot 60-65 chars). |
 | 13 | Stat-bloat in skill trees | Choice paralysis and boredom | Limit to meaningful gameplay milestones; support color-coding and search keyword filters. |
+| 14 | HUD-as-dashboard | Persistent cards and decorative callouts obscure gameplay or create competing focal points | Measure overlay coverage, rank information priority, and move noncritical content to contextual/transient layers. |
 
 ## Execution Checklist
 

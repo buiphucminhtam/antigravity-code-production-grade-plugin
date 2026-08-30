@@ -25,6 +25,15 @@ from runtime.orchestration_policy import (
     decide_orchestration,
     validate_dispatch_packet,
 )
+from runtime.execution_contract import (
+    ExecutionContractError,
+    adaptive_execution_caps,
+    assess_worker_progress,
+    lock_execution_contract,
+    routing_for,
+    summarize_execution_metrics,
+    verify_locked_contract,
+)
 from runtime.peer_collaboration import (
     InProcessBroker,
     JsonlEventLog,
@@ -438,7 +447,11 @@ def _apply_runtime_model_selection(plan: dict[str, Any], executable: str) -> Non
 
 
 def _worker_prompt(
-    request: dict[str, Any], worker: dict[str, Any], stop: list[str]
+    request: dict[str, Any],
+    worker: dict[str, Any],
+    stop: list[str],
+    execution_contract: dict[str, Any],
+    routing: dict[str, str],
 ) -> str:
     lines = [
         "[Forgewright bounded parallel worker]",
@@ -446,7 +459,12 @@ def _worker_prompt(
         f"Role tier: {worker['role']}",
         f"Scope: {worker['scope_id']}",
         f"Advisory read-only paths: {json.dumps(worker['paths'], separators=(',', ':'))}",
+        f"Locked plan digest: {execution_contract['digest']}",
+        f"Locked acceptance: {json.dumps(execution_contract['acceptance_criteria'], ensure_ascii=False)}",
+        f"Locked out-of-scope: {json.dumps(execution_contract['out_of_scope'], ensure_ascii=False)}",
+        f"Execution routing: {json.dumps(routing, separators=(',', ':'))}",
         f"Stop when: {','.join(stop)}",
+        "Do not revise the locked plan. Replan only through the parent when an allowed trigger is evidenced.",
     ]
     packet = worker.get("packet")
     if packet is not None:
@@ -566,7 +584,12 @@ def _validate_scope_skill_paths(scopes: list[dict[str, Any]], workspace: Path) -
             )
 
 
-def _native_dispatch_packet(worker: dict[str, Any], prompt: str) -> dict[str, Any]:
+def _native_dispatch_packet(
+    worker: dict[str, Any],
+    prompt: str,
+    execution_contract: dict[str, Any],
+    routing: dict[str, str],
+) -> dict[str, Any]:
     """Build metadata for a host-owned native adapter, never a local spawn."""
     packet = worker.get("packet")
     handoff = None
@@ -599,6 +622,12 @@ def _native_dispatch_packet(worker: dict[str, Any], prompt: str) -> dict[str, An
         },
         "handoff": handoff,
         "acceptance": {"checks": acceptance_checks},
+        "plan_binding": {
+            "digest": execution_contract["digest"],
+            "status": execution_contract["status"],
+            "scope_id": worker["scope_id"],
+        },
+        "routing": deepcopy(routing),
         "recursive_spawn": False,
     }
     if "artifact_refs" in (packet or {}):
@@ -608,16 +637,21 @@ def _native_dispatch_packet(worker: dict[str, Any], prompt: str) -> dict[str, An
     return result
 
 
-def _reviewer_prompt(reviewer: dict[str, Any]) -> str:
+def _reviewer_prompt(
+    reviewer: dict[str, Any], execution_contract: dict[str, Any]
+) -> str:
     packet = reviewer["packet"]
     return "\n".join(
         [
             "[Forgewright independent reviewer]",
+            f"Locked plan digest: {execution_contract['digest']}",
+            f"Locked acceptance: {json.dumps(execution_contract['acceptance_criteria'], ensure_ascii=False)}",
             f"Requirements: {json.dumps(packet['requirements'], ensure_ascii=False)}",
             f"Diff: {json.dumps(packet['diff'], ensure_ascii=False)}",
             f"Raw evidence: {json.dumps(packet['raw_evidence'], ensure_ascii=False)}",
             "Review only this immutable packet. Do not use worker reasoning or worker results.",
             "Do not spawn subagents or expand the supplied scope.",
+            "Reject plan drift unless an allowed replan trigger is backed by raw evidence.",
             "Return independent findings with exact evidence; fail closed if evidence is insufficient.",
         ]
     )
@@ -642,34 +676,60 @@ def build_plan(manifest: dict[str, Any], manifest_dir: Path) -> dict[str, Any]:
     _validate_scope_skill_paths(request["scopes"], workspace)
     max_result_chars = _max_result_chars(request)
     decision = decide_orchestration(request)
+    try:
+        execution_contract = lock_execution_contract(request, decision["workers"])
+        adaptive_caps = adaptive_execution_caps(
+            execution_contract["task_class"],
+            request.get("limits", {}).get("deadline_ms", 30_000),
+            max_result_chars,
+        )
+    except ExecutionContractError as error:
+        raise ManifestError(str(error)) from error
     provider = manifest.get("provider", {})
     validate_provider_safety(provider)
     planned_workers = []
     for worker in decision["workers"]:
         selection = select_model(worker["role"], provider, manifest_dir)
-        prompt = _worker_prompt(request, worker, decision["stop_conditions"])
+        routing = routing_for(worker["role"], phase="execution")
+        prompt = _worker_prompt(
+            request,
+            worker,
+            decision["stop_conditions"],
+            execution_contract,
+            routing,
+        )
         planned_workers.append(
             {
                 **worker,
-                "native_dispatch_packet": _native_dispatch_packet(worker, prompt),
+                "native_dispatch_packet": _native_dispatch_packet(
+                    worker, prompt, execution_contract, routing
+                ),
+                "routing": routing,
                 "model_selection": selection,
                 "argv": _provider_argv("agy", selection, prompt),
-                "max_result_chars": max_result_chars,
+                "deadline_ms": adaptive_caps["deadline_ms"],
+                "max_result_chars": adaptive_caps["max_result_chars"],
             }
         )
 
     planned_reviewer = decision["reviewer"]
     if planned_reviewer is not None:
         selection = select_model("expert", provider, manifest_dir)
-        deadline_ms = request.get("limits", {}).get("deadline_ms", 30_000)
+        audit_routing = routing_for("expert", phase="audit")
         planned_reviewer = {
             **planned_reviewer,
             "id": "reviewer",
-            "deadline_ms": deadline_ms,
-            "max_result_chars": max_result_chars,
+            "deadline_ms": adaptive_caps["deadline_ms"],
+            "max_result_chars": adaptive_caps["max_result_chars"],
+            "plan_binding": {
+                "digest": execution_contract["digest"],
+                "status": execution_contract["status"],
+                "scope_ids": execution_contract["scope_ids"],
+            },
+            "routing": audit_routing,
             "model_selection": selection,
             "argv": _provider_argv(
-                "agy", selection, _reviewer_prompt(planned_reviewer)
+                "agy", selection, _reviewer_prompt(planned_reviewer, execution_contract)
             ),
         }
 
@@ -677,10 +737,19 @@ def build_plan(manifest: dict[str, Any], manifest_dir: Path) -> dict[str, Any]:
         **decision,
         "workspace": str(workspace),
         "scope_enforcement": "advisory-read-only",
+        "execution_contract": execution_contract,
+        "adaptive_caps": adaptive_caps,
         "workers": planned_workers,
         "reviewer": planned_reviewer,
         "execution": {"status": "dry-run", "external_call": False},
     }
+
+
+def verify_execution_contract(plan: dict[str, Any]) -> dict[str, Any]:
+    try:
+        return verify_locked_contract(plan.get("execution_contract"))
+    except ExecutionContractError as error:
+        raise ManifestError(str(error)) from error
 
 
 def _redact_and_bound(value: str, max_chars: int) -> str:
@@ -692,6 +761,7 @@ def _redact_and_bound(value: str, max_chars: int) -> str:
 
 def _execute_call(call: dict[str, Any], workspace: Path) -> dict[str, Any]:
     argv = call["argv"]
+    started = time.monotonic()
     try:
         result = subprocess.run(
             argv,
@@ -708,9 +778,16 @@ def _execute_call(call: dict[str, Any], workspace: Path) -> dict[str, Any]:
             "exit_code": result.returncode,
             "stdout": _redact_and_bound(result.stdout, call["max_result_chars"]),
             "stderr": _redact_and_bound(result.stderr, call["max_result_chars"]),
+            "duration_ms": round((time.monotonic() - started) * 1_000),
         }
     except subprocess.TimeoutExpired:
-        return {"id": call["id"], "exit_code": 124, "stderr": "deadline cap exceeded"}
+        return {
+            "id": call["id"],
+            "exit_code": 124,
+            "stdout": "",
+            "stderr": "deadline cap exceeded",
+            "duration_ms": round((time.monotonic() - started) * 1_000),
+        }
 
 
 def _event_factory(
@@ -1104,6 +1181,7 @@ def execute_plan(
     trusted_host_capability: TrustedHostCapability | None = None,
     serial_executor: Callable[[dict[str, Any], str], bool] | None = None,
 ) -> int:
+    verify_execution_contract(plan)
     collaboration_plan = plan.get("collaboration_plan")
     if (
         isinstance(collaboration_plan, dict)
@@ -1139,18 +1217,32 @@ def execute_plan(
             )
     else:
         results = []
-    reviewer_result = None
-    if plan["reviewer"] is not None:
-        reviewer_result = _execute_call(plan["reviewer"], workspace)
-    success = all(result["exit_code"] == 0 for result in results) and (
-        reviewer_result is None or reviewer_result["exit_code"] == 0
+    progress = assess_worker_progress(results)
+    workers_succeeded = progress["status"] == "passed" and all(
+        result["exit_code"] == 0 for result in results
     )
+    reviewer_result = None
+    if plan["reviewer"] is not None and workers_succeeded:
+        reviewer_result = _execute_call(plan["reviewer"], workspace)
+    elif plan["reviewer"] is not None:
+        reviewer_result = {
+            "id": "reviewer",
+            "status": "skipped",
+            "reason": "worker_or_progress_failure",
+        }
+    metrics = summarize_execution_metrics(plan["execution_contract"], results, progress)
+    reviewer_succeeded = plan["reviewer"] is None or (
+        isinstance(reviewer_result, dict) and reviewer_result.get("exit_code") == 0
+    )
+    success = workers_succeeded and reviewer_succeeded
     external_call = bool(workers or reviewer_result is not None)
     plan["execution"] = {
         "status": "completed" if success else "failed",
         "external_call": external_call,
         "results": results,
         "reviewer_result": reviewer_result,
+        "progress": progress,
+        "metrics": metrics,
     }
     return 0 if success else 1
 

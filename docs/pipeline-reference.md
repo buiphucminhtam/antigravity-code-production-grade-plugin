@@ -56,6 +56,55 @@ increases retries, delays synthesis, weakens verification, or is unlikely to
 complete its bounded role. The chosen topology uses the fewest independent
 workers and the smallest capable model/tier that can finish correctly and fast.
 
+### Plan-locked execution
+
+Planning may use deep reasoning when ambiguity or risk justifies it, but it must
+terminate in a parent-owned `PLAN_LOCKED` contract before dispatch. The contract
+binds a canonical digest over the objective, acceptance criteria, selected scope
+IDs, explicit out-of-scope items, phase routing, and these only valid replan
+triggers: `material_assumption_invalidated`, `acceptance_unreachable`,
+`material_risk_discovered`, `same_blocker_twice`, and `user_scope_change`.
+
+Workers receive only their bound scope, the plan digest, acceptance, non-goals,
+and role-tier routing. They cannot revise the plan or expand scope. The parent
+rechecks the digest before external execution, bounds deadline and result size
+by `QUICK`/`STANDARD`/`DEEP`, and fails successful-but-empty, duplicate-finding,
+or repeated-blocker results. The independent auditor binds the same plan digest
+and reviews immutable requirements, diff, and raw evidence without worker
+reasoning.
+
+### Provider-neutral visual/game harness lane
+
+Forgewright owns the visual/game workflow; no vendor SDK or CLI is required by
+the core contract. Any current provider/model may enter the lane when its
+same-invocation capability surface advertises the exact selected model, required
+role tier and reasoning effort, `tool_use`, and the necessary `image_in` or
+`video_in` features. Research into Kimi Code/Kimi Agent SDK informed the useful
+patterns—multimodal input, bounded visual iteration, lifecycle controls and
+evidence-only telemetry—but no Kimi identifier or runtime dependency is placed
+in the harness.
+
+`VisualGameHarness` runs on `HarnessAdapter v1`, binds every session to
+`PLAN_LOCKED`, and executes `inspect → plan → implement → render → compare →
+revise → audit`. `QUICK`/`STANDARD`/`DEEP` receive one/two/three visual
+iterations with bounded wall time, at most three workers, eight media inputs,
+per-item/aggregate media budgets, exact capability validation and interrupt on
+exhaustion. Provider-native swarm/fan-out is disabled; the parent remains the
+only arbiter. Receipts retain plan/model/task class, iteration count and evidence
+digests, never raw private reasoning or visual-review summaries.
+
+### UI/HUD source-backed review gate
+
+Every material UI or gameplay HUD must identify its primary task/content and
+prove hierarchy, alignment/proximity, overlay coverage, safe areas, semantic
+color plus redundant cues, actual-scale typography, measured contrast,
+component/state language and target viewport/camera behavior. Review reports
+concrete `USABILITY/ACCESSIBILITY`, `REFERENCE_DEVIATION`,
+`TECHNICAL_ARTIFACT` and `SUBJECTIVE_PREFERENCE` findings; a numeric aesthetic
+score cannot approve a visual. The canonical specialist rules are
+`skills/ui-designer/LITE.md`, `skills/ui-designer/SKILL.md`, and
+`skills/_shared/protocols/visual-grounding.md`.
+
 The Lite runtime also bounds skill-overlay context before prompt assembly.
 `context_budget.max_skill_descriptions_tokens` applies an ordered-prefix budget
 using the deterministic `utf8_bytes_div_4_ceil` estimate over each exact
@@ -173,6 +222,11 @@ but do not authenticate same-user rewrites; H5 remains the live-provider gate.
 ## Planning and optimization
 
 `QUICK` work uses `ACTION | TARGET | CHECK` and no numeric plan score. `STANDARD`/`DEEP` use the complexity-scaled thresholds in `skills/_shared/protocols/plan-quality-loop.md`. There is no universal 9/10 gate.
+
+Once a grounded plan is accepted, execution is `PLAN_LOCKED`; implementation
+does not reopen alternatives unless one of the canonical evidence-backed replan
+triggers fires. Planning depth is therefore preserved without allowing plan
+churn to consume execution time.
 
 Optimization needs an explicit target/SLA, measurement, a known platform/resource/cost constraint, or an evident algorithmic/reliability defect at required scale. Otherwise prefer a simple observable baseline and defer speculative optimization.
 

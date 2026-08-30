@@ -103,7 +103,7 @@ quality:
 pipeline:
   engagement: "standard"  # express|standard|thorough|meticulous
   execution: "parallel"    # sequential|parallel
-  max_workers: 4
+  max_workers: 3
 
 # Native Codex subagent model preferences. Apply a value only when the active
 # spawn_agent schema advertises it for the selected model.
@@ -111,14 +111,14 @@ subagents:
   codex:
     default:
       model: "gpt-5.6-luna"
-      reasoning_effort: "high"
-    tiers: {  # tiers: {} when no overrides are configured
-      # Examples (uncomment to configure):
-      # expert: { model: "gpt-5.6-sol", reasoning_effort: "xhigh" }
-    }
-    agent_types: {}
-    # Examples (uncomment to configure):
-    # explorer: { model: "gpt-5.6-luna", reasoning_effort: "high" }
+      reasoning_effort: "medium"
+    tiers:
+      scout: { model: "gpt-5.6-luna", reasoning_effort: "low" }
+      builder: { model: "gpt-5.6-terra", reasoning_effort: "medium" }
+      expert: { model: "gpt-5.6-sol", reasoning_effort: "high" }
+    agent_types:
+      explorer: { model: "gpt-5.6-luna", reasoning_effort: "low" }
+      worker: { model: "gpt-5.6-terra", reasoning_effort: "medium" }
 
 # Review settings
 review:
@@ -144,9 +144,8 @@ game:
 
 # AI/ML settings
 ai:
-  model: "gpt-4"
-  temperature: 0.7
-  max_tokens: 4000
+  model: null  # resolved from current runtime capabilities
+  reasoning_effort: null  # passed only when advertised for the exact model
 ```
 
 ### Environment Variables
@@ -157,7 +156,7 @@ ai:
 | `FORGEWRIGHT_SKIP_MEMORY` | Skip memory initialization | 0 |
 | `FORGEWRIGHT_LOCAL_MEMORY` | Use local memory | 1 |
 | `FORGEWRIGHT_DEBUG` | Enable debug logging | 0 |
-| `FORGEWRIGHT_MAX_RETRIES` | Max retry attempts | 3 |
+| `FORGEWRIGHT_MAX_RETRIES` | Max retry attempts | 2 |
 | `FORGEWRIGHT_TIMEOUT` | Skill timeout (seconds) | 600 |
 
 ### Emergency Procedures
@@ -177,18 +176,19 @@ ai:
 - Security vulnerability discovered
 - Data corruption risk
 - Budget/time overrun > 50%
-- Unresolvable blocker after 3 attempts
+- Unresolvable blocker after 2 failed attempts
 
 ### Cross-Skill Communication Protocol
 
-Skills communicate through structured artifacts:
+When a material cross-skill handoff requires durable structure, use a bounded
+artifact; one-step or parent-owned work keeps state in context:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │ ARTIFACT CONTRACT                                                   │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│ Each skill writes artifacts to:                                     │
+│ Authorized handoff artifacts live at:                               │
 │ .forgewright/<skill-name>/<artifact-name>.json                      │
 │                                                                     │
 │ Artifact structure:                                                 │
@@ -386,14 +386,14 @@ Resolve the live skill inventory from `product-manifest.json`, `skills-registry.
 
 ### Session Lifecycle Hooks
 
-Call these hooks at the appropriate lifecycle points:
+Call only the hooks required by the active scope and durable state:
 
 | Event | Hook | Action |
 |-------|------|--------|
-| Phase completes | `PHASE_COMPLETE(name, summary)` | Update session-log, save to memory, update quality metrics |
-| Task completes | `TASK_COMPLETE(id, name, status, summary)` | Update session-log |
-| Gate decided | `GATE_DECISION(gate#, decision, feedback)` | Update session-log, save decision to memory |
-| Architecture approved | `ARCH_DECISION(tech_stack, services, rationale)` | Save architecture to memory — see Gate 2.5 |
-| Error occurs | `ERROR(task_id, type, details)` | Update session-log, save blocker to memory |
-| Pipeline ends | Session End | Summarize, save to memory, update project profile |
-| User request answered | `TURN_CLOSE` | Mandatory memory `add` — see session-lifecycle §Per-request memory |
+| Phase completes | `PHASE_COMPLETE(name, summary)` | Update durable phase state only when the project contract requires it |
+| Task completes | `TASK_COMPLETE(id, name, status, summary)` | Update the active task state |
+| Gate decided | `GATE_DECISION(gate#, decision, feedback)` | Persist a material gate decision |
+| Architecture approved | `ARCH_DECISION(tech_stack, services, rationale)` | Persist an accepted architecture decision when durable |
+| Error occurs | `ERROR(task_id, type, details)` | Persist a blocker only when needed for recovery/handoff |
+| Pipeline ends | Session End | Persist only durable decisions, blockers, or resume state |
+| User request answered | `TURN_CLOSE` | No mandatory memory write; close normally when no durable state changed |

@@ -483,6 +483,8 @@ def test_runner_uses_allowlisted_environment_and_trusted_agy(tmp_path: Path) -> 
             "    output.write(json.dumps({'args': sys.argv[1:], 'env': dict(os.environ)}) + '\\n')\n"
             "if sys.argv[1:] == ['models']:\n"
             "    print(json.dumps({'models': []}))\n"
+            "else:\n"
+            "    print('evidence: environment captured')\n"
         ),
     )
     result = run_runner(
@@ -527,6 +529,7 @@ def test_verified_capability_enables_model_flag_and_exec_uses_argv_not_shell(
         "    print(json.dumps({'models': [{'id': 'machine-model-id', 'tiers': ['scout']}]}))\n"
         "    raise SystemExit(0)\n"
         f"open({str(capture)!r}, 'w').write(json.dumps(sys.argv[1:]))\n"
+        "print('evidence: verified argv captured')\n"
     )
     capabilities = tmp_path / "capabilities.json"
     capabilities.write_text(
@@ -585,6 +588,7 @@ def test_forged_manifest_capability_cannot_authorize_model_flag(tmp_path: Path) 
         "    print('Human Display Name Only')\n"
         "    raise SystemExit(0)\n"
         f"open({str(capture)!r}, 'w').write(json.dumps(sys.argv[1:]))\n"
+        "print('evidence: provider-managed argv captured')\n"
     )
     forged = tmp_path / "forged.json"
     forged.write_text(
@@ -711,6 +715,7 @@ def test_runner_anchors_cwd_to_manifest_workspace_from_another_cwd(
         "#!/usr/bin/env python3\n"
         "import os\n"
         f"open({str(capture)!r}, 'w').write(os.getcwd() + '\\n' + os.environ.get('FORGEWRIGHT_WORKSPACE', ''))\n"
+        "print('evidence: workspace anchored')\n"
     )
     request = base_request(
         task_size="medium",
@@ -936,6 +941,289 @@ def test_reviewer_failure_fails_the_plan(tmp_path: Path) -> None:
     plan = json.loads(result.stdout)
     assert plan["execution"]["status"] == "failed"
     assert plan["execution"]["reviewer_result"]["exit_code"] == 7
+
+
+def test_plan_lock_binds_scope_phase_routing_and_independent_audit() -> None:
+    runner = runner_module()
+    request = base_request(
+        task_size="medium",
+        task_class="standard",
+        acceptance_criteria=["Each selected scope returns exact evidence."],
+        out_of_scope=["No implementation edits."],
+        independent_review=True,
+    )
+    manifest = {
+        "version": 1,
+        "request": {**request, "workspace": str(ROOT)},
+        "provider": {"cli": "agy"},
+    }
+
+    plan = runner.build_plan(manifest, ROOT)
+    contract = plan["execution_contract"]
+
+    assert contract["status"] == "locked"
+    assert contract["task_class"] == "standard"
+    assert contract["acceptance_criteria"] == [
+        "Each selected scope returns exact evidence."
+    ]
+    assert contract["out_of_scope"] == ["No implementation edits."]
+    assert contract["scope_ids"] == ["backend", "frontend", "schema"]
+    assert len(contract["digest"]) == 64
+    assert contract["replan_triggers"] == [
+        "material_assumption_invalidated",
+        "acceptance_unreachable",
+        "material_risk_discovered",
+        "same_blocker_twice",
+        "user_scope_change",
+    ]
+    assert plan["adaptive_caps"] == {
+        "deadline_ms": 30_000,
+        "max_result_chars": 16_384,
+    }
+
+    for worker in plan["workers"]:
+        binding = worker["native_dispatch_packet"]["plan_binding"]
+        assert binding == {
+            "digest": contract["digest"],
+            "status": "locked",
+            "scope_id": worker["scope_id"],
+        }
+        assert worker["routing"]["phase"] == "execution"
+        assert worker["routing"]["reasoning_effort"] in {"low", "medium", "high"}
+        assert contract["digest"] in worker["argv"][-1]
+
+    reviewer = plan["reviewer"]
+    assert reviewer["plan_binding"] == {
+        "digest": contract["digest"],
+        "status": "locked",
+        "scope_ids": contract["scope_ids"],
+    }
+    assert reviewer["routing"] == {
+        "phase": "audit",
+        "tier": "expert",
+        "reasoning_effort": "high",
+    }
+    assert contract["digest"] in reviewer["argv"][-1]
+
+
+def test_plan_lock_rejects_mutation_before_execution() -> None:
+    runner = runner_module()
+    request = base_request(task_size="medium")
+    manifest = {
+        "version": 1,
+        "request": {**request, "workspace": str(ROOT)},
+        "provider": {"cli": "agy"},
+    }
+    plan = runner.build_plan(manifest, ROOT)
+    plan["execution_contract"]["objective"] = "mutated after lock"
+
+    with pytest.raises(runner.ManifestError, match="plan lock digest mismatch"):
+        runner.verify_execution_contract(plan)
+
+
+def test_progress_guard_rejects_empty_and_duplicate_success_outputs() -> None:
+    runner = runner_module()
+
+    empty = runner.assess_worker_progress(
+        [{"id": "worker-1", "exit_code": 0, "stdout": "", "stderr": ""}]
+    )
+    assert empty == {
+        "status": "failed",
+        "stop_reasons": ["no_material_progress:worker-1"],
+    }
+
+    duplicate = runner.assess_worker_progress(
+        [
+            {
+                "id": "worker-1",
+                "exit_code": 0,
+                "stdout": "FINDING_ID: same-evidence\nfirst scope evidence",
+                "stderr": "",
+            },
+            {
+                "id": "worker-2",
+                "exit_code": 0,
+                "stdout": "finding-id=same-evidence\nsecond scope evidence",
+                "stderr": "",
+            },
+        ]
+    )
+    assert duplicate == {
+        "status": "failed",
+        "stop_reasons": ["duplicate_findings:worker-1,worker-2"],
+    }
+
+    concise = runner.assess_worker_progress(
+        [
+            {"id": "worker-1", "exit_code": 0, "stdout": "OK", "stderr": ""},
+            {"id": "worker-2", "exit_code": 0, "stdout": " OK ", "stderr": ""},
+        ]
+    )
+    assert concise == {"status": "passed", "stop_reasons": []}
+
+    failed = runner.assess_worker_progress(
+        [
+            {
+                "id": "worker-1",
+                "exit_code": 7,
+                "stdout": "",
+                "stderr": "provider failure",
+            }
+        ]
+    )
+    assert failed == {
+        "status": "failed",
+        "stop_reasons": ["worker_failed:worker-1:7"],
+    }
+
+
+def test_adaptive_caps_preserve_deep_quality_and_bound_quick_work() -> None:
+    runner = runner_module()
+
+    assert runner.adaptive_execution_caps("quick", 120_000, 65_536) == {
+        "deadline_ms": 15_000,
+        "max_result_chars": 8_192,
+    }
+    assert runner.adaptive_execution_caps("standard", 120_000, 65_536) == {
+        "deadline_ms": 30_000,
+        "max_result_chars": 16_384,
+    }
+    assert runner.adaptive_execution_caps("deep", 120_000, 65_536) == {
+        "deadline_ms": 60_000,
+        "max_result_chars": 32_768,
+    }
+    assert runner.routing_for("builder", phase="planning") == {
+        "phase": "planning",
+        "tier": "builder",
+        "reasoning_effort": "medium",
+    }
+
+
+def test_reviewer_is_skipped_after_worker_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runner = runner_module()
+    request = base_request(
+        task_size="medium",
+        mechanical_inventory=True,
+        independent_review=True,
+        scopes=[
+            {
+                "id": "inventory",
+                "paths": ["src"],
+                "independent": True,
+                "risk_signals": [],
+            }
+        ],
+    )
+    manifest = {
+        "version": 1,
+        "request": {**request, "workspace": str(ROOT)},
+        "provider": {"cli": "agy"},
+    }
+    plan = runner.build_plan(manifest, ROOT)
+    invoked: list[str] = []
+
+    monkeypatch.setattr(runner, "validate_global_antigravity_hook", lambda: ROOT)
+    monkeypatch.setattr(runner, "_resolve_trusted_agy", lambda: "/trusted/agy")
+    monkeypatch.setattr(runner, "_apply_runtime_model_selection", lambda *_args: None)
+
+    def fail_worker(call: dict[str, object], _workspace: Path) -> dict[str, object]:
+        invoked.append(str(call["id"]))
+        return {
+            "id": call["id"],
+            "exit_code": 9,
+            "stdout": "",
+            "stderr": "worker failed",
+            "duration_ms": 1,
+        }
+
+    monkeypatch.setattr(runner, "_execute_call", fail_worker)
+
+    assert runner.execute_plan(plan) == 1
+    assert invoked == ["worker-1"]
+    assert plan["execution"]["reviewer_result"] == {
+        "id": "reviewer",
+        "status": "skipped",
+        "reason": "worker_or_progress_failure",
+    }
+
+
+def test_execute_plan_rejects_legacy_unlocked_plan() -> None:
+    runner = runner_module()
+
+    with pytest.raises(runner.ManifestError, match="execution contract is missing"):
+        runner.execute_plan({"workers": [], "reviewer": None})
+
+
+def test_progress_guard_detects_same_blocker_twice_across_workers() -> None:
+    runner = runner_module()
+    assessment = runner.assess_worker_progress(
+        [
+            {
+                "id": "worker-1",
+                "exit_code": 0,
+                "stdout": "BLOCKER_ID: missing-schema\nEvidence from API surface.",
+                "stderr": "",
+            },
+            {
+                "id": "worker-2",
+                "exit_code": 0,
+                "stdout": "blocker-id=missing-schema\nEvidence from another scope.",
+                "stderr": "",
+            },
+        ]
+    )
+
+    assert assessment == {
+        "status": "failed",
+        "stop_reasons": ["same_blocker_twice:missing-schema:worker-1,worker-2"],
+    }
+
+
+def test_execution_metrics_bind_efficiency_to_locked_plan() -> None:
+    runner = runner_module()
+    request = base_request(task_size="medium")
+    manifest = {
+        "version": 1,
+        "request": {**request, "workspace": str(ROOT)},
+        "provider": {"cli": "agy"},
+    }
+    plan = runner.build_plan(manifest, ROOT)
+    results = [
+        {
+            "id": "worker-1",
+            "exit_code": 0,
+            "stdout": "evidence one",
+            "stderr": "",
+            "duration_ms": 120,
+        },
+        {
+            "id": "worker-2",
+            "exit_code": 0,
+            "stdout": "evidence two",
+            "stderr": "warning",
+            "duration_ms": 80,
+        },
+    ]
+
+    metrics = runner.summarize_execution_metrics(
+        plan["execution_contract"],
+        results,
+        {"status": "passed", "stop_reasons": []},
+    )
+
+    assert metrics == {
+        "plan_digest": plan["execution_contract"]["digest"],
+        "task_class": "standard",
+        "worker_count": 2,
+        "successful_workers": 2,
+        "duration_ms_total": 200,
+        "duration_ms_max": 120,
+        "output_chars_total": 31,
+        "progress_status": "passed",
+        "stop_reason_count": 0,
+    }
 
 
 def test_collaboration_dry_run_emits_parent_metadata_and_preserves_model_routing(

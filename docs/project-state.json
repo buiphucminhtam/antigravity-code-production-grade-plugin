@@ -168,6 +168,25 @@
       ]
     },
     {
+      "id": "plan-locked-execution",
+      "title": "Lock grounded plans before bounded model and harness execution",
+      "status": "done",
+      "priority": "high",
+      "owner": "Orchestration maintainers",
+      "target_date": null,
+      "depends_on": ["bounded-peer-collaboration"],
+      "references": [
+        {
+          "path": "docs/pipeline-reference.md",
+          "anchor": "plan-locked-execution"
+        },
+        {
+          "path": "docs/pipeline-reference.md",
+          "anchor": "provider-neutral-visual-game-harness-lane"
+        }
+      ]
+    },
+    {
       "id": "roadmap-truth-reset",
       "title": "Separate roadmap completion axes and replay exact local verifier contracts",
       "status": "done",
@@ -451,10 +470,33 @@
           ]
         },
         {
+          "id": "lock-plan",
+          "name": "LOCK PLAN",
+          "actor": "Parent orchestrator",
+          "inputs": [
+            "Grounded objective, acceptance, scope, and non-goals",
+            "Phase-aware routing and allowed replan triggers"
+          ],
+          "outputs": [
+            "PLAN_LOCKED canonical digest",
+            "Bound worker and independent-audit packets"
+          ],
+          "references": [
+            {
+              "path": "docs/pipeline-reference.md",
+              "anchor": "plan-locked-execution"
+            }
+          ]
+        },
+        {
           "id": "execute-plan",
           "name": "EXECUTE PLAN",
           "actor": "Orchestrator",
-          "inputs": ["Spawn/no-spawn decision", "Stop conditions"],
+          "inputs": [
+            "Verified PLAN_LOCKED digest",
+            "Spawn/no-spawn decision",
+            "Stop conditions"
+          ],
           "outputs": [
             "Parent-owned serial execution or bounded subagent dispatch",
             "Auditable routing rationale"
@@ -952,8 +994,8 @@
     "lifecycle": "active",
     "health": "on_track",
     "phase": "SUSTAIN",
-    "summary": "Continuous Docs Hub, runtime/token-aware dispatch, provider-neutral rule hooks, bounded Stop replay, requirement-locked tests, and exact schema-v2 evidence remain active. H0 through H4 meet bounded local gates: deferred skills load on demand, canonical lifecycle/containment/checkpoint recovery pass locally, and privacy-safe offline full-loop replay is independently approved. Review-2 is keyless and exact-evidence-bound, so it detects mismatch but does not authenticate reviewer identity against same-user forgery. H5 structured usage and paired A/B infrastructure is locally verified with digest-only reports and explicit completeness, but the configured provider client rejected the live probe; production canary/rollback evidence remains missing. Automatic production resume, portable OS process isolation, and H6 fresh-evaluator handoff also remain pending. GitNexus counts remain the recorded baseline until the final index refresh.",
-    "updated_at": "2026-08-29T00:08:00+07:00",
+    "summary": "Continuous Docs Hub, runtime/token-aware dispatch, provider-neutral rule hooks, bounded Stop replay, requirement-locked tests, and exact schema-v2 evidence remain active. PLAN_LOCKED execution, phase-aware routing, adaptive progress controls, independent audit binding, and the source-backed UI/HUD review gate now pass local contracts. The provider-neutral VisualGameHarness applies capability-verified multimodal render-inspect-revise controls without a vendor SDK/CLI dependency; provider-native swarm remains disabled. A bounded live HUD-perception canary gave both gpt-5.6-luna and gpt-5.6-sol 12/12 oracle accuracy, while AGY tool-hook compatibility, Gemini direct eligibility, Claude authentication, live image-generation quality, provider canary/rollback receipts, and fresh evaluator evidence remain unresolved.",
+    "updated_at": "2026-08-30T15:47:36+07:00",
     "blockers": [
       {
         "id": "live-provider-client-migration",
@@ -990,6 +1032,12 @@
         "title": "H3 enforces canonical application paths but does not provide portable kernel isolation for arbitrary child processes or foreign tools.",
         "owner": "Runtime maintainers",
         "mitigation": "Keep process/network effects disabled unless explicitly contained; add a verified Linux or container backend before enabling arbitrary commands, and retain same-user/root limitations in evidence."
+      },
+      {
+        "id": "visual-game-harness-live-gap",
+        "title": "Paired live visual perception passes on two Codex models, but image-generation aesthetics and non-Codex multimodal surfaces remain unverified.",
+        "owner": "Orchestration maintainers",
+        "mitigation": "Keep selection capability-probed, fix AGY hook payload compatibility and provider authentication separately, then run the same visual contract on a harder gameplay frame and an image-generation task before claiming broad production visual quality."
       }
     ],
     "next_actions": [
@@ -997,6 +1045,12 @@
         "id": "live-provider-evidence",
         "title": "Run the locally verified H5 receipt and paired A/B contract in a supported provider runtime, then collect canary and rollback evidence.",
         "owner": "Runtime maintainers",
+        "due_date": null
+      },
+      {
+        "id": "visual-game-harness-canary",
+        "title": "After hook/auth repair, compare a harder gameplay frame and image-generation task across authorized capability-compatible models using the same locked visual contract.",
+        "owner": "Orchestration maintainers",
         "due_date": null
       }
     ],

@@ -210,3 +210,33 @@ def test_root_skill_frontmatter_never_pins_provider_models():
             pinned.append(skill_file.relative_to(ROOT).as_posix())
 
     assert pinned == [], f"root skill frontmatter pins provider/model: {pinned}"
+
+
+def test_planning_may_reason_deeply_but_execution_is_plan_locked():
+    solve = _read("kernel/SOLVE.md")
+    pipeline = _read("skills/_shared/protocols/pipeline-operating-contract.md")
+
+    for content in (solve, pipeline):
+        assert "PLAN_LOCKED" in content
+        assert "acceptance" in content
+        assert "out-of-scope" in content
+        assert "replan" in content.lower()
+        assert "material_assumption_invalidated" in content
+        assert "same_blocker_twice" in content
+
+
+def test_configuration_references_do_not_reintroduce_overengineering_defaults():
+    template = _read("skills/_shared/templates/production-grade.yaml.tmpl")
+    reference = _read("skills/production-grade/references/technical-reference.md")
+
+    assert 'architecture: "modular-monolith"' in template
+    assert 'cloud: ""' in template
+    assert "multi_tenancy: false" in template
+    assert "documentation_site: false" in template
+    assert "event_driven: false" in template
+    assert "max_workers: 3" in reference
+    assert "`FORGEWRIGHT_MAX_RETRIES` | Max retry attempts | 2 |" in reference
+    assert "Unresolvable blocker after 2 failed attempts" in reference
+    assert "Each skill writes artifacts" not in reference
+    assert "Mandatory memory `add`" not in reference
+    assert "model: null  # resolved from current runtime capabilities" in reference

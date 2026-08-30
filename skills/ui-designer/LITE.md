@@ -19,6 +19,17 @@ Own the **visual and interaction design contract** for screens/components. Consu
 | Responsive / platform constraints | Read breakpoints, safe area, orientation/input conventions | ... | target viewport/input matrix |
 | Accessibility contract | Inspect semantic roles, focus order, contrast/text scaling/reduced motion needs | ... | applicable WCAG/platform requirements + affected components |
 
+## Mandatory UI/HUD Review Gate
+
+For every material screen or gameplay HUD, verify these before handoff:
+
+- **Task and viewport:** name the primary task/content. Measure HUD/chrome coverage, occlusion, safe areas and target-scale readability; decoration must not become the focal point unless the product/gameplay contract requires it.
+- **Hierarchy and grouping:** rank primary/secondary/tertiary information, then verify reading order, alignment and proximity match that priority. Visual weight is evidence of importance, not a substitute for it.
+- **Semantic system:** use a bounded set of container/border/elevation roles. Do not apply one rounded-card/glow treatment to every component. Keep each semantic color family consistent and add text/icon/shape cues so meaning never depends on color alone.
+- **Typography:** verify actual resolution, viewing distance, localization and up-to-200% scaling. Prefer sentence case and locale-aware alignment for text lines; reserve all-caps for short labels or an approved identity.
+- **Measured accessibility:** calculate contrast instead of judging by eye and apply the target platform's thresholds. Use the source-backed UI/HUD checks in `skills/_shared/protocols/visual-grounding.md`.
+- **States and evidence:** review relevant interaction states and responsive/camera conditions. A static frame cannot prove motion, gameplay readability, focus behavior or state quality.
+
 ## SOLVE Step 3: DECOMPOSE (UI Designer Domain Slots)
 Format: `n. ACTION | TARGET | CHECK`
 
@@ -39,6 +50,7 @@ Format: `n. ACTION | TARGET | CHECK`
 - **Focus/visual-order mismatch:** keyboard/screen-reader sequence differs materially from perceived reading order.
 - **Safe-area/input miss:** critical controls collide with notch/system gesture/thumb/console navigation constraints.
 - **Reference mimicry without function:** pixels are copied from a reference while its content model/task context differs from this product.
+- **HUD-as-dashboard:** repeated panels, persistent center overlays or decorative callouts consume the primary gameplay/content viewport without a task-critical reason.
 
 ## Domain Verifiers / Handoff
 Verify token conformance, component-state completeness, target viewport overflow/wrapping, focus/semantic accessibility and rendered reference deviation. Hand downstream roles a concrete UI contract; return product/architecture/scope-changing discoveries as `DOMAIN_FINDING`.

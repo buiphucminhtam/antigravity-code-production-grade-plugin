@@ -57,6 +57,20 @@ Prefer official design-system documentation and direct product/reference evidenc
 
 Do not copy proprietary logos, unique copyrighted artwork, or brand identifiers as project assets. Reuse transferable patterns, systems, proportions, hierarchy, interaction, and style constraints.
 
+## 3.1 UI/HUD Evidence Gate
+
+For material UI and gameplay HUD work, the visual basis must also establish:
+
+1. **Primary content and occlusion budget** — identify the main task/gameplay viewport; measure persistent overlay coverage and record which elements may obscure content at each target viewport/camera condition.
+2. **Scanning hierarchy** — rank primary, secondary and tertiary information; verify placement, size, weight, alignment and proximity produce that reading order instead of several equally loud focal points.
+3. **Component language** — define a small semantic family of containers, borders, radii, elevation and effects. Repeating the same card/glow treatment everywhere is a coherence failure unless it is an approved system.
+4. **Semantic color and redundant cues** — assign color roles consistently and pair critical meaning with labels, icons, patterns or shapes. WCAG prohibits relying on color alone for information ([WCAG 2.2 §1.4.1](https://www.w3.org/TR/WCAG22/#use-of-color)).
+5. **Typography at delivery scale** — verify actual pixels, viewing distance, localization, text case/alignment and resizing. As a game-platform reference, Xbox XAG 101 recommends at least 18 px for PC/VR and 26 px for console at 1080p, plus scaling to 200% without loss; use the applicable target-platform requirement when it is stricter ([Xbox XAG 101](https://learn.microsoft.com/en-us/gaming/accessibility/xbox-accessibility-guidelines/101)).
+6. **Measured contrast** — record foreground/background pairs. WCAG AA requires 4.5:1 for normal text, 3:1 for large text and 3:1 for meaningful non-text UI; Xbox XAG 102 recommends 4.5:1 for standard game HUD elements and 7:1 in high-contrast mode ([WCAG 2.2 §1.4.3/1.4.11](https://www.w3.org/TR/WCAG22/#contrast-minimum), [Xbox XAG 102](https://learn.microsoft.com/en-us/gaming/accessibility/xbox-accessibility-guidelines/102)).
+7. **Adaptation and states** — verify safe areas, breakpoints/orientation, input modality, focus and state families. Apple HIG recommends using alignment/grouping to communicate hierarchy and maintaining legibility and relative hierarchy as text scales ([Apple HIG Layout](https://developer.apple.com/design/human-interface-guidelines/layout), [Typography](https://developer.apple.com/design/human-interface-guidelines/typography)).
+
+These are evidence requirements, not a universal aesthetic. Brand/style references may intentionally be maximalist, glassy, outlined or uppercase; preserve them when hierarchy, readability and accessibility remain proven. Report findings as `USABILITY/ACCESSIBILITY`, `REFERENCE_DEVIATION`, `TECHNICAL_ARTIFACT` or `SUBJECTIVE_PREFERENCE` rather than collapsing them into an unexplained score.
+
 ## 4. Visual Contract
 
 Before expensive implementation/generation, lock only the material dimensions:

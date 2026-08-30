@@ -36,7 +36,15 @@ These cross-cutting criteria are **pipeline invariants**, not responsibilities t
    Hub contract, pass its manifest/state context through every relevant phase,
    and apply `forge docs gate [target]` as a postcondition. The governance decision plus
    executable gate—not a policy regex or manual HTML/CSS edit—prove continuity.
-7. **Requirement-locked test oracle** — test scenarios and expected outcomes are
+7. **Plan-locked execution economics** — planning may use high reasoning when
+   ambiguity or risk warrants it, but it terminates in a parent-owned
+   `PLAN_LOCKED` digest binding objective, acceptance, selected ownership,
+   out-of-scope items, verification/audit, and phase routing. Workers cannot
+   revise that contract. Replan is permitted only for
+   `material_assumption_invalidated`, `acceptance_unreachable`,
+   `material_risk_discovered`, `same_blocker_twice`, or `user_scope_change`;
+   duplicate/no-progress work stops instead of consuming more execution time.
+8. **Requirement-locked test oracle** — test scenarios and expected outcomes are
    downstream executable contracts, not knobs for making CI green. Any behavioral
    test mutation must trace to an explicit current requirement/acceptance change.
    A failing test or changed implementation is not such evidence. If the expected

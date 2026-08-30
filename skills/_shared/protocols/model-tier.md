@@ -73,16 +73,23 @@ one scout.
 ## Native Codex Configuration
 
 Read `subagents.codex` from `.production-grade.yaml` before a native Codex
-dispatch. This project defaults to Luna with deep reasoning:
+dispatch. This project keeps the provider-validated default moderate, uses low
+reasoning for bounded discovery, medium reasoning for implementation, and high
+reasoning only for expert/audit work:
 
 ```yaml
 subagents:
   codex:
     default:
       model: "gpt-5.6-luna"
-      reasoning_effort: "high"
-    tiers: {}
-    agent_types: {}
+      reasoning_effort: "medium"
+    tiers:
+      scout: { model: "gpt-5.6-luna", reasoning_effort: "low" }
+      builder: { model: "gpt-5.6-terra", reasoning_effort: "medium" }
+      expert: { model: "gpt-5.6-sol", reasoning_effort: "high" }
+    agent_types:
+      explorer: { model: "gpt-5.6-luna", reasoning_effort: "low" }
+      worker: { model: "gpt-5.6-terra", reasoning_effort: "medium" }
 ```
 
 Resolve `model` and `reasoning_effort` independently with this precedence:
