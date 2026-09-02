@@ -3,11 +3,11 @@ id: visual-grounding
 title: Reference-Grounded Visual Design & Review
 summary: Evidence-first visual design using existing systems, researched references, deterministic checks, and reference-conformance review instead of aesthetic self-attestation.
 status: active
-version: 1.0.0
+version: 1.1.0
 owners: [core, design]
 triggers: [ui, visual, art, layout, ux, animation, vfx]
 used_by: [pipeline, production-grade, operating-preflight, operating-audit, quality-gate]
-related: [pipeline-operating-contract, quality-gate, verification, research-gate, evidence-first]
+related: [pipeline-operating-contract, quality-gate, verification, research-gate, evidence-first, visual-evidence-library]
 supersedes: []
 superseded_by: null
 ---
@@ -17,6 +17,8 @@ superseded_by: null
 
 Visual quality cannot be proven by a model saying that its own output “looks premium.” Material visual work must be grounded in an observable design basis and reviewed against that basis.
 
+**Model-prior boundary:** training memory and generic model taste may suggest research hypotheses but have evidence weight zero for material visual decisions. When a current project/user basis is absent, follow `visual-evidence-library.md`: record current external evidence as machine-validatable cards, synthesize a validated Visual Basis, and bind downstream visual artifacts to that basis. Do not silently fill missing direction from what the model remembers.
+
 ## 1. Visual Source Precedence
 
 Use the highest available source of truth and do not override it with generic taste rules:
@@ -25,7 +27,7 @@ Use the highest available source of truth and do not override it with generic ta
 2. existing project design system: tokens, CSS variables/themes, component library, asset/style contract, shipped screens;
 3. current rendered product screenshots and interaction patterns;
 4. official platform design system/conventions when the product targets that platform;
-5. researched references from successful comparable products/styles;
+5. validated evidence cards from successful comparable products and production design systems, with context/adoption evidence and transfer boundaries;
 6. new exploratory invention **only when no stronger basis exists**, clearly labeled as a proposal rather than project truth.
 
 A generic heuristic such as “avoid purple,” “use a 60/30/10 palette,” “use this font,” or “three cards look AI-generated” must never override an approved/reference system. If a project is intentionally purple, gradient-heavy, maximalist, glassy, pixel-art, brutalist, etc., fidelity to the chosen system outranks generic aesthetic preference.
@@ -53,9 +55,11 @@ Research should answer a decision, for example:
 - Which successful products communicate this information density or game fantasy well?
 - Which art direction has proven readability at the actual gameplay camera/asset size?
 
-Prefer official design-system documentation and direct product/reference evidence. Collect enough references to identify repeated patterns rather than copying a single screenshot blindly. Record what each reference is authoritative for: `STYLE`, `LAYOUT/TARGET`, `CHARACTER/IDENTITY`, `MOTION`, or `PLATFORM`.
+Prefer official design-system documentation and direct product/reference evidence. For material greenfield work with no project/user-approved authority, the evidence contract is fail-closed: Research Gate must pass, the `external_research` basis uses at least 3 grounded cards, at least one card carries production/adoption proof, and each material synthesized decision cites at least 2 independent cards. These minimums detect repeated mechanisms and reduce single-product imitation; stop once the decision is supported.
 
-Do not copy proprietary logos, unique copyrighted artwork, or brand identifiers as project assets. Reuse transferable patterns, systems, proportions, hierarchy, interaction, and style constraints.
+Record each source using `schemas/visual-evidence-card.schema.json`, including target-context similarity, success/adoption signal where applicable, observed mechanism, applicability boundary, prohibited copying, and `causal_claim_allowed: false`. A successful product proves that a visual system works in production context; it does not prove the visual choice caused market success.
+
+Do not copy proprietary logos, unique copyrighted artwork, or brand identifiers as project assets. Reuse transferable patterns, systems, proportions, hierarchy, interaction, and style constraints. Tier-C inspiration may broaden exploration but cannot ground a production decision.
 
 ## 3.1 UI/HUD Evidence Gate
 
@@ -77,6 +81,8 @@ Before expensive implementation/generation, lock only the material dimensions:
 
 ```text
 VISUAL GOAL: <user/task outcome>
+EVIDENCE BASIS: <validated visual-basis id/status + evidence card ids>
+MODEL PRIOR: hypothesis-only; used_as_evidence=false
 SOURCE OF TRUTH: <design system / refs / shipped screen>
 REFERENCE ROLES: <STYLE / TARGET / CHARACTER / MOTION / PLATFORM>
 TOKENS / STYLE DNA: <extracted, not invented>
@@ -123,6 +129,8 @@ Human approval is required only when the unresolved question is genuinely taste/
 ## 7. Anti-Hallucination Rules for Visual Roles
 
 - Never claim a screen/asset matches a reference that was not actually inspected.
+- Never use model training prior, model consensus, or self-confidence as evidence for a material visual choice.
+- Never infer that a product's success proves its palette/layout/style caused that success; record the causality limit explicitly.
 - Never invent a design-system token and describe it as existing project truth.
 - Never infer animation quality from a static frame alone.
 - Never infer gameplay readability from a close-up asset if the acceptance is at gameplay scale.

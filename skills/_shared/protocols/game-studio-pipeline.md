@@ -193,8 +193,8 @@ the repository-owned executables in this order:
 
 1. Resolve ordered, verified skill paths with
    `python3 scripts/runtime/skill_routing.py --mode "$MODE" --config .forgewright/skills-config.json`.
-2. Validate the concept and art artifacts with
-   `python3 scripts/art-direction/creative-handoff.py validate-handoff "$CONCEPT_PACKET" "$ART_DIRECTION_GATES"`.
+2. Validate the concept and art artifacts against the same GROUNDED evidence basis with
+   `python3 scripts/art-direction/creative-handoff.py validate-handoff "$CONCEPT_PACKET" "$ART_DIRECTION_GATES" --visual-basis .forgewright/visual-evidence/visual-basis.json --cards-dir .forgewright/visual-evidence/cards`.
 3. Freeze a skill-aware dispatch packet containing each item's skill name,
    `skill_path`, validated artifact paths, owned paths, checks, tier, and stop
    conditions. Do not dispatch from an unfrozen or path-only packet.

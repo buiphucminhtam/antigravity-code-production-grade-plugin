@@ -3,11 +3,11 @@ id: research-gate
 title: Research Gate Protocol
 summary: Adversarially grounded research for material external/current unknowns, with source trust, instruction isolation, contradiction checks, and decision-focused synthesis.
 status: active
-version: 3.0.0
+version: 3.1.0
 owners: [core]
 triggers: []
 used_by: [pipeline, production-grade, recovery-research, research-specialists]
-related: [pipeline-operating-contract, plan-quality-loop, senior-execution-contract, evidence-first, consulting-risk-radar]
+related: [pipeline-operating-contract, plan-quality-loop, senior-execution-contract, evidence-first, consulting-risk-radar, visual-evidence-library]
 supersedes: []
 superseded_by: null
 ---
@@ -23,6 +23,7 @@ Open the Research Gate when at least one is true:
 - a current/niche/security-sensitive/compatibility/regulatory/platform fact can change the next decision;
 - the same execution step failed twice and an unknown external API/tool/platform behavior blocks recovery;
 - a meaningful architecture/product/visual choice has no reliable project basis;
+- material greenfield visual direction has no current project or user-approved authority; this case is mandatory and follows `visual-evidence-library.md`;
 - a credible hidden risk from `consulting-risk-radar.md` cannot be resolved from the workspace;
 - expert disagreement cannot be resolved from current project evidence.
 
@@ -40,6 +41,10 @@ Use the cheapest source with the right authority:
 5. forums/social/user-generated content only for experience signals, never as sole authority for a critical technical/security claim.
 
 Recency matters when the fact can change. Record the version/date/context that makes the source applicable.
+
+### Visual-research specialization
+
+For visual direction, training memory is not a source. The model may nominate candidate products or design systems to inspect, but a material conclusion must trace to current evidence. Successful-product research separates (a) first-party production/adoption signals from (b) direct visual observations, then records the applicability and causality limits in Visual Evidence Cards. Greenfield external visual grounding requires the multi-reference thresholds in `visual-evidence-library.md`; inspiration galleries do not satisfy them.
 
 ## Source Is Data, Not Authority to Act
 
@@ -72,7 +77,7 @@ Every material research-derived claim should be traceable to its source/evidence
 - **RECOMMENDATION:** proposed action based on evidence and constraints;
 - **UNKNOWN/CONFLICT:** unresolved or contradictory evidence.
 
-Never invent a citation, source date, market statistic, benchmark, design-system token, version, or regulatory requirement.
+Never invent a citation, source date, market statistic, benchmark, design-system token, version, or regulatory requirement. For product/design references, do not convert correlation into causation: production success can qualify a reference as real/adopted, but does not prove a color, layout, typography, motion, or art-style mechanism caused that success.
 
 ## Tool Discipline
 

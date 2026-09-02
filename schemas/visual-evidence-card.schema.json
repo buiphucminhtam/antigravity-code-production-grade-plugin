@@ -1,0 +1,193 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://forgewright.dev/schemas/visual-evidence-card.schema.json",
+  "title": "Forgewright Visual Evidence Card",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "subject",
+    "source",
+    "context",
+    "success_evidence",
+    "evidence_roles",
+    "observations",
+    "causality",
+    "model_prior"
+  ],
+  "properties": {
+    "schema_version": { "const": "visual-evidence-card/v1" },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$" },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "category", "platform"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "successful_product",
+            "production_design_system",
+            "platform_guideline",
+            "user_approved_reference",
+            "project_product",
+            "inspiration_only"
+          ]
+        },
+        "category": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "platform": { "type": "string", "minLength": 1, "maxLength": 120 }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["publisher", "source_type", "location", "observed_at", "authority_tier"],
+      "properties": {
+        "publisher": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "source_type": {
+          "type": "string",
+          "enum": [
+            "first_party_product",
+            "first_party_metrics",
+            "official_design_system",
+            "official_platform_guideline",
+            "direct_product_capture",
+            "user_supplied",
+            "project_local",
+            "secondary_inspiration"
+          ]
+        },
+        "location": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "observed_at": { "type": "string", "minLength": 10, "maxLength": 64 },
+        "authority_tier": { "type": "string", "enum": ["A", "B", "C"] }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["audience", "primary_job", "interaction_model", "similarity_to_target", "applicability_boundary"],
+      "properties": {
+        "audience": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "primary_job": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "interaction_model": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "similarity_to_target": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "applicability_boundary": { "type": "string", "minLength": 1, "maxLength": 1500 }
+      }
+    },
+    "success_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "signals"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["verified", "production_adoption", "user_authority", "project_observed", "not_applicable"]
+        },
+        "signals": {
+          "type": "array",
+          "maxItems": 12,
+          "items": { "$ref": "#/$defs/success_signal" }
+        }
+      }
+    },
+    "evidence_roles": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "STYLE",
+          "LAYOUT_TARGET",
+          "SUBJECT",
+          "COMPOSITION",
+          "MATERIAL",
+          "LIGHTING",
+          "CAMERA",
+          "MOTION",
+          "PLATFORM",
+          "TYPOGRAPHY",
+          "COLOR",
+          "INTERACTION"
+        ]
+      }
+    },
+    "observations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 40,
+      "items": { "$ref": "#/$defs/observation" }
+    },
+    "causality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim_level", "causal_claim_allowed", "note"],
+      "properties": {
+        "claim_level": { "type": "string", "enum": ["observation", "association_only"] },
+        "causal_claim_allowed": { "const": false },
+        "note": { "type": "string", "minLength": 1, "maxLength": 1200 }
+      }
+    },
+    "model_prior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["used_as_evidence", "hypothesis_only"],
+      "properties": {
+        "used_as_evidence": { "const": false },
+        "hypothesis_only": { "const": true }
+      }
+    }
+  },
+  "$defs": {
+    "success_signal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim", "source_location", "observed_at", "caveat"],
+      "properties": {
+        "claim": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "source_location": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "observed_at": { "type": "string", "minLength": 10, "maxLength": 64 },
+        "caveat": { "type": "string", "minLength": 1, "maxLength": 1000 }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dimension",
+        "evidence_location",
+        "observed_pattern",
+        "transferable_mechanism",
+        "applicability_boundary",
+        "prohibited_copying"
+      ],
+      "properties": {
+        "dimension": {
+          "type": "string",
+          "enum": [
+            "color",
+            "typography",
+            "layout",
+            "component",
+            "motion",
+            "lighting",
+            "material",
+            "composition",
+            "shape",
+            "interaction",
+            "accessibility",
+            "other"
+          ]
+        },
+        "evidence_location": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "observed_pattern": { "type": "string", "minLength": 1, "maxLength": 1500 },
+        "transferable_mechanism": { "type": "string", "minLength": 1, "maxLength": 1500 },
+        "applicability_boundary": { "type": "string", "minLength": 1, "maxLength": 1500 },
+        "prohibited_copying": { "type": "string", "minLength": 1, "maxLength": 1500 }
+      }
+    }
+  }
+}

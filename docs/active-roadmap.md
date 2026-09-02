@@ -2,7 +2,7 @@
 
 > **North star:** cost per verified, accepted engineering task.
 > **Scope:** the core engineering loop first; game, XR, research, and growth remain optional capability packs until the core loop has production evidence.
-> **Status date:** 2026-08-29.
+> **Status date:** 2026-09-01.
 
 ## Product Goal
 
@@ -38,6 +38,7 @@ The product promise is:
 | State | Canonical MCP state uses typed fail-closed persistence, schema validation, lock-backed transactions, and bounded history | Production recovery and cross-process operational evidence remain missing |
 | CI/release | A required provider-neutral local control plane invokes product truth, Python units, MCP lint/format/build/test/coverage, CLI tests, production dependency audit, compatibility checks, package smoke checks, review, and clean-install evidence | Runtime smoke remains opt-in; hosted CI is not part of the canonical PASS/FAIL contract |
 | Memory | Boot injection is capped at 500 tokens | Retrieval quality, staleness, and non-ASCII query behavior lack release KPIs |
+| Visual direction | Local contracts now separate model prior from visual evidence: current project/user authority is preferred, greenfield external direction uses validated Evidence Cards + a GROUNDED Visual Basis, successful-product adoption is separated from causal claims, and concept/art/generation/asset-lifecycle handoffs fail closed on missing or mismatched basis bindings | Live image-generation aesthetics, harder gameplay-frame conformance, and non-Codex multimodal production evidence remain unverified |
 
 ## Provider-Native Routing Policy
 
@@ -190,5 +191,5 @@ review gates; reviewer identity is not cryptographically authenticated.
 2. Keep recovery at quiescent boundaries and reject pending disposer callbacks; do not deserialize arbitrary cleanup code.
 3. Keep arbitrary process execution disabled until a verified OS/container backend exists; application checks are not kernel isolation.
 4. Keep H5 production evidence missing until the supported provider returns bound live usage and both sides pass the same verifier contract.
-5. Run the provider-neutral visual/game canary with the same locked plan and acceptance verifier on any authorized multimodal model; do not add a vendor SDK/CLI dependency or enable provider-native swarm.
+5. Run the provider-neutral visual/game canary with the same locked plan, GROUNDED Visual Basis/evidence-card bundle, and acceptance verifier on any authorized multimodal model; do not add a vendor SDK/CLI dependency or enable provider-native swarm.
 6. Keep H6 optional until the single-run harness path has production evidence; reuse continuity as context, not completion authority.

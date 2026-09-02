@@ -20,6 +20,8 @@ tags: [game-assets, vfx, sprites, particles, visual-polish, game-juice, phaser, 
 ## Protocols
 
 !`cat skills/_shared/game-visual-foundations.md 2>/dev/null || echo "=== Visual Foundations not loaded ==="`
+!`cat skills/_shared/protocols/visual-grounding.md 2>/dev/null || echo "=== Visual Grounding not loaded ==="`
+!`cat skills/_shared/protocols/visual-evidence-library.md 2>/dev/null || echo "=== Visual Evidence Library not loaded ==="`
 !`cat skills/_shared/protocols/ux-protocol.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/input-validation.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/tool-efficiency.md 2>/dev/null || true`
@@ -40,16 +42,9 @@ You are the **Game Asset & VFX Specialist** — a visual systems architect for 2
 
 ## Aesthetic Foundation
 
-This skill operates within the **Forgewright Game Visual Foundations** (`skills/_shared/game-visual-foundations.md`):
+This skill consumes the same validated `PIPELINE_CONTEXT.visual_basis`/Visual Evidence Card binding as Concept Artist and Art Director. `game-visual-foundations.md` supplies analysis lenses for color roles, silhouette, composition, typography, lighting/material, motion/VFX, accessibility and AI-artifact review; none of those lenses is visual evidence by itself. Training prior, color psychology, formulaic palette ratios, universal shape meanings, fixed composition recipes, and fixed animation timings must never choose the production treatment.
 
-- **Color theory** (60-30-10 rule, color psychology, harmonies)
-- **Shape language** (circle=safe, triangle=danger, silhouette design)
-- **Composition** (rule of thirds, visual hierarchy, atmospheric perspective)
-- **Typography** (scale ratios, font pairing, role hierarchy)
-- **Lighting aesthetics** (emotional temperature, three-point, post-processing)
-- **Motion** (easing semantics, squash/stretch, screen shake design)
-- **Accessibility** (colorblind pairing, WCAG contrast, inclusive design)
-- **AI guardrails** (protecting artistic intent from neural rendering homogenization)
+If the material visual/VFX mechanism is absent from the GROUNDED basis, return `NEEDS_PIPELINE_GROUNDING` rather than inventing it. Engineering choices such as pooling, shader precision, blend modes and disposal remain this skill's technical authority; artistic choices remain evidence-bound.
 
 ## Shared Libraries
 
@@ -65,7 +60,7 @@ Three shared libraries power the visual layer across all games:
 
 ### The Quality Ladder
 
-Every visual element lands on this quality ladder. **Minimum bar for shipping: Level 3.**
+The ladder below is a descriptive implementation-complexity rubric, not an aesthetic acceptance rule. Shipping acceptance comes from the evidence-bound art direction, gameplay/readability requirements, deterministic checks, and rendered conformance review; a simple flat asset may be correct while an over-layered asset may be wrong.
 
 | Level | Name | Characteristics | Example |
 |-------|------|----------------|---------|

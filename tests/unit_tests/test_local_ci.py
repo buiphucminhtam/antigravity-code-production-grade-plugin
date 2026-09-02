@@ -40,6 +40,7 @@ def test_local_ci_exposes_provider_neutral_modes() -> None:
     } <= set(choices)
     assert module.MIN_NODE_MAJOR == 22
     assert module.NODE_MATRIX == (22, 24)
+    assert module.PRECOMMIT_PYTHON_UNIT_TIMEOUT_SECONDS == 1800
 
 
 def test_hosted_ci_is_not_a_canonical_runtime_dependency() -> None:
@@ -81,6 +82,9 @@ def test_precommit_runs_mandatory_docs_continuity_gate() -> None:
         "no:cacheprovider",
         "tests/unit_tests/",
     ]
+    assert "timeout=PRECOMMIT_PYTHON_UNIT_TIMEOUT_SECONDS" in MODULE_PATH.read_text(
+        encoding="utf-8"
+    )
 
 
 def test_timeout_terminates_spawned_process_tree(tmp_path: Path) -> None:
@@ -105,13 +109,13 @@ def test_timeout_terminates_spawned_process_tree(tmp_path: Path) -> None:
     os.name == "nt",
     reason="PATH/shebang semantics are validated by Windows integration",
 )
-def test_effective_env_prepends_resolved_node_directory() -> None:
+def test_effective_env_prepends_venv_python_and_resolved_node_directories() -> None:
     module = _module()
     runner = module.LocalCI(dry_run=True, keep_going=False, timeout=1, base_ref=None)
     runner.primary_node = "/tmp/fake-node/bin/node"
     env = runner._effective_env()
     path_parts = env["PATH"].split(os.pathsep)
-    assert path_parts[0] == str(Path(runner.python).resolve().parent)
+    assert path_parts[0] == str(Path(runner.python).parent.absolute())
     assert path_parts[1] == str(Path("/tmp/fake-node/bin").resolve())
 
 
@@ -142,7 +146,7 @@ def test_effective_env_deduplicates_workspace_bins_in_deterministic_order(
     env = runner._effective_env()
     path_parts = env["PATH"].split(os.pathsep)
     local_prefix = [
-        str(Path(runner.python).resolve().parent),
+        str(Path(runner.python).parent.absolute()),
         str(Path(runner.primary_node).resolve().parent),
         str(root_modules / ".bin"),
         str(mcp_modules / ".bin"),
@@ -177,7 +181,7 @@ def test_effective_env_omits_absent_local_bins_and_primary_node(
     env = runner._effective_env()
 
     assert env["PATH"].split(os.pathsep) == [
-        str(Path(runner.python).resolve().parent),
+        str(Path(runner.python).parent.absolute()),
         parent_path,
     ]
     assert "FORGEWRIGHT_EFFECTIVE_NODE_BIN" not in env

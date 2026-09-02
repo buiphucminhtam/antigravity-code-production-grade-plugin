@@ -703,10 +703,18 @@ export class LifecycleCoordinator {
       reasonCode: options.reasonCode ?? 'finalization',
       deadlineAtMs,
     });
+    // The caller's timeout bounds cleanup/quiescence, not the durability write
+    // needed to establish that finalization began. Under host I/O pressure a
+    // 100ms cleanup budget can otherwise expire while fsync is still persisting
+    // the start marker, producing a false storage-uncertain failure. Give the
+    // start marker its own bounded persistence window; the original cleanup
+    // deadline remains unchanged, so any time consumed here immediately reduces
+    // (or exhausts) the remaining cleanup budget.
+    const startPersistenceDeadlineAtMs = Date.now() + Math.max(1_000, options.timeoutMs);
     if (
       !(await this.waitUntil(
         finalizationStartedPromise.then(() => undefined),
-        deadlineAtMs,
+        startPersistenceDeadlineAtMs,
       ))
     ) {
       throw new LifecycleCoordinatorError(

@@ -48,7 +48,7 @@ Post-Skill: ⑥ QualityGate → ⑥b OperatingAudit → ⑦ BrownfieldSafety →
 |---|-----------|------|------|---------|
 | ① | SessionData | `middleware/01-session-data.md` | before_skill | Load profile, session state |
 | ② | ContextLoader | `middleware/02-context-loader.md` | before_skill | Load memory, conventions |
-| ②b| OperatingPreflight | `skills/_shared/protocols/pipeline-operating-contract.md` | before_skill | Build/refresh PIPELINE_CONTEXT: outcome, safe scope, risk ownership, research/visual basis |
+| ②b| OperatingPreflight | `skills/_shared/protocols/pipeline-operating-contract.md` | before_skill | Build/refresh PIPELINE_CONTEXT: outcome, safe scope, risk ownership, research plus evidence-bound visual basis |
 | ③b| DryRunContext | `skills/_shared/protocols/dryrun-interceptor.md` | before_skill | Dry-run mode system prompt injection |
 | ③ | SkillRegistry | `middleware/03-skill-registry.md` | before_skill | Progressive skill loading |
 | ④ | Guardrail | `middleware/04-guardrail.md` | before_tool | Pre-tool authorization |
@@ -535,7 +535,7 @@ When **Parallel** is selected, the BUILD and HARDEN phases use the parallel-disp
 6.5. **Build the pipeline operating envelope before specialist routing:**
    - Read `skills/_shared/protocols/pipeline-operating-contract.md`.
    - Resolve desired outcome, observable acceptance, constraints/non-goals, `Minimum Safe Scope`, credible cross-domain `risk_signals` with owners, and only decision-changing unknowns.
-   - If visual acceptance is material, establish `visual_basis` before UI/art implementation; if no reliable basis exists, resolve it at pipeline level rather than asking each visual skill to research independently.
+   - If visual acceptance is material, establish and validate `visual_basis` before UI/art implementation. Reuse current project/user authority when available; otherwise the greenfield Research Gate must create current Visual Evidence Cards and a `GROUNDED` `visual-basis/v1`. Training prior is hypothesis-only and cannot authorize visual choices. Resolve this once at pipeline level rather than asking each visual skill to research independently.
    - Keep this as task state for bounded work; persist `.forgewright/pipeline-context.md` only when multi-role/session handoff benefits from it.
    - Every specialist receives `PIPELINE_CONTEXT` and returns `DOMAIN_FINDING` for newly discovered cross-domain/scope-changing facts.
 
@@ -569,7 +569,7 @@ When **Parallel** is selected, the BUILD and HARDEN phases use the parallel-disp
      - `risk.known_cves > 0` (Critical/High) → warn and suggest Security audit
      - `risk.tech_debt_score > 7` → suggest addressing tech debt before new features
 
-8. **Close pipeline-owned material unknowns before dependent dispatch** — use the Research Gate only for current/niche/technical facts that can change the decision. Domain specialists may conduct additional research only when research is intrinsic to their specialty; they must not duplicate the generic source-trust/instruction-boundary loop.
+8. **Close pipeline-owned material unknowns before dependent dispatch** — use the Research Gate for current/niche/technical facts that can change the decision and for mandatory greenfield visual grounding when no project/user visual authority exists. Visual research follows `visual-evidence-library.md`: current production evidence, explicit causality limits, validated basis, model-prior exclusion. Domain specialists may conduct additional research only when intrinsic to their specialty; they must not duplicate the generic source-trust/instruction-boundary loop.
 
 9. **Create task tracking when useful:**
 

@@ -17,6 +17,7 @@ tags: [ui-design, interface-design, ux-design, game-ui, web-ui, interaction-desi
 
 !`cat skills/_shared/game-visual-foundations.md 2>/dev/null || echo "=== Visual Foundations not loaded ==="`
 !`cat skills/_shared/protocols/visual-grounding.md 2>/dev/null || echo "=== Visual Grounding not loaded ==="`
+!`cat skills/_shared/protocols/visual-evidence-library.md 2>/dev/null || echo "=== Visual Evidence Library not loaded ==="`
 !`cat skills/_shared/protocols/ux-protocol.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/input-validation.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/tool-efficiency.md 2>/dev/null || true`
@@ -30,9 +31,9 @@ tags: [ui-design, interface-design, ux-design, game-ui, web-ui, interaction-desi
 
 ## Pipeline Input Boundary
 
-The pipeline owns visual-basis discovery and supplies `PIPELINE_CONTEXT.visual_basis` for material visual work. UI Designer consumes that basis and owns the **specialist UI contract**: information hierarchy, grid/layout, semantic tokens, typography, component anatomy/states, responsive/safe-area behavior, accessibility and visual rhythm.
+The pipeline owns visual-basis discovery and supplies a validated `PIPELINE_CONTEXT.visual_basis` plus exact Visual Evidence Card IDs for material visual work. UI Designer consumes that basis and owns the **specialist UI contract**: information hierarchy, grid/layout, semantic tokens, typography, component anatomy/states, responsive/safe-area behavior, accessibility and visual rhythm.
 
-If a major UI task arrives without a reliable `visual_basis`, return `NEEDS_PIPELINE_GROUNDING`; do not independently reopen generic market/reference research. If UI analysis discovers a product/architecture/scope dependency, return `DOMAIN_FINDING`.
+If a major UI task arrives without a `GROUNDED` basis, return `NEEDS_PIPELINE_GROUNDING`; do not independently reopen generic market/reference research or substitute training memory. Model prior may suggest hypotheses only. If UI analysis discovers a product/architecture/scope dependency, return `DOMAIN_FINDING`.
 
 ## Mandatory UI/HUD Review Gate
 
@@ -44,9 +45,7 @@ redundant cues, actual-scale typography, measured contrast, component/state
 language and responsive/camera evidence. A static frame cannot prove gameplay,
 motion or interaction quality.
 
-Fixed values and component snippets below are illustrative implementation
-examples, not project defaults. The approved visual basis, target-platform
-requirements and mandatory UI/HUD gate override them.
+Fixed values and component snippets below are illustrative implementation examples, not project defaults or visual evidence. The validated visual basis/card IDs, target-platform requirements and mandatory UI/HUD gate override them. Generic model familiarity with these examples must never be used to choose project style.
 
 ## Identity
 
@@ -99,16 +98,9 @@ Use the font/type system supplied by the approved UI/brand contract. UI Designer
 | `caption` | 12px | Normal | Labels, hints |
 | `label` | 10px | Bold | ALL CAPS labels |
 
-### Typography Rules
+### Typography Evaluation Lenses
 
-| Rule | Example |
-|------|---------|
-| **Max 3 font sizes per screen** | Title + body + label |
-| **Use letter-spacing on labels** | `letter-spacing: 3px` for ALL CAPS; tighten letter-spacing slightly for headings, never for small text |
-| **Line height scaling** | Use 1.4x-1.5x for body (e.g. 16px font = 24px height). As font size goes up, multiplier goes down (1.3x for subheadings, 1.1x-1.2x for display headings) to prevent text lines from floating apart. |
-| **Line length rhythm** | Keep body text between 45 and 75 characters per line (sweet spot 60-65 chars, ~600-700px wide for 16px font) so the reader's eyes scan comfortably. |
-| **Typography for Action** | Use the approved/project type system with strong legibility at the actual HUD scale; choose a new face only from reference/platform research when the project has no typography basis. |
-| **Use bold sparingly** | Only for emphasis, not decoration. |
+The values in the illustrative scale above are examples only. For production, derive typography from the validated Visual Basis and applicable platform evidence. Evaluate role count, hierarchy, line-height, measure, tracking, localization, viewing distance and responsive scaling against the current reference/system; do not impose a universal font-size count, line-length range, letter-spacing recipe, or weight rule. If no grounded typography mechanism exists, return `NEEDS_PIPELINE_GROUNDING`.
 
 ### Color System
 
@@ -562,7 +554,7 @@ export function createSlider(
 * **Strategic Grid Breaking**: Group design elements into overlapping container boxes that repurpose margins, providing clean structure while breaking traditional grid symmetry.
 * **Bento Grid Reflow**: Do not duplicate the DOM to create separate bento grid layouts for desktop and mobile. Utilize state-aware CSS specifications (like native masonry) so dense information panels reflow dynamically into single-column mobile layouts without performance penalties.
 * **Maximinimalism**: Combine minimalist utility foundations with energetic accents. Establish simple layouts with low element counts, but overlay high-impact features such as bright colors, strong imagery, and highly personalized, casual copywriting.
-* **Carbon-Aware Interfaces**: Implement "Dark-First" default modes utilizing true black (#000000) to save OLED battery power. Substitute heavy photography with scalable vector graphics (SVGs) and pure CSS filters (like SVG noise/film grain) to synthesize tactile depth.
+* **Resource-Aware Interfaces**: Treat dark/light mode, image density, SVG/CSS substitution, effects and asset weight as measurable product/platform trade-offs. Do not choose true black, dark-first, reduced imagery, or a synthetic texture style unless the validated visual basis and target hardware/product constraints support it.
 
 ### 4. Game HUD Architectural Taxonomy
 * **Diegetic HUD**: Place crucial status information directly within the 3D geometry and story fiction (e.g., health bar on a spacesuit spine) to maximize immersion and eliminate 2D overlays.
@@ -1220,10 +1212,10 @@ export function createAccessibleIcon(
 ## UI Quality Checklist
 
 ### Visual Quality
-- [ ] Typography follows scale (max 3 sizes per screen)
+- [ ] Typography hierarchy follows the validated project/reference basis and remains readable at real scale
 - [ ] Color roles/emphasis match the approved design system/reference (no universal palette ratio)
-- [ ] Contrast ratios meet WCAG AA (4.5:1 text, 3:1 UI)
-- [ ] Consistent spacing (8px grid)
+- [ ] Contrast ratios meet the applicable current standard/platform requirement
+- [ ] Spacing follows the validated project/reference token system rather than a universal grid
 - [ ] Visual hierarchy clear
 
 ### Interaction Quality
@@ -1258,18 +1250,18 @@ export function createAccessibleIcon(
 
 | # | Mistake | Why It Fails | Solution |
 |---|---------|---------------|----------|
-| 1 | Too many font sizes | Visual noise | Max 3 per screen |
-| 2 | Low contrast text | Hard to read | Meet 4.5:1 ratio |
-| 3 | No hover states | Unclear interactivity | Scale + color change |
-| 4 | Tiny touch targets | Missed taps | 48×48px (or 10-15mm) minimum |
-| 5 | No disabled states | Confusing UI | Gray out + reduce opacity |
-| 6 | Animations too fast | Abrupt feel | 200-500ms durations |
-| 7 | Static UI | Feels dead | Subtle idle animations |
-| 8 | Inconsistent spacing | Messy layout | 8px grid system |
-| 9 | No loading states | Appears frozen | Spinners, progress bars |
-| 10 | Color-only feedback | Inaccessible | Add icons, patterns |
-| 11 | Uniform line height multiplier | Headings float apart like they had a fight | Reduce multiplier to 1.1x-1.2x for massive headings; keep 1.4x-1.5x for body text. |
-| 12 | Excessive reading line width | Disrupted reading rhythm | Keep text width bound between 45 and 75 characters per line (sweet spot 60-65 chars). |
+| 1 | Unexplained typography proliferation | Hierarchy becomes noisy or inconsistent | Compare roles against the validated typography system and remove roles with no task/reference rationale |
+| 2 | Low contrast text | Hard to read | Measure against the applicable current accessibility/platform requirement |
+| 3 | Missing interaction state | Affordance/feedback becomes ambiguous | Implement the state behavior defined by the component contract; do not invent a universal hover animation |
+| 4 | Target too small for the actual input mode | Missed or inaccessible interactions | Use the applicable platform/input target requirement and test it on the real device/input mode |
+| 5 | No disabled/unavailable state | Confusing UI | Use the approved state language with redundant semantic cues |
+| 6 | Motion timing disconnected from function/reference | Abrupt, sluggish, or stylistically inconsistent behavior | Derive timing/easing from the grounded motion basis and verify in context |
+| 7 | Unmotivated motion or static treatment | Attention is misallocated | Use motion only where the task/reference basis assigns it a function |
+| 8 | Inconsistent spacing | Grouping and rhythm drift | Use the validated project token/spacing system rather than a universal grid |
+| 9 | Missing async/status state | Appears frozen or ambiguous | Use the approved loading/progress/status pattern appropriate to the latency and task |
+| 10 | Color-only feedback | Inaccessible | Add labels/icons/shapes/patterns as appropriate |
+| 11 | Typography rhythm drift | Text roles lose hierarchy at real scale | Tune line-height/measure from the grounded type system and rendered evidence |
+| 12 | Text measure unsuitable for the task/viewport | Reading or scanning degrades | Validate measure using representative content, viewport, locale and task rather than a fixed character count |
 | 13 | Stat-bloat in skill trees | Choice paralysis and boredom | Limit to meaningful gameplay milestones; support color-coding and search keyword filters. |
 | 14 | HUD-as-dashboard | Persistent cards and decorative callouts obscure gameplay or create competing focal points | Measure overlay coverage, rank information priority, and move noncritical content to contextual/transient layers. |
 
@@ -1278,7 +1270,7 @@ export function createAccessibleIcon(
 ### Design Foundation
 - [ ] Typography system extracted/approved (family, scale, weights, fallbacks)
 - [ ] Color palette created (backgrounds, primary, semantic)
-- [ ] Spacing system (8px grid)
+- [ ] Spacing/token system extracted from the validated project/reference basis
 - [ ] Design tokens exported
 
 ### Component Library

@@ -1,64 +1,53 @@
 ---
 name: vision-review
-description: "Orchestrates visual regression testing, UI/UX layout audits, accessibility design reviews, and cross-platform display consistency checks. Use when the user requests visual regression audits, layout mismatch reviews, Playwright snapshot configurations, Midscene.js AI-vision scripts, or responsive design inspections."
-version: 1.0.0
+description: "Provider-neutral rendered visual reviewer that validates UI/game-art output against a GROUNDED Visual Basis, deterministic constraints and current reference evidence; scores are telemetry, never aesthetic authority."
+version: 3.0.0
 ---
 
 # Vision Review (LITE)
 
-## SOLVE Step 2: GROUND (Vision Review Domain Slots)
-| Assumption | Check command / file read | Result | Script-produced evidence |
-|---|---|---|---|
-| Project tech stack and language profile are established | `cat .forgewright/project-profile.json` | ... | run the check command and paste output |
-| Visual regression or E2E testing package configurations exist | `cat package.json \| jq '.devDependencies \| keys' \| grep -E \"(playwright\|puppeteer\|cypress\|midscene)\"` | ... | run the check command and paste output |
-| Playwright viewport dimensions and VRT config options are defined | `cat playwright.config.ts \|\| cat playwright.config.js` | ... | run the check command and paste output |
+## Domain Authority
 
-## SOLVE Step 3: DECOMPOSE (Vision Review Domain Slots)
-Format: `n. ACTION | TARGET | CHECK`
+Evaluate rendered output against `PIPELINE_CONTEXT.visual_basis`, validated Visual Evidence Cards, approved Style DNA/UI contract and the real target context. Do not invent visual direction.
 
-1. AUDIT | Scan target component layouts, responsive media queries, and viewport scale thresholds | Verify that color contrast ratios meet WCAG guidelines and elements don't shift layout bounds during load.
-2. CAPTURE | Generate local screenshots or trigger E2E visual captures under specific resolutions | Ensure that snapshots are taken only after the page reaches network idle status to prevent flaky animations.
-3. COMPARE | Execute pixelmatch comparisons between active screenshots and established reference base images | Confirm that pixel mismatch ratios do not exceed the max allowed threshold configured for the suite.
+**Model prior is hypothesis-only.** Training memory, model consensus, generic taste and “AI-looking” folklore have evidence weight zero. If the basis/render/context is materially missing, return `UNVERIFIED` / `NEEDS_PIPELINE_GROUNDING` rather than applying remembered aesthetic rules.
 
-## Common Mistakes Checklist
-- **Cross-Platform Mismatch Divergences**: Comparing baseline screenshots generated locally on MacOS directly against test outputs generated on Linux/CI, causing minor text rendering mismatches. Always run VRT inside an official headless Docker test container to guarantee rendering consistency.
-- **Unbounded Mismatch Thresholds**: Setting the pixelmatch mismatch threshold (`maxDiffPixels` or `maxDiffPixelRatio`) too low (failing on irrelevant anti-aliasing variations) or too high (ignoring broken CSS rules).
-- **Non-Compliant Asset Directory Names**: Storing screenshot bases, visual audit report sheets, or user review logs under `docs/` using CamelCase or spaces instead of strictly lowercase kebab-case (e.g., `docs/04-testing/VisualReport.md` instead of `docs/04-testing/visual-review-report.md`).
+## Ground
 
-### Step 1: Ground target styling frameworks and testing settings
-```bash
-cat .forgewright/project-profile.json
-cat playwright.config.ts | grep -E "(use:|viewport|expect)" -A 3
-```
-```typescript
-  use: {
-    viewport: { width: 1280, height: 720 },
-    ignoreHTTPSErrors: true,
-    screenshot: 'only-on-failure',
-  },
-```
+| Input | Verify | Script-produced evidence |
+|---|---|---|
+| Visual basis | `visual-basis/v1`, `status=GROUNDED`, `model_prior.used_as_evidence=false` | basis id + decision/card bindings |
+| Evidence cards | current project/user authority or validated card library | source tier, context, observed mechanisms, causality limit |
+| Render context | actual viewport/camera/scale/state/platform | inspected render/media refs |
+| Deterministic constraints | layout/contrast/alpha/dimensions/import/state checks as applicable | project-owned tool/check output |
 
-### Step 2: Implement an automated, flake-free visual regression test in `tests/visual-audit.spec.ts`
-```typescript
-import { test, expect } from '@playwright/test';
+## Review
 
-test('landing page layout matches the visual baseline', async ({ page }) => {
-  // Navigate to the target local server
-  await page.goto('/');
+1. STRUCTURAL | Deterministic properties | Run tooling first; vision does not self-attest measurable facts.
+2. REFERENCE FIDELITY | Render vs approved basis | Cite concrete `REFERENCE_DEVIATION`; do not punish fashionable/common styles unless unsupported by the contract.
+3. USABILITY | Hierarchy/readability/task context | Cite `USABILITY_ACCESSIBILITY` with actual scale/state evidence.
+4. ARTIFACTS | Generation/render/import defects | Cite `TECHNICAL_ARTIFACT`; distinguish defects from intentional stylization.
+5. PREFERENCE | Taste-only disagreement | Label `SUBJECTIVE_PREFERENCE`; it cannot block production unless made an explicit requirement.
+6. VERDICT | Evidence + findings | `APPROVE | REVISE | REJECT | UNVERIFIED`.
 
-  // Prevent flaky comparisons by waiting for both the network and layout stability
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(500); // Allow custom animations to settle
+## Verdict Rules
 
-  // Perform secure, grounded pixel comparison
-  await expect(page).toHaveScreenshot('landing-page-base.png', {
-    maxDiffPixelRatio: 0.02, // Enforce maximum 2% pixel variance
-    animations: 'disabled',  // Automatically freeze CSS transition states
-  });
-});
-```
+- `APPROVE`: relevant deterministic checks pass and no unresolved material evidence-backed finding remains.
+- `REVISE`: direction is valid but material findings remain.
+- `REJECT`: output materially contradicts the approved direction or cannot satisfy target function without a different approach.
+- `UNVERIFIED`: required basis, render/state/context or reviewer capability is absent.
 
-### Step 3: Run the local visual test suite and inspect pixel mismatch scores
-```bash
-npx playwright test tests/visual-audit.spec.ts
-```
+**Scores are telemetry, not authority.** A high score cannot override a concrete material deviation; a low score without an evidence-backed finding cannot reject a visual. Do not use a generic `ai_tells` score. Use `reference_fidelity` plus artifact-specific dimensions only when score telemetry is useful.
+
+## Failure Modes
+
+- rejecting purple/glass/centered/system-font/symmetry/minimal/maximal styling because it feels “AI”;
+- accepting a polished render without a basis;
+- inferring motion from a static frame;
+- judging gameplay assets only at hero scale;
+- treating product adoption as proof that its color/style caused success;
+- allowing numeric averages to hide a concrete mismatch.
+
+## Handoff
+
+Return basis identity, inspected artifact/context, deterministic evidence, categorized findings, correction mechanism, verdict, limitations and next render/check. Newly discovered evidence that invalidates the basis returns to the pipeline as `DOMAIN_FINDING`; reviewer does not silently rewrite Style DNA.

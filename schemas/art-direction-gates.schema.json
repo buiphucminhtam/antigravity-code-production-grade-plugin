@@ -4,7 +4,7 @@
   "title": "Forgewright Art Direction Gates",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "project", "concept_packet", "style_dna", "gates"],
+  "required": ["version", "project", "visual_basis", "concept_packet", "style_dna", "gates"],
   "properties": {
     "version": {
       "type": "string",
@@ -12,6 +12,9 @@
     },
     "project": {
       "$ref": "#/$defs/project"
+    },
+    "visual_basis": {
+      "$ref": "#/$defs/visual_basis_ref"
     },
     "concept_packet": {
       "type": "object",
@@ -59,6 +62,22 @@
       "properties": {
         "id": { "type": "string", "minLength": 1 },
         "name": { "type": "string", "minLength": 1 }
+      }
+    },
+    "visual_basis_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "evidence_card_ids", "model_prior_used_as_evidence"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "enum": ["GROUNDED"] },
+        "evidence_card_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "model_prior_used_as_evidence": { "const": false }
       }
     },
     "gate": {

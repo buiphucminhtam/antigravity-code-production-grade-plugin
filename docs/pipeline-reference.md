@@ -73,6 +73,16 @@ or repeated-blocker results. The independent auditor binds the same plan digest
 and reviews immutable requirements, diff, and raw evidence without worker
 reasoning.
 
+### Evidence-grounded visual direction
+
+Material visual direction is not allowed to come from model training prior or generic model taste. The pipeline reuses current project/user-approved visual authority first; when a greenfield project has no such basis, it opens the Research Gate and records current product/design-system evidence as machine-validatable `visual-evidence-card/v1` artifacts. A `successful_product` card must carry separate production/adoption evidence and an explicit causality limit: adoption proves that the source is a real production reference, not that its palette, layout, typography, motion or art style caused the business outcome.
+
+A greenfield `external_research` basis fails closed unless Research Gate passes, at least three grounded evidence cards support the basis, at least one card carries production/adoption proof, and each material synthesized decision cites at least two independent cards. Tier-C inspiration can expand exploration but cannot ground a production decision. The synthesized `visual-basis/v1` records exact evidence-card IDs plus `MUST MATCH`, `MAY VARY`, `PROHIBITED DRIFT`, applicability boundaries and `model_prior.used_as_evidence=false`.
+
+Concept Packet, Art Direction Gates, UI/interaction work, game-art generation, asset registration/drift/manifest, and visual review must bind the same validated `GROUNDED` basis. `scripts/art-direction/visual_evidence.py` validates the evidence library/basis, while `creative-handoff.py`, `style-contract.py`, and `asset-lifecycle.py` fail closed on missing or mismatched evidence binding. Legacy style-recipe CSVs and generic heuristics such as 60/30/10, color psychology, rule-of-thirds, fixed font counts, spacing grids or animation timings are exploration/analysis lenses only; they cannot authorize production styling.
+
+This evidence contract proves provenance and decision discipline, not live generator quality. Image-generation aesthetics remain a separate production-evidence question and are not implied by local validator success.
+
 ### Provider-neutral visual/game harness lane
 
 Forgewright owns the visual/game workflow; no vendor SDK or CLI is required by
@@ -102,8 +112,9 @@ component/state language and target viewport/camera behavior. Review reports
 concrete `USABILITY/ACCESSIBILITY`, `REFERENCE_DEVIATION`,
 `TECHNICAL_ARTIFACT` and `SUBJECTIVE_PREFERENCE` findings; a numeric aesthetic
 score cannot approve a visual. The canonical specialist rules are
-`skills/ui-designer/LITE.md`, `skills/ui-designer/SKILL.md`, and
-`skills/_shared/protocols/visual-grounding.md`.
+`skills/ui-designer/LITE.md`, `skills/ui-designer/SKILL.md`,
+`skills/_shared/protocols/visual-grounding.md`, and
+`skills/_shared/protocols/visual-evidence-library.md`.
 
 The Lite runtime also bounds skill-overlay context before prompt assembly.
 `context_budget.max_skill_descriptions_tokens` applies an ordered-prefix budget

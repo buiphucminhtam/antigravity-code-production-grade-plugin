@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.unit_tests.test_style_contract import valid_contract
+from tests.unit_tests.test_style_contract import evidence_args, valid_contract
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -28,8 +28,13 @@ def write_contract(tmp_path: Path, *, engine: str = "godot") -> Path:
 
 
 def run_tool(*args: str) -> subprocess.CompletedProcess[str]:
+    command_args = list(args)
+    if command_args and command_args[0] in {"register", "drift", "manifest"}:
+        contract_index = command_args.index("--contract") + 1
+        contract = Path(command_args[contract_index])
+        command_args.extend(evidence_args(contract.parent))
     return subprocess.run(
-        [sys.executable, str(TOOL), *args],
+        [sys.executable, str(TOOL), *command_args],
         cwd=ROOT,
         text=True,
         capture_output=True,
@@ -217,6 +222,8 @@ def test_pipeline_wires_register_drift_manifest_and_handoff(tmp_path: Path) -> N
             "PROJECT_STYLE_GUIDE": str(contract),
             "ART_ASSET_INVENTORY": str(inventory),
             "ART_ENGINE_MANIFEST": str(manifest),
+            "VISUAL_BASIS_PATH": str(Path(evidence_args(tmp_path)[1])),
+            "VISUAL_EVIDENCE_CARDS_DIR": str(Path(evidence_args(tmp_path)[3])),
         }
     )
 

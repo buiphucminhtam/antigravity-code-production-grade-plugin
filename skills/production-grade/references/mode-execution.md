@@ -451,7 +451,7 @@ Build a game from concept to a verified release using the control plane in
    for ordered verified paths, use `concept-artist` to produce
    structurally distinct visual directions and a selected concept packet, then
    validate the concept/art artifacts with
-   `python3 scripts/art-direction/creative-handoff.py validate-handoff "$CONCEPT_PACKET" "$ART_DIRECTION_GATES"`,
+   `python3 scripts/art-direction/creative-handoff.py validate-handoff "$CONCEPT_PACKET" "$ART_DIRECTION_GATES" --visual-basis .forgewright/visual-evidence/visual-basis.json --cards-dir .forgewright/visual-evidence/cards`,
    freeze the skill-aware dispatch packet, and then initialize and validate
    `.forgewright/art-direction/game-art-contract.json` using the Art Director
    protocol. Asset generation and engine handoff require approved style,

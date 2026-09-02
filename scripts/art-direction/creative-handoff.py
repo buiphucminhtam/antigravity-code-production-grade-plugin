@@ -13,6 +13,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from visual_evidence import load_and_validate_bundle
+
 
 ROOT = Path(__file__).resolve().parents[2]
 CONCEPT_SCHEMA = ROOT / "schemas" / "concept-packet.schema.json"
@@ -174,9 +176,11 @@ def validate_art(document: dict[str, Any]) -> list[str]:
     return sorted(set(errors))
 
 
-def generation_blockers(document: dict[str, Any]) -> list[str]:
+def generation_blockers(
+    document: dict[str, Any], evidence_blockers: list[str] | None = None
+) -> list[str]:
     gates = document.get("gates", {})
-    blockers: list[str] = []
+    blockers: list[str] = list(evidence_blockers or [])
 
     style_dna = document.get("style_dna")
     if not isinstance(style_dna, dict):
@@ -244,7 +248,63 @@ def cross_errors(concept: dict[str, Any], art: dict[str, Any]) -> list[str]:
         errors.append(
             "concept_packet.selected_direction_id does not match selected_direction_id"
         )
+    concept_basis = concept.get("visual_basis")
+    art_basis = art.get("visual_basis")
+    if isinstance(concept_basis, dict) and isinstance(art_basis, dict):
+        if concept_basis.get("id") != art_basis.get("id"):
+            errors.append(
+                "visual_basis.id mismatch between concept packet and art-direction gates"
+            )
+        if sorted(concept_basis.get("evidence_card_ids", [])) != sorted(
+            art_basis.get("evidence_card_ids", [])
+        ):
+            errors.append(
+                "visual_basis.evidence_card_ids mismatch between concept packet and art-direction gates"
+            )
     return sorted(set(errors))
+
+
+def visual_bundle_checks(
+    documents: list[tuple[str, dict[str, Any]]],
+    basis_path: Path | None,
+    cards_dir: Path | None,
+) -> tuple[list[str], list[str]]:
+    """Bind creative artifacts to one validated GROUNDED visual basis."""
+
+    if basis_path is None or cards_dir is None:
+        return [], [
+            "validated visual evidence bundle is required; model priors or unbound references cannot authorize generation"
+        ]
+    basis, cards, bundle_errors = load_and_validate_bundle(basis_path, cards_dir)
+    if bundle_errors:
+        return [], [f"visual evidence: {error}" for error in bundle_errors]
+    blockers: list[str] = []
+    if basis.get("status") != "GROUNDED":
+        blockers.append("visual evidence basis must be GROUNDED")
+    if not cards:
+        blockers.append("visual evidence library is empty")
+
+    errors: list[str] = []
+    expected_id = basis.get("id")
+    expected_cards = sorted(basis.get("card_ids", []))
+    for label, document in documents:
+        binding = document.get("visual_basis")
+        if not isinstance(binding, dict):
+            errors.append(f"{label}.visual_basis is missing or malformed")
+            continue
+        if binding.get("id") != expected_id:
+            errors.append(
+                f"{label}.visual_basis.id does not match validated visual basis"
+            )
+        if sorted(binding.get("evidence_card_ids", [])) != expected_cards:
+            errors.append(
+                f"{label}.visual_basis.evidence_card_ids do not match validated visual basis"
+            )
+        if binding.get("model_prior_used_as_evidence") is not False:
+            errors.append(
+                f"{label}.visual_basis.model_prior_used_as_evidence must be false"
+            )
+    return sorted(set(errors)), sorted(set(blockers))
 
 
 def result(
@@ -264,19 +324,31 @@ def run(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
         if args.command == "validate-concept":
             document = read_document(args.concept, "concept packet")
             errors = validate_concept(document)
-            return result(args.command, errors), int(bool(errors))
+            if args.visual_basis or args.cards_dir:
+                binding_errors, binding_blockers = visual_bundle_checks(
+                    [("concept", document)], args.visual_basis, args.cards_dir
+                )
+                errors.extend(binding_errors)
+                errors.extend(binding_blockers)
+            return result(args.command, sorted(set(errors))), int(bool(errors))
 
         if args.command == "validate-art":
             document = read_document(args.art, "art-direction gates")
             errors = validate_art(document)
+            documents = [("art", document)]
             if args.concept:
                 concept = read_document(args.concept, "concept packet")
                 concept_errors = validate_concept(concept)
                 errors.extend(f"concept: {error}" for error in concept_errors)
+                documents.insert(0, ("concept", concept))
                 if not concept_errors and not errors:
                     errors.extend(cross_errors(concept, document))
-            blockers = generation_blockers(document)
-            output = result(args.command, errors, blockers)
+            binding_errors, evidence_blockers = visual_bundle_checks(
+                documents, args.visual_basis, args.cards_dir
+            )
+            errors.extend(binding_errors)
+            blockers = generation_blockers(document, evidence_blockers)
+            output = result(args.command, sorted(set(errors)), blockers)
             output["generation_allowed"] = not errors and not blockers
             return output, int(bool(errors or blockers))
 
@@ -287,12 +359,21 @@ def run(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
         errors = concept_errors + art_errors
         if not concept_errors and not art_errors:
             errors.extend(cross_errors(concept, art))
-        blockers = generation_blockers(art)
-        output = result(args.command, errors, blockers)
+        binding_errors, evidence_blockers = visual_bundle_checks(
+            [("concept", concept), ("art", art)], args.visual_basis, args.cards_dir
+        )
+        errors.extend(binding_errors)
+        blockers = generation_blockers(art, evidence_blockers)
+        output = result(args.command, sorted(set(errors)), blockers)
         output["generation_allowed"] = not errors and not blockers
         return output, int(bool(errors or blockers))
     except HandoffError as error:
         return result(args.command, [str(error)]), 1
+
+
+def _add_visual_evidence_args(command: argparse.ArgumentParser) -> None:
+    command.add_argument("--visual-basis", type=Path)
+    command.add_argument("--cards-dir", type=Path)
 
 
 def parser() -> argparse.ArgumentParser:
@@ -301,16 +382,19 @@ def parser() -> argparse.ArgumentParser:
 
     concept = commands.add_parser("validate-concept")
     concept.add_argument("concept", help="explicit concept packet JSON path")
+    _add_visual_evidence_args(concept)
 
     art = commands.add_parser("validate-art")
     art.add_argument("art", help="explicit art-direction gates JSON path")
     art.add_argument(
         "--concept", dest="concept", help="optional concept packet JSON path"
     )
+    _add_visual_evidence_args(art)
 
     handoff = commands.add_parser("validate-handoff")
     handoff.add_argument("concept", help="explicit concept packet JSON path")
     handoff.add_argument("art", help="explicit art-direction gates JSON path")
+    _add_visual_evidence_args(handoff)
     return command_parser
 
 

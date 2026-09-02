@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://forgewright.dev/schemas/visual-basis.schema.json",
+  "title": "Forgewright Visual Basis",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "status",
+    "basis_origin",
+    "target_context",
+    "research_gate",
+    "card_ids",
+    "decisions",
+    "model_prior"
+  ],
+  "properties": {
+    "schema_version": { "const": "visual-basis/v1" },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$" },
+    "status": { "type": "string", "enum": ["GROUNDED", "EXPLORATORY", "UNVERIFIED"] },
+    "basis_origin": { "type": "string", "enum": ["project", "user_approved", "external_research", "mixed"] },
+    "target_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["greenfield", "category", "platform", "audience", "primary_job"],
+      "properties": {
+        "greenfield": { "type": "boolean" },
+        "category": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "platform": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "audience": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "primary_job": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    },
+    "research_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "question", "researched_at", "source_strategy"],
+      "properties": {
+        "status": { "type": "string", "enum": ["PASSED", "NOT_REQUIRED", "BLOCKED"] },
+        "question": { "type": "string", "minLength": 1, "maxLength": 1200 },
+        "researched_at": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "source_strategy": { "type": "string", "minLength": 1, "maxLength": 1200 }
+      }
+    },
+    "card_ids": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 3, "maxLength": 128 }
+    },
+    "decisions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 40,
+      "items": { "$ref": "#/$defs/decision" }
+    },
+    "model_prior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["used_as_evidence", "hypothesis_only"],
+      "properties": {
+        "used_as_evidence": { "const": false },
+        "hypothesis_only": { "const": true }
+      }
+    }
+  },
+  "$defs": {
+    "string_list": {
+      "type": "array",
+      "maxItems": 30,
+      "items": { "type": "string", "minLength": 1, "maxLength": 1200 }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "claim",
+        "dimensions",
+        "card_ids",
+        "synthesis",
+        "applicability_boundary",
+        "must_match",
+        "may_vary",
+        "prohibited_drift",
+        "causality_limit"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$" },
+        "claim": { "type": "string", "minLength": 1, "maxLength": 1200 },
+        "dimensions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "color",
+              "typography",
+              "layout",
+              "component",
+              "motion",
+              "lighting",
+              "material",
+              "composition",
+              "shape",
+              "interaction",
+              "accessibility",
+              "other"
+            ]
+          }
+        },
+        "card_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 3, "maxLength": 128 }
+        },
+        "synthesis": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "applicability_boundary": { "type": "string", "minLength": 1, "maxLength": 1500 },
+        "must_match": { "$ref": "#/$defs/string_list" },
+        "may_vary": { "$ref": "#/$defs/string_list" },
+        "prohibited_drift": { "$ref": "#/$defs/string_list" },
+        "causality_limit": { "type": "string", "minLength": 1, "maxLength": 1500 }
+      }
+    }
+  }
+}

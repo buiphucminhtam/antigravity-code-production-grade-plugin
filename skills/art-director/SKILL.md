@@ -11,10 +11,7 @@ camera, viewport, platform, and asset budget.
 
 ## Authority Boundary
 
-Consume the selected concept packet from `concept-artist` and
-`PIPELINE_CONTEXT.visual_basis`. Own the approved Style DNA, art-direction
-brief, color script, family bibles, style-frame gates, generation contracts,
-cross-asset reviews, and visual acceptance decisions.
+Consume the selected concept packet from `concept-artist` and the exact validated `PIPELINE_CONTEXT.visual_basis`/Visual Evidence Card binding. Own the approved Style DNA, art-direction brief, color script, family bibles, style-frame gates, generation contracts, cross-asset reviews, and visual acceptance decisions.
 
 Do not reopen broad concept exploration unless evidence shows the selected
 direction cannot satisfy the brief. Do not own shader implementation, engine
@@ -22,8 +19,7 @@ import automation, UI information architecture, or final product acceptance;
 handoff those concerns to `technical-artist`, engine specialists,
 `ui-designer`, and the control plane.
 
-If the concept boundary or visual basis is materially missing, return
-`NEEDS_PIPELINE_GROUNDING` with the exact missing decision. Read
+If the concept boundary or visual basis is materially missing, not `GROUNDED`, or does not bind the same evidence-card IDs as the Concept Packet, return `NEEDS_PIPELINE_GROUNDING` with the exact missing decision. Never backfill a missing palette/style mechanism from training memory, model consensus, or aesthetic self-confidence. Read
 [art-direction-system.md](references/art-direction-system.md) for the complete
 direction canvas, family-bible template, and review rubric.
 
@@ -62,9 +58,7 @@ profile defines no token, cost, or goal quota.
    artifacts.
 7. **Production truth over concept cheats.** Camera, animation, responsiveness,
    memory, legibility, accessibility, and content volume constrain direction.
-8. **No universal aesthetic defaults.** Palette size, grids, fonts, outline
-   widths, contrast, or “AI tells” come from the approved basis and target—not
-   generic style folklore.
+8. **No universal aesthetic defaults.** Palette size, grids, fonts, outline widths, timing, contrast, or “AI tells” come from the validated basis and target—not generic style folklore or training prior. Heuristics in `game-visual-foundations.md` are analysis lenses only.
 
 ## Core Workflow
 
@@ -87,8 +81,7 @@ Write a direction statement:
 
 ### 2. Translate the Approved Basis into Style DNA
 
-Extract measurable rules from `STYLE`, `TARGET`, `SUBJECT`, `COMPOSITION`,
-`MATERIAL`, `LIGHTING`, `CAMERA`, `MOTION`, and `PLATFORM` references.
+First verify the exact Visual Evidence Card binding. Then extract measurable rules from the inspected `STYLE`, `TARGET`, `SUBJECT`, `COMPOSITION`, `MATERIAL`, `LIGHTING`, `CAMERA`, `MOTION`, and `PLATFORM` references, preserving each observed mechanism's applicability and causality limits.
 
 Define only the applicable dimensions:
 
@@ -171,10 +164,7 @@ Reject a family that only works as one polished hero asset.
 
 ### 7. Compile Generation and Handoff Contracts
 
-When AI generation is used, prompts are downstream of the direction contract.
-Bind each request to reference roles, identity invariants, composition/camera,
-material/light behavior, allowed variation, prohibited drift, output format, and
-target-engine constraints. Negative constraints must be specific to observed or
+When AI generation is used, prompts are downstream of the evidence-bound direction contract. Bind each request to the validated visual-basis id/card IDs, `model_prior_used_as_evidence=false`, reference roles, identity invariants, composition/camera, material/light behavior, allowed variation, prohibited drift, output format, and target-engine constraints. Negative constraints must be specific to observed or
 credible drift; do not paste generic negative-prompt lists.
 
 For versioned game-art production, use the repository contracts and scripts:
@@ -216,8 +206,9 @@ production feasibility. Cite concrete deviations and corrective mechanisms.
 Produce the smallest applicable set:
 
 - art-direction brief and direction statement;
-- approved Style DNA;
-- reference-role map;
+- exact GROUNDED visual-basis id/card IDs;
+- approved Style DNA derived from that evidence;
+- reference-role map with applicability/causality boundaries;
 - style frame and gate record;
 - COLOR SCRIPT;
 - asset-family bible(s);

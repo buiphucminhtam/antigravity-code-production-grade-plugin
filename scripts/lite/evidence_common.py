@@ -40,15 +40,23 @@ MAX_EVIDENCE_BYTES = 4 * 1024 * 1024
 # narrow: project configuration and source under .forgewright remain covered.
 _FINGERPRINT_RUNTIME_DIRS = frozenset(
     {
+        ".forgewright/audit",
         ".forgewright/cache",
         ".forgewright/escalations",
         ".forgewright/local-ci-venv",
         ".forgewright/memory-bank",
         ".forgewright/metrics",
+        ".forgewright/offload",
         ".forgewright/runtime",
         ".forgewright/subagent-context",
         ".forgewright/telemetry",
         ".forgewright/verify",
+        "mcp/.forgewright",
+        "mcp/node_modules/.vite",
+        "src/cli/node_modules/.vite",
+        ".hypothesis",
+        ".pytest_cache",
+        ".ruff_cache",
     }
 )
 _FINGERPRINT_RUNTIME_FILES = frozenset(
@@ -801,7 +809,12 @@ def _git_paths(workspace: Path, args: list[str]) -> list[str]:
     ]
 
 
-def worktree_fingerprint(workspace: Path) -> str:
+def worktree_fingerprint(
+    workspace: Path,
+    *,
+    records_out: dict[str, str] | None = None,
+    excluded_paths: Iterable[str] = (),
+) -> str:
     """Hash HEAD plus staged/unstaged tracked, untracked, and ignored source state.
 
     Explicit verifier-owned runtime state is excluded so evidence capture,
@@ -809,7 +822,39 @@ def worktree_fingerprint(workspace: Path) -> str:
     Project configuration and arbitrary ignored files remain covered. Unlike the
     old DIRTY fallback, every covered state is represented by an exact digest
     and same-HEAD changes are not accepted.
+
+    When ``records_out`` is supplied, populate it with the exact covered path
+    records gathered during the fingerprint pass. This lets callers diagnose
+    changed paths without re-reading the whole worktree a second time.
+
+    ``excluded_paths`` is an explicit caller-owned boundary for generated output
+    that a verifier is expected to rewrite. Defaults remain fail-closed: callers
+    must opt in to every excluded path, and normal evidence fingerprints cover
+    the full project state except verifier-owned runtime paths above.
     """
+
+    def normalize_relative(value: str) -> str:
+        normalized = value.replace("\\", "/")
+        while normalized.startswith("./"):
+            normalized = normalized[2:]
+        return normalized.rstrip("/")
+
+    normalized_exclusions = tuple(
+        sorted(
+            {
+                normalize_relative(value)
+                for value in excluded_paths
+                if normalize_relative(value)
+            }
+        )
+    )
+
+    def path_ignored(relative: str) -> bool:
+        normalized = normalize_relative(relative)
+        return _ignored_verify_path(normalized) or any(
+            normalized == prefix or normalized.startswith(prefix + "/")
+            for prefix in normalized_exclusions
+        )
 
     try:
         inside = _run_git(workspace, ["rev-parse", "--is-inside-work-tree"]).strip()
@@ -822,24 +867,29 @@ def worktree_fingerprint(workspace: Path) -> str:
             for name in sorted(files):
                 path = Path(root) / name
                 relative = path.relative_to(workspace).as_posix()
-                if _ignored_verify_path(relative):
+                if path_ignored(relative):
                     continue
-                digest.update(_actual_record(workspace, relative).encode())
+                record = _actual_record(workspace, relative)
+                if records_out is not None:
+                    records_out[relative] = record
+                digest.update(record.encode())
                 digest.update(b"\0")
         return f"NONGIT:{digest.hexdigest()}"
 
     try:
         head = _run_git(workspace, ["rev-parse", "HEAD"], check=True).decode().strip()
         index_records = []
+        index_metadata: dict[str, str] = {}
         submodule_paths: list[str] = []
         for record in _run_git(workspace, ["ls-files", "-s", "-z"]).split(b"\0"):
             if not record:
                 continue
             metadata, raw_path = record.split(b"\t", 1)
             relative = raw_path.decode("utf-8", "surrogateescape")
-            if not _ignored_verify_path(relative):
+            if not path_ignored(relative):
                 metadata_text = metadata.decode("ascii", "replace")
                 index_records.append("index|" + relative + "|" + metadata_text)
+                index_metadata[relative] = metadata_text
                 if metadata_text.startswith("160000 "):
                     submodule_paths.append(relative)
         tracked = _git_paths(workspace, ["ls-files", "-z"])
@@ -851,20 +901,36 @@ def worktree_fingerprint(workspace: Path) -> str:
             ["ls-files", "--others", "--ignored", "--exclude-standard", "-z"],
         )
         records = [f"HEAD|{head}", *sorted(index_records)]
-        records.extend(
-            _actual_record(workspace, relative)
-            for relative in sorted(set(tracked))
-            if not _ignored_verify_path(relative)
-        )
+        for relative in sorted(set(tracked)):
+            if path_ignored(relative):
+                continue
+            record = _actual_record(workspace, relative)
+            records.append(record)
+            if records_out is not None:
+                records_out[relative] = (
+                    record + "|index|" + index_metadata.get(relative, "")
+                )
         for relative in sorted(set((*untracked, *ignored))):
-            if not _ignored_verify_path(relative):
-                records.extend(_untracked_record(workspace, relative))
+            if path_ignored(relative):
+                continue
+            for record in _untracked_record(workspace, relative):
+                records.append(record)
+                if records_out is not None:
+                    parts = record.split("|", 2)
+                    diagnostic_path = parts[1] if len(parts) > 1 else relative
+                    records_out[diagnostic_path] = record
         for relative in sorted(set(submodule_paths)):
             submodule = workspace / relative
             nested = (
                 worktree_fingerprint(submodule) if submodule.is_dir() else "MISSING"
             )
-            records.append(f"submodule|{relative}|{nested}")
+            submodule_record = f"submodule|{relative}|{nested}"
+            records.append(submodule_record)
+            if records_out is not None:
+                prior = records_out.get(relative, "")
+                records_out[relative] = (
+                    f"{prior}|{submodule_record}" if prior else submodule_record
+                )
         digest = hashlib.sha256()
         for record in records:
             digest.update(record.encode("utf-8", "surrogateescape"))

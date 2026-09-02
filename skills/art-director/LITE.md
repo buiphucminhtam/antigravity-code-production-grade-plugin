@@ -8,12 +8,11 @@ version: 4.0.0
 
 ## Domain Authority
 
-Consume the selected `concept-artist` packet and
-`PIPELINE_CONTEXT.visual_basis`. Own the production visual system: Style DNA,
+Consume the selected `concept-artist` packet and its exact validated `PIPELINE_CONTEXT.visual_basis`/Visual Evidence Card binding. Own the production visual system: Style DNA,
 style-frame and family gates, COLOR SCRIPT, controlled variation, generation
 contracts, and multi-scale review. Do not reopen broad concept exploration or
 own technical implementation. If the selected direction or basis is materially
-missing, return `NEEDS_PIPELINE_GROUNDING` with the exact gap.
+missing, not `GROUNDED`, or mismatched with the concept packet, return `NEEDS_PIPELINE_GROUNDING` with the exact gap. Never replace missing evidence with model taste, remembered color psychology, or a self-confidence score.
 
 ## Optional Bounded Peer Feedback
 
@@ -41,7 +40,7 @@ prohibited drift, reference evidence, and real context where it is judged.
 | Specialist input | Grounding check | Script-produced evidence |
 |---|---|---|
 | Selected concept boundary | Inspect concept packet, locks, open decisions, risks | visual thesis + invariant/variable/open map |
-| Reference roles | Inspect `STYLE`, `SUBJECT`, `COMPOSITION`, `MATERIAL`, `LIGHTING`, `CAMERA`, `MOTION`, `PLATFORM` refs | transfer and prohibition notes |
+| Evidence-bound reference roles | Inspect validated card IDs then `STYLE`, `SUBJECT`, `COMPOSITION`, `MATERIAL`, `LIGHTING`, `CAMERA`, `MOTION`, `PLATFORM` refs | observed mechanisms + applicability/causality limits + transfer/prohibition notes |
 | Style DNA | Inspect silhouettes, values, palette, surfaces, line/detail, light, camera, motion, type/UI | measurable rules and allowed ranges |
 | Production context | Inspect real camera/viewports, engine/import limits, content volume, animation/states | reproducible target constraints |
 
@@ -54,7 +53,7 @@ Format: `n. ACTION | TARGET | CHECK`
 3. PROVE STYLE FRAME | Representative composition | Verify the whole visual relationship at the real camera/viewport.
 4. COLOR SCRIPT | Scene/state/progression | Prove value, palette, lighting, atmosphere, and redundant functional cues.
 5. DEFINE FAMILY | Representative asset family | Specify lineage, controlled variation, ordinary/edge/state cases, and anti-examples.
-6. COMPILE CONTRACT | Generation/import target | Bind identity, references, camera, constraints, outputs, and prohibited drift.
+6. COMPILE CONTRACT | Generation/import target | Bind the validated visual-basis id/card ids, identity, references, camera, constraints, outputs, prohibited drift, and `model_prior_used_as_evidence=false`.
 7. REVIEW SCALES | Thumbnail, gameplay/product, hero, family wall, stress states | Cite concrete deviations and corrective mechanisms.
 8. HANDOFF | UI, technical art, animation/VFX, engine, QA | Deliver approved rules, evidence, exceptions, risks, and versions.
 

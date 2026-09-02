@@ -309,18 +309,22 @@ export class ModelCallGateway {
   }
 
   private async withTimeout<T>(promise: Promise<T>): Promise<T> {
+    const startedAt = performance.now();
+    const timeoutError = () =>
+      Object.assign(new Error('Model call timed out'), { code: 'MODEL_CALL_TIMEOUT' });
+    const guardedPromise = promise.then((value) => {
+      // A heavily loaded event loop can delay the timeout callback until after
+      // the provider's own completion callback. Enforce the elapsed-time cap at
+      // settlement too, so an overdue provider result can never win the race.
+      if (performance.now() - startedAt >= this.caps.timeoutMs) throw timeoutError();
+      return value;
+    });
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       return await Promise.race([
-        promise,
+        guardedPromise,
         new Promise<T>((_, reject) => {
-          timer = setTimeout(
-            () =>
-              reject(
-                Object.assign(new Error('Model call timed out'), { code: 'MODEL_CALL_TIMEOUT' }),
-              ),
-            this.caps.timeoutMs,
-          );
+          timer = setTimeout(() => reject(timeoutError()), this.caps.timeoutMs);
         }),
       ]);
     } finally {

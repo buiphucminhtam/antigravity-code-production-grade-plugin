@@ -8,9 +8,7 @@ version: 1.0.0
 
 ## Domain Authority
 
-Own divergent visual concepts and the selected concept packet. Consume
-`PIPELINE_CONTEXT.visual_basis`; route final Style DNA, family governance, and
-production QA to `art-director`.
+Own divergent visual concepts and the selected concept packet. Consume the validated `PIPELINE_CONTEXT.visual_basis` plus its exact Visual Evidence Card IDs; route final Style DNA, family governance, and production QA to `art-director`. Model prior may propose exploration axes but may not supply style/color/layout evidence. If the material basis is not `GROUNDED`, return `NEEDS_PIPELINE_GROUNDING`.
 
 ## Optional Bounded Peer Feedback
 
@@ -31,7 +29,7 @@ explicit parent-serial fallback; do not require collaboration for ordinary tasks
 | Specialist input | Inspect | Script-produced evidence |
 |---|---|---|
 | Brief and function | audience, promise, story/gameplay/brand role, context | one visual thesis + non-goals |
-| Reference basis | role-tagged STYLE/SUBJECT/COMPOSITION/MATERIAL/LIGHTING/CAMERA refs | transferable mechanisms + prohibited copying/drift |
+| Evidence-bound reference basis | validated visual-basis id + card ids, then role-tagged STYLE/SUBJECT/COMPOSITION/MATERIAL/LIGHTING/CAMERA refs | current source evidence + transferable mechanisms + applicability/causality limits + prohibited copying/drift |
 | Production context | platform, camera, scale, engine/UI, budget, animation/responsive needs | hard constraints + feasibility risks |
 | Existing visual world | shipped assets, approved concepts, neighboring systems | continuity rules + intentional departures |
 
@@ -43,7 +41,7 @@ explicit parent-serial fallback; do not require collaboration for ordinary tasks
 4. DEVELOP | Each direction | Thumbnail → silhouette/massing → value → color/light → material/detail.
 5. PRESSURE-TEST | Real context | Check first read, function, distinctiveness, feasibility, extensibility, platform fit.
 6. SELECT | Direction matrix | Recommend with evidence; preserve named concerns and rejected trade-offs.
-7. PACKET | Selected concept | Deliver views, keys, callouts, invariants, variation, prohibited drift, risks, next test.
+7. PACKET | Selected concept | Bind the exact GROUNDED visual-basis id/card ids and deliver views, keys, callouts, invariants, variation, prohibited drift, risks, next test.
 
 ## Quality Checks
 

@@ -73,6 +73,12 @@ a continuously refreshed, local-first HTML control center:
   `observe`, preserve the existing Stop/security gates, and fail open on
   missing runtimes, malformed payloads, invalid manifests, or timeouts. Set
   `FORGEWRIGHT_RULE_HOOK_MODE=off` for the immediate kill switch.
+- **Material visual direction is evidence-grounded.** Current project/user
+  references outrank generic taste; greenfield external direction uses current
+  production/design-system Evidence Cards plus a validated Visual Basis.
+  Model training prior may suggest research hypotheses but cannot authorize
+  palette, typography, layout, motion, art style, or a causal claim about why a
+  successful product succeeded.
 
 The generated site is written to `.forgewright/docs-hub/site/`; open
 `.forgewright/docs-hub/site/index.html` for the project overview or

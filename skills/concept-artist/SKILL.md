@@ -16,11 +16,7 @@ selected concept packet. Do not own the final cross-project Style DNA, asset
 family governance, engine import rules, or production QA; hand those to
 `art-director` and `technical-artist`.
 
-Consume `PIPELINE_CONTEXT.visual_basis`, the product/game brief, audience,
-platform, narrative/gameplay function, and production constraints. A greenfield
-basis may contain research references and constraints rather than an approved
-style. If no trustworthy basis exists, return `NEEDS_PIPELINE_GROUNDING` with
-the exact missing inputs.
+Consume the validated `PIPELINE_CONTEXT.visual_basis`, its exact Visual Evidence Card IDs, the product/game brief, audience, platform, narrative/gameplay function, and production constraints. For material greenfield work, research references are usable only after the pipeline has encoded and validated them under `visual-evidence-library.md`; model prior may propose search hypotheses but has evidence weight zero. If the basis is not `GROUNDED`, or the expected card binding is missing, return `NEEDS_PIPELINE_GROUNDING` with the exact missing inputs.
 
 ## Optional Bounded Peer Feedback
 
@@ -59,9 +55,7 @@ Write one visual thesis in this form:
 
 ### 2. Decompose References by Role
 
-Tag each approved reference as `STYLE`, `SUBJECT`, `COMPOSITION`, `MATERIAL`,
-`LIGHTING`, `CAMERA`, `MOTION`, or `PLATFORM`. Extract mechanisms rather than
-copying a finished image. Record what may transfer and what must not transfer.
+Start from the validated Evidence Card IDs, then tag each inspected reference as `STYLE`, `SUBJECT`, `COMPOSITION`, `MATERIAL`, `LIGHTING`, `CAMERA`, `MOTION`, or `PLATFORM`. Extract observed mechanisms rather than copying a finished image. Preserve each source's applicability and causality limits; a successful product does not prove its visual mechanism caused success. Record what may transfer and what must not transfer.
 
 ### 3. Build Design Axes
 
@@ -136,7 +130,8 @@ and what must be prototyped in a style frame or engine/UI context.
 Include only applicable artifacts:
 
 - creative brief and visual thesis;
-- reference-role map with transfer/prohibition notes;
+- exact `visual-basis` id/status and Visual Evidence Card IDs, with `model_prior_used_as_evidence=false`;
+- reference-role map with transfer/prohibition and applicability/causality notes;
 - direction matrix and selection rationale;
 - hero/key view plus alternate or functional views;
 - silhouette, value, color, and lighting keys;
@@ -185,7 +180,5 @@ next test. Missing applicable concept evidence is `FAIL`.
 
 ## Handoff
 
-Send `art-director` the selected concept packet, reference-role map, locked and
-open decisions, scale/camera evidence, production risks, and the exact qualities
-that must survive Style DNA extraction. Return cross-domain scope or platform
+Send `art-director` the selected concept packet with the exact validated visual-basis id/card IDs, reference-role map, locked and open decisions, scale/camera evidence, production risks, and the exact qualities that must survive Style DNA extraction. Return cross-domain scope or platform
 issues as `DOMAIN_FINDING`.

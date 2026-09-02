@@ -566,6 +566,86 @@ def test_ledger_and_telemetry_concurrent_appends_are_complete(tmp_path: Path) ->
     assert not Path(f"{event_path}.lock").exists()
 
 
+def test_worktree_fingerprint_ignores_runtime_offload_but_not_project_files(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    run("git", "init", "-q", cwd=workspace)
+    (workspace / "source.txt").write_text("v1\n", encoding="utf-8")
+    run("git", "add", "source.txt", cwd=workspace)
+    run(
+        "git",
+        "-c",
+        "user.name=Forgewright Test",
+        "-c",
+        "user.email=test@example.invalid",
+        "commit",
+        "-qm",
+        "fixture",
+        cwd=workspace,
+    )
+
+    baseline = worktree_fingerprint(workspace)
+    runtime_files = {
+        workspace
+        / ".forgewright"
+        / "offload"
+        / "runtime-call"
+        / "events.jsonl": "{}\n",
+        workspace / "mcp" / ".forgewright" / "verification-events.jsonl": "{}\n",
+        workspace
+        / "mcp"
+        / "node_modules"
+        / ".vite"
+        / "vitest"
+        / "results.json": "{}\n",
+        workspace
+        / "src"
+        / "cli"
+        / "node_modules"
+        / ".vite"
+        / "vitest"
+        / "results.json": "{}\n",
+    }
+    for path, payload in runtime_files.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(payload, encoding="utf-8")
+    assert worktree_fingerprint(workspace) == baseline
+
+    (workspace / "source.txt").write_text("v2\n", encoding="utf-8")
+    assert worktree_fingerprint(workspace) != baseline
+
+
+def test_worktree_fingerprint_explicit_exclusion_is_bounded(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace-exclusion"
+    workspace.mkdir()
+    run("git", "init", "-q", cwd=workspace)
+    (workspace / "source.txt").write_text("source\n", encoding="utf-8")
+    run("git", "add", "source.txt", cwd=workspace)
+    run(
+        "git",
+        "-c",
+        "user.name=Forgewright Test",
+        "-c",
+        "user.email=test@example.invalid",
+        "commit",
+        "-qm",
+        "fixture",
+        cwd=workspace,
+    )
+
+    baseline = worktree_fingerprint(workspace, excluded_paths=("generated",))
+    generated = workspace / "generated"
+    generated.mkdir()
+    (generated / "artifact.js").write_text("build-v1\n", encoding="utf-8")
+    assert worktree_fingerprint(workspace, excluded_paths=("generated",)) == baseline
+    assert worktree_fingerprint(workspace) != baseline
+
+    (workspace / "other.txt").write_text("material\n", encoding="utf-8")
+    assert worktree_fingerprint(workspace, excluded_paths=("generated",)) != baseline
+
+
 def test_isolated_rule_loop_does_not_touch_tracked_runtime_files(
     tmp_path: Path,
 ) -> None:

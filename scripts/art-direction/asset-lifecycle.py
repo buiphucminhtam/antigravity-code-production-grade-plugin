@@ -132,16 +132,23 @@ def install_json_no_clobber(path: Path, value: dict[str, Any]) -> bool:
             temporary.unlink(missing_ok=True)
 
 
-def validate_contract(path: Path) -> dict[str, Any]:
+def validate_contract(
+    path: Path, visual_basis: Path | None, cards_dir: Path | None
+) -> dict[str, Any]:
+    command = [
+        sys.executable,
+        str(STYLE_CONTRACT_TOOL),
+        "validate",
+        str(path),
+        "--stage",
+        "generation",
+    ]
+    if visual_basis is not None:
+        command.extend(["--visual-basis", str(visual_basis)])
+    if cards_dir is not None:
+        command.extend(["--cards-dir", str(cards_dir)])
     result = subprocess.run(
-        [
-            sys.executable,
-            str(STYLE_CONTRACT_TOOL),
-            "validate",
-            str(path),
-            "--stage",
-            "generation",
-        ],
+        command,
         cwd=ROOT,
         text=True,
         capture_output=True,
@@ -344,7 +351,7 @@ def latest_version(entry: dict[str, Any]) -> dict[str, Any]:
 
 
 def command_register(args: argparse.Namespace) -> int:
-    contract = validate_contract(args.contract)
+    contract = validate_contract(args.contract, args.visual_basis, args.cards_dir)
     validate_identity(args.asset_type, args.name)
     try:
         asset = args.asset.resolve(strict=True)
@@ -450,7 +457,7 @@ def drift_report(contract: dict[str, Any], inventory: dict[str, Any]) -> dict[st
 
 
 def command_drift(args: argparse.Namespace) -> int:
-    contract = validate_contract(args.contract)
+    contract = validate_contract(args.contract, args.visual_basis, args.cards_dir)
     if not args.inventory.is_file():
         raise LifecycleError(f"asset inventory not found: {args.inventory}")
     inventory = load_inventory(args.inventory, contract)
@@ -532,7 +539,7 @@ def build_manifest(
 
 
 def command_manifest(args: argparse.Namespace) -> int:
-    contract = validate_contract(args.contract)
+    contract = validate_contract(args.contract, args.visual_basis, args.cards_dir)
     if not args.inventory.is_file():
         raise LifecycleError(f"asset inventory not found: {args.inventory}")
     inventory = load_inventory(args.inventory, contract)
@@ -636,12 +643,18 @@ def command_handoff(args: argparse.Namespace) -> int:
     return 0
 
 
+def add_evidence_arguments(command: argparse.ArgumentParser) -> None:
+    command.add_argument("--visual-basis", type=Path)
+    command.add_argument("--cards-dir", type=Path)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     register = subparsers.add_parser("register")
     register.add_argument("--contract", type=Path, required=True)
+    add_evidence_arguments(register)
     register.add_argument("--inventory", type=Path, required=True)
     register.add_argument("--asset-type", required=True)
     register.add_argument("--name", required=True)
@@ -650,11 +663,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     drift = subparsers.add_parser("drift")
     drift.add_argument("--contract", type=Path, required=True)
+    add_evidence_arguments(drift)
     drift.add_argument("--inventory", type=Path, required=True)
     drift.set_defaults(handler=command_drift)
 
     manifest = subparsers.add_parser("manifest")
     manifest.add_argument("--contract", type=Path, required=True)
+    add_evidence_arguments(manifest)
     manifest.add_argument("--inventory", type=Path, required=True)
     manifest.add_argument("--output", type=Path, required=True)
     manifest.set_defaults(handler=command_manifest)

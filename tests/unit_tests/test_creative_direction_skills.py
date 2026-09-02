@@ -20,6 +20,20 @@ INDEX = ROOT / "kernel" / "INDEX.md"
 SKILLS_CONFIG = ROOT / ".forgewright" / "skills-config.json"
 WORKFLOW = ROOT / "workflows" / "game-studio-build.md"
 GAME_PROTOCOL = ROOT / "skills" / "_shared" / "protocols" / "game-studio-pipeline.md"
+VISUAL_EVIDENCE_PROTOCOL = (
+    ROOT / "skills" / "_shared" / "protocols" / "visual-evidence-library.md"
+)
+VISUAL_GROUNDING = ROOT / "skills" / "_shared" / "protocols" / "visual-grounding.md"
+VISUAL_FOUNDATIONS = ROOT / "skills" / "_shared" / "game-visual-foundations.md"
+UI_SKILL = ROOT / "skills" / "ui-designer" / "SKILL.md"
+UI_DATA_README = ROOT / "skills" / "ui-designer" / "data" / "README.md"
+VISION_REVIEW_SKILL = ROOT / "skills" / "vision-review" / "SKILL.md"
+VISION_REVIEW_LITE = ROOT / "skills" / "vision-review" / "LITE.md"
+VISION_REVIEW_SCRIPT = ROOT / "scripts" / "art-direction" / "vision-review.sh"
+VFX_SKILL = ROOT / "skills" / "game-asset-vfx" / "SKILL.md"
+DESIGN_MINDSET = (
+    ROOT / "skills" / "_shared" / "protocols" / "design-mindset-and-rules.md"
+)
 PROMPT_TEMPLATES = ROOT / "skills" / "art-director" / "prompt-templates"
 
 
@@ -264,3 +278,68 @@ def test_negative_constraints_require_evidence_and_scoped_review() -> None:
     assert "[CORRECTIVE_MECHANISM]" in negative
     assert "[DRIFT_REVIEW_CONTEXT]" in negative
     assert "asset family, state, scale, camera, platform" in negative
+
+
+def test_visual_evidence_protocol_makes_model_prior_hypothesis_only() -> None:
+    evidence = _normalized(_read(VISUAL_EVIDENCE_PROTOCOL)).lower()
+    grounding = _normalized(_read(VISUAL_GROUNDING)).lower()
+
+    assert "model prior is not evidence" in evidence
+    assert "used_as_evidence: false" in evidence
+    assert "3 grounded evidence cards" in evidence
+    assert "2 independent evidence cards" in evidence
+    assert "causal_claim_allowed: false" in evidence
+    assert "training memory" in grounding
+    assert "evidence weight zero" in grounding
+
+
+def test_visual_foundations_and_specialists_do_not_reintroduce_legacy_taste_rules() -> (
+    None
+):
+    foundations = _normalized(_read(VISUAL_FOUNDATIONS)).lower()
+    ui = _read(UI_SKILL)
+    vfx = _read(VFX_SKILL)
+    mindset = _normalized(_read(DESIGN_MINDSET)).lower()
+    data_readme = _normalized(_read(UI_DATA_README)).lower().replace("*", "")
+
+    assert "not a rule" in foundations
+    assert "system fonts are not inherently low quality" in foundations
+    assert "no universal palette ratio" in mindset
+    assert "legacy aesthetic recipe csvs were removed" in data_readme
+    assert "cannot authorize palette" in data_readme
+
+    forbidden = (
+        "Max 3 font sizes per screen",
+        'Implement "Dark-First"',
+        "Spacing system (8px grid)",
+        "circle=safe",
+        "triangle=danger",
+        "Color theory** (60-30-10 rule",
+    )
+    combined = ui + "\n" + vfx
+    for phrase in forbidden:
+        assert phrase not in combined
+
+
+def test_legacy_aesthetic_recipe_data_and_ai_tells_gate_are_retired() -> None:
+    data_dir = ROOT / "skills" / "ui-designer" / "data"
+    assert sorted(path.name for path in data_dir.glob("*.csv")) == []
+
+    vision_skill = _normalized(_read(VISION_REVIEW_SKILL)).lower()
+    vision_lite = _normalized(_read(VISION_REVIEW_LITE)).lower()
+    vision_script = _normalized(_read(VISION_REVIEW_SCRIPT)).lower()
+    for text in (vision_skill, vision_lite, vision_script):
+        assert '"ai_tells"' not in text
+        assert "claude vision-powered" not in text
+        assert "reference_fidelity" in text
+        assert "model prior" in text
+        assert "scores are telemetry" in text
+
+
+def test_creative_workflow_binds_handoff_to_visual_evidence_bundle() -> None:
+    workflow = _normalized(_read(WORKFLOW))
+    protocol = _normalized(_read(GAME_PROTOCOL))
+
+    for text in (workflow, protocol):
+        assert "--visual-basis .forgewright/visual-evidence/visual-basis.json" in text
+        assert "--cards-dir .forgewright/visual-evidence/cards" in text

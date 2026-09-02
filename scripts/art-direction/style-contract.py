@@ -10,6 +10,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from visual_evidence import load_and_validate_bundle
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_PATH = (
@@ -104,24 +106,35 @@ def validate_contract(
 
     for dotted in schema.get("hex_map_paths", []):
         present, value = get_path(document, dotted)
-        if present:
+        if present and not (stage == "draft" and value == {}):
+            if (
+                stage == "draft"
+                and isinstance(value, dict)
+                and all(
+                    isinstance(colors, list) and not colors for colors in value.values()
+                )
+            ):
+                continue
             validate_hex_map(value, dotted, errors)
 
     present, aspect = get_path(document, "style.canvas.aspect_ratio")
-    if present and (not isinstance(aspect, str) or ASPECT_RE.fullmatch(aspect) is None):
-        errors.append("style.canvas.aspect_ratio must use W:H")
+    if present and not (stage == "draft" and aspect == "unresolved"):
+        if not isinstance(aspect, str) or ASPECT_RE.fullmatch(aspect) is None:
+            errors.append("style.canvas.aspect_ratio must use W:H")
 
     present, outline_enabled = get_path(document, "style.outline.enabled")
-    if present and not isinstance(outline_enabled, bool):
-        errors.append("style.outline.enabled must be a boolean")
+    if present and not (stage == "draft" and outline_enabled is None):
+        if not isinstance(outline_enabled, bool):
+            errors.append("style.outline.enabled must be a boolean")
 
     present, pixels_per_unit = get_path(document, "engine.pixels_per_unit")
-    if present and (
-        isinstance(pixels_per_unit, bool)
-        or not isinstance(pixels_per_unit, int)
-        or pixels_per_unit <= 0
-    ):
-        errors.append("engine.pixels_per_unit must be a positive integer")
+    if present and not (stage == "draft" and pixels_per_unit == 0):
+        if (
+            isinstance(pixels_per_unit, bool)
+            or not isinstance(pixels_per_unit, int)
+            or pixels_per_unit <= 0
+        ):
+            errors.append("engine.pixels_per_unit must be a positive integer")
 
     for dotted in ("engine.texture_compression", "engine.atlas_group"):
         present, value = get_path(document, dotted)
@@ -136,12 +149,26 @@ def validate_contract(
         errors.append("style.pixel_register is only valid for pixel_art")
 
     present, confidence_value = get_path(document, "style.confidence")
-    confidence = require_object(confidence_value, "style.confidence", errors)
-    for dimension, score in confidence.items():
-        if isinstance(score, bool) or not isinstance(score, (int, float)):
-            errors.append(f"style.confidence.{dimension} must be a number")
-        elif not 0 <= score <= 1:
-            errors.append(f"style.confidence.{dimension} must be between 0 and 1")
+    confidence: dict[str, Any] = {}
+    if present:
+        confidence = require_object(confidence_value, "style.confidence", errors)
+        for dimension, score in confidence.items():
+            if isinstance(score, bool) or not isinstance(score, (int, float)):
+                errors.append(f"style.confidence.{dimension} must be a number")
+            elif not 0 <= score <= 1:
+                errors.append(f"style.confidence.{dimension} must be between 0 and 1")
+
+    evidence_present, evidence_value = get_path(document, "evidence_basis")
+    evidence_basis = (
+        require_object(evidence_value, "evidence_basis", errors)
+        if evidence_present
+        else {}
+    )
+    if (
+        evidence_basis
+        and evidence_basis.get("model_prior_used_as_evidence") is not False
+    ):
+        errors.append("evidence_basis.model_prior_used_as_evidence must be false")
 
     if stage == "generation":
         requirements = schema.get("generation_requirements", {})
@@ -159,23 +186,96 @@ def validate_contract(
             errors.append(
                 f"references.style must contain at least {minimum} STYLE reference"
             )
-        threshold = schema.get("confidence_threshold", 0.75)
-        if requirements.get("require_all_confidence_at_or_above_threshold"):
-            for dimension, score in confidence.items():
-                if isinstance(score, (int, float)) and not isinstance(score, bool):
-                    if score < threshold:
-                        errors.append(
-                            f"style.confidence.{dimension} must be >= {threshold}"
-                        )
+        unresolved_paths = (
+            "project.platform",
+            "style.rendering",
+            "style.shape.language",
+            "style.shape.corner_radius",
+            "style.materials.button",
+            "style.materials.container",
+            "style.materials.icon",
+            "style.lighting.direction",
+            "style.lighting.contrast",
+            "style.lighting.highlight",
+            "style.lighting.shadow",
+            "style.outline.enabled",
+            "style.outline.thickness",
+            "style.outline.color",
+            "style.camera",
+            "style.canvas.orientation",
+            "style.canvas.aspect_ratio",
+            "engine.name",
+            "engine.pixels_per_unit",
+            "engine.texture_compression",
+            "engine.atlas_group",
+        )
+        for dotted in unresolved_paths:
+            present, value = get_path(document, dotted)
+            if not present or value in (None, "unresolved", 0):
+                errors.append(f"{dotted} must be resolved before generation")
+        for dotted in ("project.genre", "style.mood", "evidence_basis.card_ids"):
+            present, value = get_path(document, dotted)
+            if not present or not isinstance(value, list) or not value:
+                errors.append(
+                    f"{dotted} must contain grounded values before generation"
+                )
     return errors
 
 
-def validate_or_raise(document: dict[str, Any], stage: str) -> dict[str, Any]:
+def validate_evidence_binding(
+    document: dict[str, Any], visual_basis: Path | None, cards_dir: Path | None
+) -> tuple[dict[str, Any], list[str]]:
+    if visual_basis is None or cards_dir is None:
+        return {}, [
+            "generation requires --visual-basis and --cards-dir; model priors or unbound references are not evidence"
+        ]
+    basis, cards, errors = load_and_validate_bundle(visual_basis, cards_dir)
+    if errors:
+        return basis, [f"visual evidence: {error}" for error in errors]
+    if basis.get("status") != "GROUNDED":
+        errors.append("visual evidence: basis status must be GROUNDED for generation")
+
+    binding = document.get("evidence_basis")
+    if not isinstance(binding, dict):
+        errors.append("evidence_basis must bind the validated visual basis")
+        return basis, errors
+    if binding.get("basis_id") != basis.get("id"):
+        errors.append(
+            "evidence_basis.basis_id does not match validated visual basis id"
+        )
+    contract_ids = binding.get("card_ids")
+    basis_ids = basis.get("card_ids")
+    if not isinstance(contract_ids, list) or sorted(contract_ids) != sorted(
+        basis_ids or []
+    ):
+        errors.append(
+            "evidence_basis.card_ids do not match validated visual basis cards"
+        )
+    if binding.get("model_prior_used_as_evidence") is not False:
+        errors.append("evidence_basis.model_prior_used_as_evidence must be false")
+    if not cards:
+        errors.append("validated visual evidence library is empty")
+    return basis, sorted(set(errors))
+
+
+def validate_or_raise(
+    document: dict[str, Any],
+    stage: str,
+    *,
+    visual_basis: Path | None = None,
+    cards_dir: Path | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
     schema = load_schema()
     errors = validate_contract(document, schema, stage)
+    basis: dict[str, Any] = {}
+    if stage == "generation":
+        basis, evidence_errors = validate_evidence_binding(
+            document, visual_basis, cards_dir
+        )
+        errors.extend(evidence_errors)
     if errors:
-        raise ContractError("\n".join(f"- {error}" for error in errors))
-    return schema
+        raise ContractError("\n".join(f"- {error}" for error in sorted(set(errors))))
+    return schema, basis
 
 
 def csv(values: list[str]) -> str:
@@ -186,8 +286,17 @@ def enum_phrase(value: str) -> str:
     return value.replace("_", " ")
 
 
-def compile_prompt(document: dict[str, Any], asset_type: str, name: str) -> str:
-    schema = validate_or_raise(document, "generation")
+def compile_prompt(
+    document: dict[str, Any],
+    asset_type: str,
+    name: str,
+    *,
+    visual_basis: Path,
+    cards_dir: Path,
+) -> str:
+    schema, basis = validate_or_raise(
+        document, "generation", visual_basis=visual_basis, cards_dir=cards_dir
+    )
     allowed = schema.get("compiler_asset_types", [])
     if asset_type not in allowed:
         raise ContractError(
@@ -247,6 +356,10 @@ def compile_prompt(document: dict[str, Any], asset_type: str, name: str) -> str:
         (
             f"Generate the {asset_type} asset '{name}' for {project['name']}, "
             f"a {csv(project['genre'])} {project['platform']} game."
+        ),
+        (
+            f"Evidence basis: {basis['id']} ({len(basis['card_ids'])} validated cards); "
+            "model training prior is hypothesis-only and is not evidence."
         ),
         (
             "STYLE reference roles: STYLE references define appearance only; "
@@ -315,72 +428,76 @@ def draft_contract(project_name: str, project_type: str) -> dict[str, Any]:
         "schema_version": "game-art-contract/v2",
         "project": {
             "name": project_name,
-            "genre": ["casual"],
-            "platform": "cross_platform",
+            "genre": [],
+            "platform": "unresolved",
             "asset_scope": scope_by_type[project_type],
         },
         "approval": {"status": "draft"},
+        "evidence_basis": {
+            "basis_id": "unresolved",
+            "card_ids": [],
+            "model_prior_used_as_evidence": False,
+        },
         "references": {"style": [], "target": [], "character": []},
         "style": {
-            "rendering": "flat_vector",
-            "mood": ["playful"],
-            "shape": {"language": "geometric", "corner_radius": "small"},
-            "palette": {
-                "primary": ["#334155"],
-                "secondary": ["#64748B"],
-                "accent": ["#F59E0B"],
-                "neutral": ["#E2E8F0"],
-            },
-            "color_map": {"background": ["#334155"]},
+            "rendering": "unresolved",
+            "mood": [],
+            "shape": {"language": "unresolved", "corner_radius": "unresolved"},
+            "palette": {"primary": [], "secondary": [], "accent": [], "neutral": []},
+            "color_map": {},
             "materials": {
-                "button": "matte_plastic",
-                "container": "painted_card",
-                "icon": "flat",
+                "button": "unresolved",
+                "container": "unresolved",
+                "icon": "unresolved",
             },
             "lighting": {
-                "direction": "top_left",
-                "contrast": "medium",
-                "highlight": "soft",
-                "shadow": "soft_bottom",
+                "direction": "unresolved",
+                "contrast": "unresolved",
+                "highlight": "unresolved",
+                "shadow": "unresolved",
             },
             "outline": {
-                "enabled": True,
-                "thickness": "thin",
-                "color": "darker_variant",
+                "enabled": None,
+                "thickness": "unresolved",
+                "color": "unresolved",
             },
-            "camera": "orthographic",
-            "canvas": {"orientation": "landscape", "aspect_ratio": "16:9"},
-            "negative": ["photorealism", "watermark", "jpeg_artifacts"],
-            "confidence": {
-                "shape": 0.0,
-                "palette": 0.0,
-                "rendering": 0.0,
-                "material": 0.0,
-                "lighting": 0.0,
-            },
+            "camera": "unresolved",
+            "canvas": {"orientation": "unresolved", "aspect_ratio": "unresolved"},
+            "negative": [],
+            "confidence": {},
         },
         "engine": {
-            "name": "generic",
-            "pixels_per_unit": 100,
-            "texture_compression": "platform-default",
-            "atlas_group": "unassigned",
+            "name": "unresolved",
+            "pixels_per_unit": 0,
+            "texture_compression": "unresolved",
+            "atlas_group": "unresolved",
         },
     }
 
 
 def command_validate(args: argparse.Namespace) -> int:
     document = load_json(args.contract, "contract")
-    schema = load_schema()
-    errors = validate_contract(document, schema, args.stage)
-    if errors:
-        raise ContractError("\n".join(f"- {error}" for error in errors))
+    validate_or_raise(
+        document,
+        args.stage,
+        visual_basis=args.visual_basis,
+        cards_dir=args.cards_dir,
+    )
     print(f"VALID {document['schema_version']} stage={args.stage}")
     return 0
 
 
 def command_compile(args: argparse.Namespace) -> int:
     document = load_json(args.contract, "contract")
-    print(compile_prompt(document, args.asset_type, args.name))
+    print(
+        compile_prompt(
+            document,
+            args.asset_type,
+            args.name,
+            visual_basis=args.visual_basis,
+            cards_dir=args.cards_dir,
+        )
+    )
     return 0
 
 
@@ -401,12 +518,16 @@ def build_parser() -> argparse.ArgumentParser:
     validate = subparsers.add_parser("validate")
     validate.add_argument("contract", type=Path)
     validate.add_argument("--stage", choices=("draft", "generation"), default="draft")
+    validate.add_argument("--visual-basis", type=Path)
+    validate.add_argument("--cards-dir", type=Path)
     validate.set_defaults(handler=command_validate)
 
     compile_parser = subparsers.add_parser("compile")
     compile_parser.add_argument("contract", type=Path)
     compile_parser.add_argument("--asset-type", required=True)
     compile_parser.add_argument("--name", required=True)
+    compile_parser.add_argument("--visual-basis", type=Path, required=True)
+    compile_parser.add_argument("--cards-dir", type=Path, required=True)
     compile_parser.set_defaults(handler=command_compile)
 
     init = subparsers.add_parser("init")

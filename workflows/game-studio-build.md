@@ -32,8 +32,8 @@ For each creative/downstream dispatch, execute this repository-owned chain:
 
 1. `python3 scripts/runtime/skill_routing.py --mode "$MODE" --config .forgewright/skills-config.json`
    returns ordered, verified skill paths.
-2. `python3 scripts/art-direction/creative-handoff.py validate-handoff "$CONCEPT_PACKET" "$ART_DIRECTION_GATES"`
-   validates the concept and art artifacts.
+2. `python3 scripts/art-direction/creative-handoff.py validate-handoff "$CONCEPT_PACKET" "$ART_DIRECTION_GATES" --visual-basis .forgewright/visual-evidence/visual-basis.json --cards-dir .forgewright/visual-evidence/cards`
+   validates the concept/art artifacts and proves they bind the same GROUNDED evidence basis.
 3. Freeze the skill-aware dispatch packet with the selected skill item/path,
    validated artifacts, ownership, checks, tier, and stop conditions.
 4. Call `python3 scripts/runtime/codex-subagent-routing.py --config .production-grade.yaml --capabilities-json "$CODEX_SPAWN_CAPABILITIES_JSON" --tier "$TIER" --agent-type "$AGENT_TYPE" --overrides-json "$EXPLICIT_OVERRIDES_JSON"`.

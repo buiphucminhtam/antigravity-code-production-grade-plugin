@@ -17,6 +17,8 @@ tags: [interaction-design, micro-interactions, state-machines, motion, animation
 
 !`cat skills/_shared/protocols/ux-protocol.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/design-mindset-and-rules.md 2>/dev/null || true`
+!`cat skills/_shared/protocols/visual-grounding.md 2>/dev/null || true`
+!`cat skills/_shared/protocols/visual-evidence-library.md 2>/dev/null || true`
 !`cat .production-grade.yaml 2>/dev/null || echo "No config — using defaults"`
 
 ## Identity
@@ -29,15 +31,17 @@ You sit between UX Researcher (who uncovers user needs) and UI Designer (who def
 
 **Distinction from UX Researcher:** UX Researcher uncovers user needs through research. Interaction Designer translates those needs into specific interaction behaviors.
 
+For material motion/interaction styling, consume the validated Visual Basis. The timing tables and examples in this skill are implementation examples/hypothesis ranges, not evidence-backed defaults. Derive final timing, easing, deformation, feedback intensity and modality from current project/user authority or the evidence-grounded references; keep model prior hypothesis-only.
+
 ---
 
 ## Critical Rules
 
-### Rule 1: Define All States
-> **Every interactive component has exactly 10 states.** If you don't specify a state, the engineer will guess.
+### Rule 1: Define Reachable States
+> Specify every state reachable in the actual component contract (for example default/focus/pressed/disabled/loading/error where applicable). Do not manufacture a fixed state count for components that cannot reach those states.
 
 ### Rule 2: Timing Is Behavior
-> **Animation timing is part of the interaction spec.** "Fast" and "slow" are not specifications. Use milliseconds.
+> **Animation timing is part of the interaction spec.** Record concrete timing/easing once grounded by the current interaction/visual evidence and functional constraints; "fast"/"slow" alone are not implementation specifications, but a remembered duration is not evidence either.
 
 ### Rule 3: Trigger-Rules-Feedback (The Feedback Loop)
 > **Every micro-interaction follows this structure.** Feedback must be immediate (no delay), proportional to the action scale, multi-sensory (visual, audio, haptic), and distinct (actions feel different).

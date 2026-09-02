@@ -26,8 +26,11 @@ REVIEWS_DIR="${FORGEWRIGHT_DIR}/.forgewright/art-reviews"
 VISION_REVIEW="${SCRIPT_DIR}/vision-review.sh"
 STYLE_CONTRACT_TOOL="${SCRIPT_DIR}/style-contract.py"
 ASSET_LIFECYCLE_TOOL="${SCRIPT_DIR}/asset-lifecycle.py"
+VISUAL_EVIDENCE_TOOL="${SCRIPT_DIR}/visual_evidence.py"
 
-# One canonical contract path shared by generation and review.
+# Canonical visual evidence and Style DNA inputs shared by generation and review.
+VISUAL_BASIS_PATH="${VISUAL_BASIS_PATH:-"${FORGEWRIGHT_DIR}/.forgewright/visual-evidence/visual-basis.json"}"
+VISUAL_EVIDENCE_CARDS_DIR="${VISUAL_EVIDENCE_CARDS_DIR:-"${FORGEWRIGHT_DIR}/.forgewright/visual-evidence/cards"}"
 PROJECT_STYLE_GUIDE="${PROJECT_STYLE_GUIDE:-"${STYLE_GUIDE_DIR}/game-art-contract.json"}"
 ASSET_INVENTORY="${ART_ASSET_INVENTORY:-"${STYLE_GUIDE_DIR}/asset-inventory.json"}"
 ENGINE_MANIFEST="${ART_ENGINE_MANIFEST:-"${STYLE_GUIDE_DIR}/engine-import-manifest.json"}"
@@ -63,6 +66,7 @@ cmd_init() {
 
     mkdir -p "$STYLE_GUIDE_DIR"/{color-palettes,typography,lighting,perspective,mood-board,prohibited}
     mkdir -p "$REVIEWS_DIR"
+    mkdir -p "$VISUAL_EVIDENCE_CARDS_DIR"
 
     python3 "$STYLE_CONTRACT_TOOL" init "$PROJECT_STYLE_GUIDE" \
         --project-type "$project_type" --project-name "$project_name"
@@ -70,10 +74,12 @@ cmd_init() {
     log "Created draft Style DNA contract: $PROJECT_STYLE_GUIDE"
     log ""
     log "Next steps:"
-    log "  1. Replace draft values with observed Style DNA"
-    log "  2. Add STYLE reference paths and confidence values"
-    log "  3. Set approval.status=approved after Gate 1 sign-off"
-    log "  4. Run: art-pipeline.sh generate <type> <name>"
+    log "  1. Run the Research Gate when no approved/project visual basis exists"
+    log "  2. Record evidence cards under: $VISUAL_EVIDENCE_CARDS_DIR"
+    log "  3. Synthesize and validate: $VISUAL_BASIS_PATH"
+    log "  4. Replace unresolved Style DNA only from the validated basis"
+    log "  5. Bind evidence_basis, add STYLE references, then approve the contract"
+    log "  6. Run: art-pipeline.sh generate <type> <name>"
     log ""
     log "Available generation types:"
     log "  UI:         button, icon, panel, screen, ui-kit"
@@ -103,7 +109,8 @@ cmd_generate() {
     # rejection are fail-closed inside style-contract.py.
     local prompt
     if ! prompt=$(python3 "$STYLE_CONTRACT_TOOL" compile "$PROJECT_STYLE_GUIDE" \
-        --asset-type "$asset_type" --name "$asset_name"); then
+        --asset-type "$asset_type" --name "$asset_name" \
+        --visual-basis "$VISUAL_BASIS_PATH" --cards-dir "$VISUAL_EVIDENCE_CARDS_DIR"); then
         die "Style DNA contract is not generation-ready"
     fi
 
@@ -171,6 +178,8 @@ cmd_register() {
     fi
     python3 "$ASSET_LIFECYCLE_TOOL" register \
         --contract "$PROJECT_STYLE_GUIDE" \
+        --visual-basis "$VISUAL_BASIS_PATH" \
+        --cards-dir "$VISUAL_EVIDENCE_CARDS_DIR" \
         --inventory "$ASSET_INVENTORY" \
         --asset-type "$asset_type" \
         --name "$asset_name" \
@@ -180,6 +189,8 @@ cmd_register() {
 cmd_drift() {
     python3 "$ASSET_LIFECYCLE_TOOL" drift \
         --contract "$PROJECT_STYLE_GUIDE" \
+        --visual-basis "$VISUAL_BASIS_PATH" \
+        --cards-dir "$VISUAL_EVIDENCE_CARDS_DIR" \
         --inventory "$ASSET_INVENTORY"
 }
 
@@ -187,6 +198,8 @@ cmd_manifest() {
     local output="${1:-$ENGINE_MANIFEST}"
     python3 "$ASSET_LIFECYCLE_TOOL" manifest \
         --contract "$PROJECT_STYLE_GUIDE" \
+        --visual-basis "$VISUAL_BASIS_PATH" \
+        --cards-dir "$VISUAL_EVIDENCE_CARDS_DIR" \
         --inventory "$ASSET_INVENTORY" \
         --output "$output"
 }

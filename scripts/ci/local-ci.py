@@ -27,6 +27,10 @@ REPORT_DIR = ROOT / ".forgewright" / "reports" / "local-ci"
 LOCAL_VENV = ROOT / ".forgewright" / "local-ci-venv"
 MIN_NODE_MAJOR = 22
 NODE_MATRIX = (22, 24)
+# The Python suite includes roadmap verifier tests whose declared subprocess
+# budgets can legitimately exceed 15 minutes in aggregate on local machines.
+# This is a runner budget only; it does not weaken, skip, or alter any test oracle.
+PRECOMMIT_PYTHON_UNIT_TIMEOUT_SECONDS = 1800
 
 
 class GateFailure(RuntimeError):
@@ -153,7 +157,11 @@ class LocalCI:
             if path not in path_parts:
                 path_parts.append(path)
 
-        python_dir = str(Path(self.python).resolve().parent)
+        # Keep the venv's own bin/Scripts directory on PATH. Resolving the
+        # interpreter symlink first can jump to the base Homebrew/Python install,
+        # causing nested verifier scripts that invoke `python3` to escape the
+        # prepared local-CI environment and miss dependencies such as ruff.
+        python_dir = str(Path(self.python).parent.absolute())
         add_path(python_dir)
         if self.primary_node:
             node_dir = str(Path(self.primary_node).resolve().parent)
@@ -901,7 +909,7 @@ class LocalCI:
                 "no:cacheprovider",
                 "tests/unit_tests/",
             ],
-            timeout=900,
+            timeout=PRECOMMIT_PYTHON_UNIT_TIMEOUT_SECONDS,
         )
 
     def commit_message(self, message_file: str) -> None:
