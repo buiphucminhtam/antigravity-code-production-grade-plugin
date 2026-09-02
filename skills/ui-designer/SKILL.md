@@ -18,6 +18,7 @@ tags: [ui-design, interface-design, ux-design, game-ui, web-ui, interaction-desi
 !`cat skills/_shared/game-visual-foundations.md 2>/dev/null || echo "=== Visual Foundations not loaded ==="`
 !`cat skills/_shared/protocols/visual-grounding.md 2>/dev/null || echo "=== Visual Grounding not loaded ==="`
 !`cat skills/_shared/protocols/visual-evidence-library.md 2>/dev/null || echo "=== Visual Evidence Library not loaded ==="`
+!`cat skills/_shared/protocols/ui-style-diversity.md 2>/dev/null || echo "=== UI Style Diversity not loaded ==="`
 !`cat skills/_shared/protocols/ux-protocol.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/input-validation.md 2>/dev/null || true`
 !`cat skills/_shared/protocols/tool-efficiency.md 2>/dev/null || true`
@@ -31,7 +32,7 @@ tags: [ui-design, interface-design, ux-design, game-ui, web-ui, interaction-desi
 
 ## Pipeline Input Boundary
 
-The pipeline owns visual-basis discovery and supplies a validated `PIPELINE_CONTEXT.visual_basis` plus exact Visual Evidence Card IDs for material visual work. UI Designer consumes that basis and owns the **specialist UI contract**: information hierarchy, grid/layout, semantic tokens, typography, component anatomy/states, responsive/safe-area behavior, accessibility and visual rhythm.
+The pipeline owns visual-basis discovery and supplies a validated `PIPELINE_CONTEXT.visual_basis` plus exact Visual Evidence Card IDs for material visual work. For material greenfield UI it also supplies validated `PIPELINE_CONTEXT.ui_style_profile`. UI Designer consumes those contracts and owns the **specialist UI contract**: information hierarchy, grid/layout, semantic tokens, typography, component anatomy/states, responsive/safe-area behavior, accessibility and visual rhythm.
 
 If a major UI task arrives without a `GROUNDED` basis, return `NEEDS_PIPELINE_GROUNDING`; do not independently reopen generic market/reference research or substitute training memory. Model prior may suggest hypotheses only. If UI analysis discovers a product/architecture/scope dependency, return `DOMAIN_FINDING`.
 
@@ -85,22 +86,13 @@ You are the **UI Designer** — an interface design specialist who creates polis
 
 Use the font/type system supplied by the approved UI/brand contract. UI Designer owns hierarchy, readability, scale, weight, line-height and measure decisions inside that system. When the pipeline marks typography basis unresolved, return a domain requirement for grounding rather than inventing a Forgewright default.
 
-### Typography Scale
+### Typography Role Contract
 
-| Token | Size | Weight | Use Case |
-|-------|------|--------|----------|
-| `display` | 48px | Bold | Main title, score display |
-| `h1` | 36px | Bold | Screen titles |
-| `h2` | 28px | SemiBold | Section headers |
-| `h3` | 22px | SemiBold | Card titles |
-| `body` | 16px | Normal | Primary content |
-| `bodySmall` | 14px | Normal | Secondary content |
-| `caption` | 12px | Normal | Labels, hints |
-| `label` | 10px | Bold | ALL CAPS labels |
+Do not carry a Forgewright font scale, font family, weight ladder, casing convention or line-height recipe between projects. Define only the semantic roles the screen needs, then derive their actual values from the active UI Style Profile, Visual Basis, brand/type system and target-platform constraints.
 
 ### Typography Evaluation Lenses
 
-The values in the illustrative scale above are examples only. For production, derive typography from the validated Visual Basis and applicable platform evidence. Evaluate role count, hierarchy, line-height, measure, tracking, localization, viewing distance and responsive scaling against the current reference/system; do not impose a universal font-size count, line-length range, letter-spacing recipe, or weight rule. If no grounded typography mechanism exists, return `NEEDS_PIPELINE_GROUNDING`.
+For production, derive typography from the validated UI Style Profile, Visual Basis and applicable platform evidence. Evaluate role count, hierarchy, line-height, measure, tracking, localization, viewing distance and responsive scaling against the current reference/system; do not impose a universal font-size count, line-length range, letter-spacing recipe, or weight rule. If no grounded typography mechanism exists, return `NEEDS_PIPELINE_GROUNDING`.
 
 ### Color System
 
@@ -165,411 +157,31 @@ export interface ColorPalette {
 | Standard game HUD text/visuals | 4.5:1 when Xbox XAG applies | Xbox XAG 102 |
 | Decorative elements | No requirement | — |
 
-## Component Library
+## Component System Contract
 
-### Button Component
+A component library supplies behavior and reusable anatomy; it must not silently supply product identity. For every material component family, specify:
 
-```typescript
-export type ButtonStyle = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
-export type ButtonSize = 'small' | 'medium' | 'large';
+- **semantic role** — action, navigation, input, status, disclosure, container, data display, etc.;
+- **anatomy** — content slots and optional regions without hardcoded decoration;
+- **reachable states** — default, hover, pressed, focus-visible, disabled, loading, selected, empty, error, success as applicable;
+- **token bindings** — semantic token names resolved from the project contract, never sample hex/font/radius values from this skill;
+- **layout behavior** — intrinsic size, wrapping, truncation, localization, overflow and responsive rules;
+- **interaction behavior** — pointer/touch/keyboard/gamepad/focus semantics;
+- **style-profile conformance** — density, geometry, surface, typography, chroma, depth and motion must match the validated `ui-style-profile/v1`.
 
-export interface ButtonConfig {
-    text: string;
-    style?: ButtonStyle;
-    size?: ButtonSize;
-    disabled?: boolean;
-    loading?: boolean;
-    icon?: string;
-    iconPosition?: 'left' | 'right';
-    fullWidth?: boolean;
-    onClick?: () => void;
-}
-
-export function createButton(
-    scene: Phaser.Scene,
-    x: number,
-    y: number,
-    config: ButtonConfig
-): Button {
-    const {
-        text,
-        style = 'primary',
-        size = 'medium',
-        disabled = false,
-        loading = false,
-        icon,
-        iconPosition = 'left',
-        fullWidth = false,
-    } = config;
-
-    const container = scene.add.container(x, y);
-
-    // Dimensions
-    const sizes: Record<ButtonSize, { width: number; height: number; fontSize: number }> = {
-        small: { width: 120, height: 36, fontSize: 12 },
-        medium: { width: 160, height: 48, fontSize: 16 },
-        large: { width: 200, height: 56, fontSize: 18 },
-    };
-    const { width, height, fontSize } = sizes[size];
-
-    // Colors by style
-    const colors: Record<ButtonStyle, { bg: number; border: number; text: number; hover: number }> = {
-        primary: { bg: 0x00d4ff, border: 0x00d4ff, text: 0x0a0e27, hover: 0x00b8e6 },
-        secondary: { bg: 0xff6b6b, border: 0xff6b6b, text: 0xffffff, hover: 0xff5252 },
-        outline: { bg: 0x000000, border: 0x00d4ff, text: 0x00d4ff, hover: 0x003344 },
-        ghost: { bg: 0x000000, border: 0x000000, text: 0xffffff, hover: 0x1a1a1a },
-        danger: { bg: 0xff4444, border: 0xff4444, text: 0xffffff, hover: 0xff2222 },
-    };
-    const c = colors[style];
-
-    // Background
-    const bg = scene.add.graphics();
-    drawButtonBg(bg, width, height, c, disabled);
-    container.add(bg);
-
-    // Text
-    const label = scene.add.text(0, 0, text, {
-        fontFamily: '"Outfit", "Segoe UI", sans-serif',
-        fontSize: `${fontSize}px`,
-        fontStyle: '600',
-        color: disabled ? '#666666' : `#${c.text.toString(16).padStart(6, '0')}`,
-    }).setOrigin(0.5);
-    container.add(label);
-
-    // Interactive area
-    const hitArea = scene.add.rectangle(0, 0, width, height, 0x000000, 0)
-        .setInteractive({ useHandCursor: true });
-
-    // Hover/press effects
-    hitArea.on('pointerover', () => {
-        if (!disabled) {
-            drawButtonBg(bg, width, height, { ...c, bg: c.hover }, false);
-        }
-    });
-
-    hitArea.on('pointerout', () => {
-        if (!disabled) {
-            drawButtonBg(bg, width, height, c, false);
-        }
-    });
-
-    hitArea.on('pointerdown', () => {
-        if (!disabled) {
-            container.setScale(0.96);
-        }
-    });
-
-    hitArea.on('pointerup', () => {
-        if (!disabled) {
-            container.setScale(1);
-            config.onClick?.();
-        }
-    });
-
-    container.add(hitArea);
-
-    return container as unknown as Button;
-}
-
-function drawButtonBg(
-    g: Phaser.GameObjects.Graphics,
-    width: number,
-    height: number,
-    c: { bg: number; border: number },
-    disabled: boolean
-): void {
-    g.clear();
-    const alpha = disabled ? 0.5 : 1;
-
-    if (c.bg !== 0x000000) {
-        g.fillStyle(c.bg, alpha);
-        g.fillRoundedRect(-width / 2, -height / 2, width, height, 8);
-    }
-
-    g.lineStyle(2, c.border, alpha);
-    g.strokeRoundedRect(-width / 2, -height / 2, width, height, 8);
-}
-```
-
-### Panel/Card Component
-
-```typescript
-export interface PanelConfig {
-    width: number;
-    height: number;
-    title?: string;
-    closable?: boolean;
-    style?: 'default' | 'glass' | 'solid';
-}
-
-export function createPanel(
-    scene: Phaser.Scene,
-    x: number,
-    y: number,
-    config: PanelConfig
-): Container {
-    const { width, height, title, closable = false, style = 'default' } = config;
-    const container = scene.add.container(x, y);
-
-    const bg = scene.add.graphics();
-
-    if (style === 'glass') {
-        // Frosted glass effect
-        bg.fillStyle(0x0a0e27, 0.7);
-        bg.fillRoundedRect(-width / 2, -height / 2, width, height, 16);
-        bg.lineStyle(1, 0x00d4ff, 0.3);
-        bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 16);
-    } else if (style === 'solid') {
-        bg.fillStyle(0x141834);
-        bg.fillRoundedRect(-width / 2, -height / 2, width, height, 12);
-        bg.lineStyle(1, 0x2a2f55);
-        bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 12);
-    } else {
-        // Default with subtle gradient
-        bg.fillStyle(0x141834, 0.9);
-        bg.fillRoundedRect(-width / 2, -height / 2, width, height, 16);
-        bg.lineStyle(1, 0x2a2f55, 0.8);
-        bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 16);
-    }
-
-    container.add(bg);
-
-    if (title) {
-        const titleText = scene.add.text(0, -height / 2 + 24, title, {
-            fontFamily: '"Outfit", sans-serif',
-            fontSize: '18px',
-            fontStyle: '600',
-            color: '#ffffff',
-        }).setOrigin(0.5, 0);
-        container.add(titleText);
-    }
-
-    if (closable) {
-        const closeBtn = scene.add.text(width / 2 - 16, -height / 2 + 16, '✕', {
-            fontFamily: '"Outfit", sans-serif',
-            fontSize: '16px',
-            color: '#8899aa',
-        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-
-        closeBtn.on('pointerover', () => closeBtn.setColor('#ffffff'));
-        closeBtn.on('pointerout', () => closeBtn.setColor('#8899aa'));
-        closeBtn.on('pointerup', () => container.emit('close'));
-
-        container.add(closeBtn);
-    }
-
-    return container;
-}
-```
-
-### Progress Bar Component
-
-```typescript
-export interface ProgressBarConfig {
-    width: number;
-    height: number;
-    value?: number;
-    maxValue?: number;
-    showText?: boolean;
-    label?: string;
-    color?: number;
-    bgColor?: number;
-}
-
-export function createProgressBar(
-    scene: Phaser.Scene,
-    x: number,
-    y: number,
-    config: ProgressBarConfig
-): Container & { setProgress: (value: number) => void } {
-    const {
-        width,
-        height,
-        value = 0,
-        maxValue = 1,
-        showText = false,
-        label,
-        color = 0x00d4ff,
-        bgColor = 0x1a1a2e,
-    } = config;
-
-    const container = scene.add.container(x, y);
-
-    // Background track
-    const track = scene.add.graphics();
-    track.fillStyle(bgColor);
-    track.fillRoundedRect(-width / 2, -height / 2, width, height, height / 2);
-    container.add(track);
-
-    // Progress fill
-    const fill = scene.add.graphics();
-    container.add(fill);
-
-    // Text display
-    let textDisplay: Phaser.GameObjects.Text | null = null;
-    if (showText) {
-        textDisplay = scene.add.text(0, 0, '0%', {
-            fontFamily: '"Outfit", sans-serif',
-            fontSize: `${height * 0.7}px`,
-            fontStyle: '600',
-            color: '#ffffff',
-        }).setOrigin(0.5);
-        container.add(textDisplay);
-    }
-
-    // Update function
-    const setProgress = (newValue: number): void => {
-        const percentage = Math.min(1, Math.max(0, newValue / maxValue));
-        const fillWidth = (width - 4) * percentage;
-
-        fill.clear();
-        fill.fillStyle(color);
-        fill.fillRoundedRect(
-            -width / 2 + 2,
-            -height / 2 + 2,
-            fillWidth,
-            height - 4,
-            (height - 4) / 2
-        );
-
-        if (textDisplay) {
-            textDisplay.setText(`${Math.round(percentage * 100)}%`);
-        }
-    };
-
-    // Initial value
-    setProgress(value);
-
-    // Extend with progress methods
-    return Object.assign(container, { setProgress });
-}
-```
-
-### Slider Component
-
-```typescript
-export interface SliderConfig {
-    width: number;
-    height?: number;
-    min?: number;
-    max?: number;
-    value?: number;
-    step?: number;
-    onChange?: (value: number) => void;
-}
-
-export function createSlider(
-    scene: Phaser.Scene,
-    x: number,
-    y: number,
-    config: SliderConfig
-): Container & {
-    setValue: (value: number) => void;
-    getValue: () => number;
-} {
-    const {
-        width,
-        height = 24,
-        min = 0,
-        max = 1,
-        value = 0.5,
-        step = 0,
-        onChange,
-    } = config;
-
-    const container = scene.add.container(x, y);
-    let currentValue = value;
-
-    // Track
-    const track = scene.add.graphics();
-    track.fillStyle(0x1a1a2e);
-    track.fillRoundedRect(-width / 2, -height / 4, width, height / 2, height / 4);
-    container.add(track);
-
-    // Fill
-    const fill = scene.add.graphics();
-    container.add(fill);
-
-    // Thumb
-    const thumbRadius = height * 0.8;
-    const thumb = scene.add.circle(0, 0, thumbRadius / 2, 0x00d4ff)
-        .setStrokeStyle(2, 0x00d4ff)
-        .setInteractive({ draggable: true });
-    container.add(thumb);
-
-    const updateFill = (val: number): void => {
-        const percentage = (val - min) / (max - min);
-        const thumbX = -width / 2 + percentage * width;
-
-        fill.clear();
-        fill.fillStyle(0x00d4ff);
-        fill.fillRoundedRect(-width / 2, -height / 4, percentage * width, height / 2, height / 4);
-
-        thumb.setX(thumbX);
-    };
-
-    const setValue = (val: number): void => {
-        let newValue = Math.max(min, Math.min(max, val));
-        if (step > 0) {
-            newValue = Math.round(newValue / step) * step;
-        }
-        currentValue = newValue;
-        updateFill(newValue);
-        onChange?.(newValue);
-    };
-
-    const getValue = (): number => currentValue;
-
-    thumb.on('drag', (_: unknown, dragX: number) => {
-        const percentage = Math.max(0, Math.min(1, (dragX + width / 2) / width));
-        const newValue = min + percentage * (max - min);
-        setValue(newValue);
-    });
-
-    // Keyboard support
-    scene.input.keyboard?.on('keydown-LEFT', () => setValue(currentValue - step));
-    scene.input.keyboard?.on('keydown-RIGHT', () => setValue(currentValue + step));
-
-    updateFill(value);
-
-    return Object.assign(container, { setValue, getValue });
-}
-```
+Buttons, cards, panels, progress indicators, sliders and modals are **functional archetypes**, not visual presets. Do not encode `glass`, `gradient`, rounded geometry, a named font, fixed accent color, fixed shadow, or a hover-scale effect as a default. When an implementation stack ships those defaults, map or override them according to the grounded style profile.
 
 ## Advanced UI/UX & Interaction Principles
 
-### 1. Minimize Cognitive Load
-* **Progressive Disclosure**: Reveal complex interface information sequentially and only as needed. Group fields and minimize actions to streamline step-by-step flows and reduce decision fatigue.
-* **Fitts’s Law**: Size and space interactive elements appropriately. Position primary action buttons within easy reach and provide generous spacing to accelerate interaction and eliminate accidental taps.
-* **Hick’s Law**: Reduce extraneous cognitive load by categorizing options and limiting the volume of choices visible at any given moment.
-* **Miller’s Law**: Do not exceed the limits of human working memory; chunk complex data sets into smaller, manageable groups of seven (±two) items.
-* **Gestalt Principles**: Group related elements visually using consistent colors, shapes, and proximity to establish an intuitive hierarchy.
+Use these as decision lenses, not aesthetic recipes:
 
-### 2. Modern Typography & VW Scaling
-* **Variable Fonts**: Implement variable fonts (WOFF2) rather than static families to load an entire range of weights, widths, and optical sizes within a single compact file. Map these attributes dynamically to screen sizes for responsive hierarchy.
-* **Viewport-Scaled Architecture**: Elevate bold typography to the primary architectural layout layer by utilizing viewport-scaled (vw) text. Let typography carry the visual weight to replace heavy hero photography and minimize server requests.
-* **Kinetic CSS Typography**: Avoid heavy JavaScript animations. Map font weight and width alterations to the user's scroll position, or apply lightweight CSS transitions to reveal text elegantly without lagging processors.
-
-### 3. Advanced Layout Strategies
-* **Strategic Grid Breaking**: Group design elements into overlapping container boxes that repurpose margins, providing clean structure while breaking traditional grid symmetry.
-* **Bento Grid Reflow**: Do not duplicate the DOM to create separate bento grid layouts for desktop and mobile. Utilize state-aware CSS specifications (like native masonry) so dense information panels reflow dynamically into single-column mobile layouts without performance penalties.
-* **Maximinimalism**: Combine minimalist utility foundations with energetic accents. Establish simple layouts with low element counts, but overlay high-impact features such as bright colors, strong imagery, and highly personalized, casual copywriting.
-* **Resource-Aware Interfaces**: Treat dark/light mode, image density, SVG/CSS substitution, effects and asset weight as measurable product/platform trade-offs. Do not choose true black, dark-first, reduced imagery, or a synthetic texture style unless the validated visual basis and target hardware/product constraints support it.
-
-### 4. Game HUD Architectural Taxonomy
-* **Diegetic HUD**: Place crucial status information directly within the 3D geometry and story fiction (e.g., health bar on a spacesuit spine) to maximize immersion and eliminate 2D overlays.
-* **Meta HUD**: Position status indicators on the 2D screen plane that are directly linked to the narrative state but do not exist in the 3D geometry (e.g., blood splatters for health loss).
-* **Spatial HUD**: Situate non-diegetic typography directly within the 3D environment (e.g., projecting mission objectives onto concrete walls or a glowing guide trail) to prevent breaking immersion with full-screen menus.
-* **Non-Diegetic HUD**: Traditional customizable menus on the 2D plane separated from the game's story. Restrict their use to scenarios where other models fail to provide necessary legibility (e.g., deep inventory management).
-
-### 5. Interface Learnability
-* **Just-In-Time Reminders**: Trigger contextual prompts dynamically in response to specific, in-the-moment situations (e.g., showing a "climb down" cue only when hanging from a ledge).
-* **The Invisible Hand**: Guide navigation seamlessly using organic, diegetic indicators blended into the environment (e.g., yellow tape on destructible objects or white markings on climbable surfaces).
-* **Sandbox Practice**: When introducing a complex workflow, guide the user through a structured lesson and immediately direct them into an isolated sandbox where they must successfully execute the mechanic before progressing.
-
-### 6. Structured Prompt Engineering for AI Motion
-* **Chain-of-Thought Motion**: Construct interactive behaviors (like micro-animations on hover/click) using step-by-step logic frameworks.
-* **Simplicity over Layering**: Favor synchronized transitions (where color changes, text updates, and scaling occur simultaneously) as they feel simple and natural, avoiding over-layered, multi-step sequential animations that increase cognitive load.
+- **Cognitive load and disclosure:** prioritize the current user task, group related information, and reveal complexity when it becomes actionable. Do not enforce a universal item count or layout formula.
+- **Typography as structure:** variable fonts, optical sizing, large display type, kinetic type or restrained text hierarchy are all valid only when the evidence-backed profile and content model support them.
+- **Composition:** symmetric grids, asymmetry, overlap, masonry/bento, editorial layouts and sparse utility layouts are options to test, never product-type defaults.
+- **Expressive accents:** strong imagery, texture, glow, gradients, decorative motion or unusual type may create identity, but confine them to evidence-backed roles and verify performance/readability.
+- **Game HUD architecture:** diegetic, spatial, meta and non-diegetic information are alternatives governed by gameplay readability and fiction, not a fixed preference hierarchy.
+- **Learnability:** contextual cues, onboarding and practice should answer observed learning needs and disappear or adapt when no longer useful.
+- **Motion:** derive easing, duration, sequencing and deformation from the UI Style Profile/project motion system; prefer state communication over decorative motion when evidence does not justify spectacle.
 
 ## Platform-Specific Ergonomics & UX Constraints
 
@@ -708,375 +320,21 @@ export function createFlex(
 }
 ```
 
-## Screen Patterns
+## Screen Pattern Contract
 
-### Menu Screen
+Menu, HUD, result, settings, dashboard, onboarding and modal screens are information/interaction patterns, not visual templates. For each screen:
 
-```typescript
-export function createMenuScreen(scene: Phaser.Scene): Container {
-    const { width, height } = scene.cameras.main;
+1. state the primary task and required information hierarchy;
+2. choose composition from the validated UI Style Profile rather than cloning a prior screen skeleton;
+3. map components to semantic tokens and state families;
+4. record responsive/input behavior and content stress cases;
+5. render at target scale and compare against the same Visual Basis/profile.
 
-    const container = scene.add.container(0, 0);
+Do not carry a default centered title + stacked CTA layout, gradient background, glass result card, cyan accent, fixed score HUD, fixed icon set, or named font from one project to another. Reuse behavior and accessibility mechanics; re-derive visual expression.
 
-    // Background
-    const bg = scene.add.graphics();
-    createGradientBackground(bg, width, height, 0x0a0e27, 0x1a1040);
-    container.add(bg);
+## Motion Contract
 
-    // Ambient particles
-    createAmbientParticles(scene, 30);
-    container.add(scene.add.graphics()); // Placeholder for particles
-
-    // Title
-    const title = scene.add.text(width / 2, 180, 'GAME TITLE', {
-        fontFamily: '"Outfit", sans-serif',
-        fontSize: '48px',
-        fontStyle: 'bold',
-        color: '#00d4ff',
-    }).setOrigin(0.5).setShadow(0, 4, '#000000', 8);
-    container.add(title);
-
-    // Subtitle
-    const subtitle = scene.add.text(width / 2, 230, 'Your tagline here', {
-        fontFamily: '"Outfit", sans-serif',
-        fontSize: '14px',
-        color: '#8899aa',
-    }).setOrigin(0.5);
-    container.add(subtitle);
-
-    // Buttons
-    const playBtn = createButton(scene, width / 2, 350, {
-        text: 'PLAY',
-        style: 'primary',
-        size: 'large',
-        onClick: () => scene.scene.start('Gameplay'),
-    });
-    container.add(playBtn);
-
-    const optionsBtn = createButton(scene, width / 2, 420, {
-        text: 'OPTIONS',
-        style: 'outline',
-        onClick: () => showOptionsMenu(scene),
-    });
-    container.add(optionsBtn);
-
-    // Best score
-    const bestScore = SaveService.load<number>('best_score', 0);
-    const scoreText = scene.add.text(width / 2, 520, `Best: ${bestScore}`, {
-        fontFamily: '"Outfit", sans-serif',
-        fontSize: '14px',
-        color: '#666666',
-    }).setOrigin(0.5);
-    container.add(scoreText);
-
-    // Version
-    const version = scene.add.text(width / 2, height - 20, 'v1.0.0', {
-        fontFamily: '"Outfit", sans-serif',
-        fontSize: '10px',
-        color: '#444444',
-    }).setOrigin(0.5);
-    container.add(version);
-
-    return container;
-}
-```
-
-### HUD Layout
-
-```typescript
-export function createHUD(scene: Phaser.Scene): Container {
-    const { width } = scene.cameras.main;
-
-    const container = scene.add.container(0, 0);
-    container.setDepth(1000);
-
-    // Health bar (top-left)
-    const healthBar = createProgressBar(scene, 80, 30, {
-        width: 140,
-        height: 16,
-        value: playerHealth,
-        maxValue: maxHealth,
-        color: 0xff4444,
-        showText: true,
-    });
-    container.add(healthBar);
-
-    // Score (top-right)
-    const scoreLabel = scene.add.text(width - 20, 15, 'SCORE', {
-        fontFamily: '"Outfit", sans-serif',
-        fontSize: '10px',
-        fontStyle: 'bold',
-        color: '#00d4ff',
-        letterSpacing: 2,
-    }).setOrigin(1, 0);
-    container.add(scoreLabel);
-
-    const scoreValue = scene.add.text(width - 20, 30, '0', {
-        fontFamily: '"Outfit", sans-serif',
-        fontSize: '24px',
-        fontStyle: 'bold',
-        color: '#ffffff',
-    }).setOrigin(1, 0);
-    container.add(scoreValue);
-
-    // Combo indicator (center-top)
-    const comboText = scene.add.text(width / 2, 30, '', {
-        fontFamily: '"Outfit", sans-serif',
-        fontSize: '28px',
-        fontStyle: 'bold',
-        color: '#ffd700',
-    }).setOrigin(0.5).setAlpha(0);
-    container.add(comboText);
-
-    return container;
-}
-```
-
-### Game Over Screen
-
-```typescript
-export function createGameOverScreen(scene: Phaser.Scene, score: number): Container {
-    const { width, height } = scene.cameras.main;
-
-    const container = scene.add.container(0, 0);
-
-    // Overlay
-    const overlay = scene.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.7)
-        .setInteractive();
-    container.add(overlay);
-
-    // Panel
-    const panel = createPanel(scene, width / 2, height / 2, {
-        width: 320,
-        height: 380,
-        style: 'glass',
-    });
-    container.add(panel);
-
-    // Title
-    const title = scene.add.text(0, -140, 'GAME OVER', {
-        fontFamily: '"Outfit", sans-serif',
-        fontSize: '36px',
-        fontStyle: 'bold',
-        color: '#ff4444',
-    }).setOrigin(0.5);
-    panel.add(title);
-
-    // Score display
-    const scoreLabel = scene.add.text(0, -80, 'SCORE', {
-        fontFamily: '"Outfit", sans-serif',
-        fontSize: '12px',
-        fontStyle: 'bold',
-        color: '#00d4ff',
-        letterSpacing: 3,
-    }).setOrigin(0.5);
-    panel.add(scoreLabel);
-
-    const scoreValue = scene.add.text(0, -50, '0', {
-        fontFamily: '"Outfit", sans-serif',
-        fontSize: '48px',
-        fontStyle: 'bold',
-        color: '#ffd700',
-    }).setOrigin(0.5);
-    panel.add(scoreValue);
-
-    // Animate score count-up
-    animateCounter(scene, scoreValue, 0, score, 1500);
-
-    // Star rating
-    const stars = calculateStars(score);
-    const starContainer = scene.add.container(0, 0);
-    for (let i = 0; i < 3; i++) {
-        const star = scene.add.text(-40 + i * 40, 20, i < stars ? '★' : '☆', {
-            fontFamily: '"Outfit", sans-serif',
-            fontSize: '36px',
-            color: i < stars ? '#ffd700' : '#333333',
-        }).setOrigin(0.5);
-        starContainer.add(star);
-    }
-    panel.add(starContainer);
-
-    // Buttons
-    const retryBtn = createButton(scene, 0, 100, {
-        text: 'RETRY',
-        style: 'primary',
-        onClick: () => scene.scene.start('Gameplay'),
-    });
-    panel.add(retryBtn);
-
-    const menuBtn = createButton(scene, 0, 155, {
-        text: 'MENU',
-        style: 'outline',
-        onClick: () => scene.scene.start('Menu'),
-    });
-    panel.add(menuBtn);
-
-    return container;
-}
-```
-
-## Animation Patterns
-
-### Entrance Animations
-
-```typescript
-// Staggered fade-in
-export function staggerFadeIn(
-    items: Phaser.GameObjects.GameObject[],
-    delay = 100,
-    duration = 300
-): void {
-    items.forEach((item, index) => {
-        item.setAlpha(0);
-        item.setY(item.y + 20);
-
-        scene.tweens.add({
-            targets: item,
-            alpha: 1,
-            y: item.y - 20,
-            delay: index * delay,
-            duration,
-            ease: 'Back.easeOut',
-        });
-    });
-}
-
-// Scale bounce in
-export function scaleBounceIn(
-    items: Phaser.GameObjects.GameObject[],
-    delay = 100
-): void {
-    items.forEach((item, index) => {
-        item.setScale(0);
-        scene.tweens.add({
-            targets: item,
-            scaleX: 1,
-            scaleY: 1,
-            delay: index * delay,
-            duration: 400,
-            ease: 'Back.easeOut',
-        });
-    });
-}
-```
-
-### Button Micro-interactions
-
-```typescript
-// Button hover scale
-button.on('pointerover', () => {
-    scene.tweens.add({
-        targets: button,
-        scaleX: 1.05,
-        scaleY: 1.05,
-        duration: 100,
-        ease: 'Quad.easeOut',
-    });
-});
-
-button.on('pointerout', () => {
-    scene.tweens.add({
-        targets: button,
-        scaleX: 1,
-        scaleY: 1,
-        duration: 100,
-        ease: 'Quad.easeOut',
-    });
-});
-
-button.on('pointerdown', () => {
-    scene.tweens.add({
-        targets: button,
-        scaleX: 0.95,
-        scaleY: 0.95,
-        duration: 50,
-        ease: 'Quad.easeOut',
-    });
-});
-```
-
-### Screen Transitions
-
-```typescript
-// Fade transition
-export function fadeTransition(
-    scene: Phaser.Scene,
-    from: string,
-    to: string,
-    duration = 300
-): void {
-    const { width, height } = scene.cameras.main;
-
-    const overlay = scene.add.rectangle(width / 2, height / 2, width, height, 0x000000)
-        .setDepth(10000).setAlpha(0);
-
-    scene.tweens.add({
-        targets: overlay,
-        alpha: 1,
-        duration,
-        onComplete: () => {
-            scene.scene.start(to);
-            overlay.setAlpha(1);
-            scene.tweens.add({
-                targets: overlay,
-                alpha: 0,
-                duration,
-                onComplete: () => overlay.destroy(),
-            });
-        },
-    });
-}
-
-// Wipe transition
-export function wipeTransition(
-    scene: Phaser.Scene,
-    direction: 'left' | 'right' | 'up' | 'down',
-    duration = 400,
-    onMidpoint?: () => void
-): Promise<void> {
-    return new Promise((resolve) => {
-        const { width, height } = scene.cameras.main;
-
-        let wipeWidth, wipeHeight;
-        if (direction === 'left' || direction === 'right') {
-            wipeWidth = direction === 'left' ? width : -width;
-            wipeHeight = 0;
-        } else {
-            wipeWidth = 0;
-            wipeHeight = direction === 'up' ? height : -height;
-        }
-
-        const overlay = scene.add.rectangle(
-            direction === 'right' || direction === 'up' ? -wipeWidth / 2 : wipeWidth / 2,
-            direction === 'down' || direction === 'up' ? -wipeHeight / 2 : wipeHeight / 2,
-            Math.abs(wipeWidth) || width,
-            Math.abs(wipeHeight) || height,
-            0x000000
-        ).setDepth(10000);
-
-        scene.tweens.add({
-            targets: overlay,
-            x: direction === 'right' || direction === 'up' ? width + wipeWidth / 2 : -wipeWidth / 2,
-            y: direction === 'down' || direction === 'up' ? height + wipeHeight / 2 : -wipeHeight / 2,
-            duration: duration / 2,
-            ease: 'Quad.easeIn',
-            onComplete: () => {
-                onMidpoint?.();
-                scene.tweens.add({
-                    targets: overlay,
-                    alpha: 0,
-                    duration: duration / 2,
-                    ease: 'Quad.easeOut',
-                    onComplete: () => {
-                        overlay.destroy();
-                        resolve();
-                    },
-                });
-            },
-        });
-    });
-}
-```
+Motion exists to communicate state, spatial relation, continuity, feedback or deliberate brand/game expression. The UI Style Profile owns its character. Specify trigger, property, sequencing, interruption behavior, reduced-motion fallback and performance budget. No Forgewright-wide hover scale, bounce, stagger, fade distance, duration or easing is a production default. Static screenshots cannot approve motion quality.
 
 ## Responsive Design
 
@@ -1154,60 +412,9 @@ export class FocusManager {
 }
 ```
 
-### Colorblind-Friendly Indicators
+### Color-Independent Indicators
 
-```typescript
-export function createAccessibleIcon(
-    scene: Phaser.Scene,
-    x: number,
-    y: number,
-    type: 'danger' | 'safe' | 'info',
-    style: 'shape' | 'pattern' | 'both' = 'both'
-): Container {
-    const container = scene.add.container(x, y);
-    const size = 24;
-
-    const colors = {
-        danger: { color: 0xff4444, pattern: 'X' },
-        safe: { color: 0x44ff44, pattern: '✓' },
-        info: { color: 0x4488ff, pattern: 'i' },
-    };
-
-    const c = colors[type];
-
-    // Shape indicator
-    if (style === 'shape' || style === 'both') {
-        const shape = scene.add.graphics();
-        if (type === 'danger') {
-            // Triangle
-            shape.fillStyle(c.color);
-            shape.fillTriangle(0, -size / 2, -size / 2, size / 2, size / 2, size / 2);
-        } else if (type === 'safe') {
-            // Circle
-            shape.fillStyle(c.color);
-            shape.fillCircle(0, 0, size / 2);
-        } else {
-            // Square
-            shape.fillStyle(c.color);
-            shape.fillRect(-size / 2, -size / 2, size, size);
-        }
-        container.add(shape);
-    }
-
-    // Pattern/text indicator
-    if (style === 'pattern' || style === 'both') {
-        const pattern = scene.add.text(0, 0, c.pattern, {
-            fontFamily: '"Outfit", sans-serif',
-            fontSize: `${size * 0.6}px`,
-            fontStyle: 'bold',
-            color: '#ffffff',
-        }).setOrigin(0.5);
-        container.add(pattern);
-    }
-
-    return container;
-}
-```
+Critical status must remain understandable without hue. Bind status colors to the active semantic token system and pair them with project-appropriate text, icons, shapes, patterns, position or other redundant cues. Do not carry Forgewright-wide red/green/blue hex values, glyphs, shapes, fonts or sizes between projects; verify the chosen combination against the actual UI Style Profile and accessibility contract.
 
 ## UI Quality Checklist
 
@@ -1275,7 +482,7 @@ export function createAccessibleIcon(
 
 ### Component Library
 - [ ] Button (all 5 styles, 3 sizes, states)
-- [ ] Panel/Card (default, glass, solid)
+- [ ] Container/panel families with evidence-bound surface and geometry roles
 - [ ] Progress bar (with/without label)
 - [ ] Slider (with keyboard support)
 - [ ] Input field (text, number)
@@ -1284,7 +491,7 @@ export function createAccessibleIcon(
 - [ ] Modal/Dialog
 - [ ] Toast/Notification
 
-### Screen Templates
+### Screen Contracts
 - [ ] Menu screen
 - [ ] HUD layout
 - [ ] Game Over screen

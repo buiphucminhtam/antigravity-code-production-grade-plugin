@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://forgewright.dev/schemas/ui-style-profile.schema.json",
+  "title": "Forgewright UI Style Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "id", "status", "basis_id", "registry_ids", "signature",
+    "stack_independence", "prohibited_defaults", "model_prior"
+  ],
+  "properties": {
+    "schema_version": { "const": "ui-style-profile/v1" },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$" },
+    "status": { "type": "string", "enum": ["GROUNDED", "EXPLORATORY", "UNVERIFIED"] },
+    "basis_id": { "type": "string", "minLength": 3, "maxLength": 128 },
+    "registry_ids": {
+      "type": "array", "minItems": 1, "maxItems": 16, "uniqueItems": true,
+      "items": { "type": "string", "minLength": 3, "maxLength": 128 }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "density", "geometry", "surface", "typography", "chroma",
+        "depth", "motion", "composition", "imagery"
+      ],
+      "properties": {
+        "density": { "$ref": "#/$defs/axis" },
+        "geometry": { "$ref": "#/$defs/axis" },
+        "surface": { "$ref": "#/$defs/axis" },
+        "typography": { "$ref": "#/$defs/axis" },
+        "chroma": { "$ref": "#/$defs/axis" },
+        "depth": { "$ref": "#/$defs/axis" },
+        "motion": { "$ref": "#/$defs/axis" },
+        "composition": { "$ref": "#/$defs/axis" },
+        "imagery": { "$ref": "#/$defs/axis" }
+      }
+    },
+    "stack_independence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base_component_stack", "unmodified_stack_default", "deviation_summary"],
+      "properties": {
+        "base_component_stack": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "unmodified_stack_default": { "type": "boolean" },
+        "deviation_summary": { "type": "string", "minLength": 20, "maxLength": 1800 },
+        "intentional_expressive_accents": {
+          "type": "array", "maxItems": 16,
+          "items": { "type": "string", "minLength": 1, "maxLength": 500 }
+        }
+      }
+    },
+    "prohibited_defaults": {
+      "type": "array", "minItems": 1, "maxItems": 24,
+      "items": { "type": "string", "minLength": 1, "maxLength": 800 }
+    },
+    "model_prior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["used_as_evidence", "hypothesis_only"],
+      "properties": {
+        "used_as_evidence": { "const": false },
+        "hypothesis_only": { "const": true }
+      }
+    }
+  },
+  "$defs": {
+    "axis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "decision_ids"],
+      "properties": {
+        "value": { "type": "string", "minLength": 3, "maxLength": 800 },
+        "decision_ids": {
+          "type": "array", "minItems": 1, "maxItems": 12, "uniqueItems": true,
+          "items": { "type": "string", "minLength": 3, "maxLength": 128 }
+        }
+      }
+    }
+  }
+}

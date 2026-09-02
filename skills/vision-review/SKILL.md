@@ -14,7 +14,7 @@ tags: [vision, quality-gate, review, critique, art-review, reference-fidelity, a
 
 Vision Review evaluates rendered output; it does not invent visual direction.
 Consume the same validated `PIPELINE_CONTEXT.visual_basis`, Visual Evidence Cards,
-Style DNA, target context and deterministic constraints used by the creator.
+applicable `PIPELINE_CONTEXT.ui_style_profile`, Style DNA, target context and deterministic constraints used by the creator.
 
 Model prior, model familiarity, model consensus and generic taste have evidence
 weight zero. They may suggest hypotheses only. A reviewer must not reject a
@@ -32,6 +32,7 @@ Use:
 
 - `skills/_shared/protocols/visual-evidence-library.md`;
 - `skills/_shared/protocols/visual-grounding.md`;
+- `skills/_shared/protocols/ui-style-diversity.md` for material greenfield UI;
 - `skills/_shared/protocols/quality-gate.md`;
 - the project Style DNA / UI contract / art-direction gates when present.
 

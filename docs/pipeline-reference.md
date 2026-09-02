@@ -83,6 +83,12 @@ Concept Packet, Art Direction Gates, UI/interaction work, game-art generation, a
 
 This evidence contract proves provenance and decision discipline, not live generator quality. Image-generation aesthetics remain a separate production-evidence question and are not implied by local validator success.
 
+### UI style-diversity layer
+
+For material greenfield UI, the pipeline now adds `ui-style-profile/v1` after the Visual Basis is grounded. `skills/ui-designer/data/reference-registry.json` broadens research across production design systems and exploration tools, but every registry entry is explicitly non-evidence: production-system candidates still require fresh Visual Evidence Cards, while exploration/discovery sources cannot ground direction. `scripts/art-direction/ui_style_profile.py` validates the registry and binds each project style axis—density, geometry, surface, typography, chroma, depth, motion, composition and imagery—to existing Visual Basis decision IDs.
+
+The profile also records the base component stack and fails grounded greenfield validation when `unmodified_stack_default` is true. This allows teams to reuse component behavior without inheriting a recognizable starter-theme identity. The UI specialist no longer carries fixed cyan/glass/Outfit/gradient screen recipes; component anatomy, states and accessibility remain reusable while visual expression is re-derived from the project evidence. This gate prevents unsupported monoculture, not common styles themselves: glass, bento, gradients, minimalism, brutalism or any other treatment remain valid when the approved evidence supports them.
+
 ### Provider-neutral visual/game harness lane
 
 Forgewright owns the visual/game workflow; no vendor SDK or CLI is required by

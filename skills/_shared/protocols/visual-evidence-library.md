@@ -7,7 +7,7 @@ version: 1.0.0
 owners: [core, design]
 triggers: [material visual direction, greenfield visual work, weak visual basis]
 used_by: [pipeline, research-gate, visual-grounding, concept-artist, art-director, ui-designer, art-pipeline]
-related: [visual-grounding, research-gate, pipeline-operating-contract, evidence-first]
+related: [visual-grounding, ui-style-diversity, research-gate, pipeline-operating-contract, evidence-first]
 supersedes: []
 superseded_by: null
 ---
@@ -142,6 +142,10 @@ A card records:
 - explicit model-prior exclusion.
 
 The card stores **observations**, not a cloned design recipe.
+
+## UI Reference Discovery Registry
+
+For material UI work, `skills/ui-designer/data/reference-registry.json` may be used to broaden research. The registry deliberately mixes production-system candidates with exploration/discovery tools, but **the registry is never evidence**. Validate it with `python3 scripts/art-direction/ui_style_profile.py validate-registry`. A production-system candidate must still be inspected at its current source and encoded as a fresh Visual Evidence Card before it can support a Visual Basis; exploration/discovery rows remain hypothesis-only. See `ui-style-diversity.md`.
 
 ## Greenfield Research Gate
 

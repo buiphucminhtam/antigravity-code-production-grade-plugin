@@ -46,7 +46,7 @@ You do NOT design UX. You implement designs.
 
 ### Consume the Approved UI Contract
 
-Frontend Engineer does not own visual direction. Consume UI Designer outputs and `PIPELINE_CONTEXT.visual_basis`, reuse existing primitives/tokens, and implement the specified anatomy/states/responsive behavior. If implementation reveals a missing design/product decision, return `DOMAIN_FINDING` or `NEEDS_PIPELINE_GROUNDING` instead of inventing a new visual system.
+Frontend Engineer does not own visual direction. Consume UI Designer outputs, `PIPELINE_CONTEXT.visual_basis`, and applicable `PIPELINE_CONTEXT.ui_style_profile`; reuse existing primitives/tokens for behavior while implementing the specified anatomy/states/responsive and evidence-bound visual behavior. If implementation reveals a missing design/product decision, return `DOMAIN_FINDING` or `NEEDS_PIPELINE_GROUNDING` instead of inventing a new visual system.
 
 ### Component Architecture
 

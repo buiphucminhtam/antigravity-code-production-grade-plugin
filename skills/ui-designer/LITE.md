@@ -7,7 +7,7 @@ version: 3.0.0
 # UI Designer (LITE)
 
 ## Domain Authority
-Own the **visual and interaction design contract** for screens/components. Consume validated `PIPELINE_CONTEXT.visual_basis` + exact Evidence Card IDs; do not recreate pipeline research. Without a `GROUNDED` basis, return `NEEDS_PIPELINE_GROUNDING`. Model prior may suggest hypotheses, never choose material style. Translate product/UX intent into hierarchy, tokens, states and responsive behavior.
+Own the **UI contract** for screens/components. Consume validated `PIPELINE_CONTEXT.visual_basis` + Evidence Card IDs; for greenfield UI also consume `PIPELINE_CONTEXT.ui_style_profile`. Do not recreate pipeline research. Without a `GROUNDED` basis, return `NEEDS_PIPELINE_GROUNDING`. Model prior may suggest hypotheses, never choose material style. Translate product/UX intent into hierarchy, tokens, states and responsive behavior.
 
 ## SOLVE Step 2: GROUND (UI Designer Domain Slots)
 | Specialist input | Check command / file read | Result | Script-produced evidence |

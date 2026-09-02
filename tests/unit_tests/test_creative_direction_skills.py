@@ -343,3 +343,58 @@ def test_creative_workflow_binds_handoff_to_visual_evidence_bundle() -> None:
     for text in (workflow, protocol):
         assert "--visual-basis .forgewright/visual-evidence/visual-basis.json" in text
         assert "--cards-dir .forgewright/visual-evidence/cards" in text
+
+
+def test_ui_style_diversity_is_evidence_bound_and_not_a_new_style_database() -> None:
+    protocol = _read(
+        ROOT / "skills" / "_shared" / "protocols" / "ui-style-diversity.md"
+    )
+    ui_skill = _read(UI_SKILL)
+    data_readme = _read(UI_DATA_README)
+    registry = json.loads(
+        _read(ROOT / "skills" / "ui-designer" / "data" / "reference-registry.json")
+    )
+
+    assert "registry is never evidence" in protocol.lower()
+    assert "unmodified_stack_default: false" in protocol
+    for axis in (
+        "density",
+        "geometry",
+        "surface",
+        "typography",
+        "chroma",
+        "depth",
+        "motion",
+        "composition",
+        "imagery",
+    ):
+        assert f"`{axis}`" in protocol
+
+    assert "PIPELINE_CONTEXT.ui_style_profile" in ui_skill
+    assert "ui-style-diversity.md" in ui_skill
+    assert "0x00d4ff" not in ui_skill.lower()
+    assert '"Outfit"' not in ui_skill
+    assert "createGradientBackground" not in ui_skill
+    assert "style?: 'default' | 'glass' | 'solid'" not in ui_skill
+
+    assert "research starting-point registry" in data_readme
+    assert registry["registry_is_evidence"] is False
+    entries = {entry["id"]: entry for entry in registry["entries"]}
+    assert {
+        "primer",
+        "carbon",
+        "fluent",
+        "spectrum",
+        "daisyui",
+        "tweakcn",
+        "ui-ux-pro-max",
+    } <= set(entries)
+    assert all(entry["can_ground_without_card"] is False for entry in entries.values())
+    assert all(
+        entries[name]["source_class"] == "production_system_candidate"
+        for name in ("primer", "carbon", "fluent", "spectrum")
+    )
+    assert all(
+        entries[name]["candidate_evidence_kind"] == "inspiration_only"
+        for name in ("daisyui", "tweakcn", "ui-ux-pro-max")
+    )

@@ -2,7 +2,7 @@
 
 > **North star:** cost per verified, accepted engineering task.
 > **Scope:** the core engineering loop first; game, XR, research, and growth remain optional capability packs until the core loop has production evidence.
-> **Status date:** 2026-09-01.
+> **Status date:** 2026-09-02.
 
 ## Product Goal
 
@@ -38,7 +38,7 @@ The product promise is:
 | State | Canonical MCP state uses typed fail-closed persistence, schema validation, lock-backed transactions, and bounded history | Production recovery and cross-process operational evidence remain missing |
 | CI/release | A required provider-neutral local control plane invokes product truth, Python units, MCP lint/format/build/test/coverage, CLI tests, production dependency audit, compatibility checks, package smoke checks, review, and clean-install evidence | Runtime smoke remains opt-in; hosted CI is not part of the canonical PASS/FAIL contract |
 | Memory | Boot injection is capped at 500 tokens | Retrieval quality, staleness, and non-ASCII query behavior lack release KPIs |
-| Visual direction | Local contracts now separate model prior from visual evidence: current project/user authority is preferred, greenfield external direction uses validated Evidence Cards + a GROUNDED Visual Basis, successful-product adoption is separated from causal claims, and concept/art/generation/asset-lifecycle handoffs fail closed on missing or mismatched basis bindings | Live image-generation aesthetics, harder gameplay-frame conformance, and non-Codex multimodal production evidence remain unverified |
+| Visual direction | Local contracts now separate model prior from visual evidence: current project/user authority is preferred, greenfield external direction uses validated Evidence Cards + a GROUNDED Visual Basis, successful-product adoption is separated from causal claims, and material greenfield UI additionally uses a validated evidence-bound Style Profile so component-stack defaults cannot silently become product identity | Live image-generation aesthetics, cross-project UI style-diversity outcomes, harder gameplay-frame conformance, and non-Codex multimodal production evidence remain unverified |
 
 ## Provider-Native Routing Policy
 

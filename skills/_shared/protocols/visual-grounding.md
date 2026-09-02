@@ -7,7 +7,7 @@ version: 1.1.0
 owners: [core, design]
 triggers: [ui, visual, art, layout, ux, animation, vfx]
 used_by: [pipeline, production-grade, operating-preflight, operating-audit, quality-gate]
-related: [pipeline-operating-contract, quality-gate, verification, research-gate, evidence-first, visual-evidence-library]
+related: [pipeline-operating-contract, quality-gate, verification, research-gate, evidence-first, visual-evidence-library, ui-style-diversity]
 supersedes: []
 superseded_by: null
 ---
@@ -75,6 +75,10 @@ For material UI and gameplay HUD work, the visual basis must also establish:
 
 These are evidence requirements, not a universal aesthetic. Brand/style references may intentionally be maximalist, glassy, outlined or uppercase; preserve them when hierarchy, readability and accessibility remain proven. Report findings as `USABILITY/ACCESSIBILITY`, `REFERENCE_DEVIATION`, `TECHNICAL_ARTIFACT` or `SUBJECTIVE_PREFERENCE` rather than collapsing them into an unexplained score.
 
+## 3.2 UI Style Diversity Gate
+
+For material greenfield UI, a GROUNDED Visual Basis is necessary but not sufficient to prevent stack-default monoculture. After grounding the basis, synthesize `.forgewright/visual-evidence/ui-style-profile.json` using `ui-style-diversity.md` and validate it with `ui_style_profile.py`. The profile records evidence-bound density, geometry, surface, typography, chroma, depth, motion, composition and imagery axes plus how the project departs from an unmodified component-stack default. Registry entries and theme galleries are discovery aids only; profile axes bind Visual Basis **decision IDs**, never registry rows or model memory. Existing user/project visual authority may already supply this identity and does not need artificial divergence.
+
 ## 4. Visual Contract
 
 Before expensive implementation/generation, lock only the material dimensions:
@@ -82,6 +86,7 @@ Before expensive implementation/generation, lock only the material dimensions:
 ```text
 VISUAL GOAL: <user/task outcome>
 EVIDENCE BASIS: <validated visual-basis id/status + evidence card ids>
+UI STYLE PROFILE: <validated ui-style-profile/v1 id for material greenfield UI, or not applicable>
 MODEL PRIOR: hypothesis-only; used_as_evidence=false
 SOURCE OF TRUTH: <design system / refs / shipped screen>
 REFERENCE ROLES: <STYLE / TARGET / CHARACTER / MOTION / PLATFORM>

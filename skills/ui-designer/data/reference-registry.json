@@ -1,0 +1,147 @@
+{
+  "schema_version": "ui-reference-registry/v1",
+  "observed_at": "2026-09-02",
+  "registry_is_evidence": false,
+  "entries": [
+    {
+      "id": "primer",
+      "name": "GitHub Primer",
+      "source_url": "https://github.com/primer/primitives",
+      "source_class": "production_system_candidate",
+      "candidate_evidence_kind": "production_design_system",
+      "observed_mechanisms": [
+        "Separate color, spacing, and typography primitives from component implementations.",
+        "Use shared primitives to support product UI without coupling the reference registry to a project palette."
+      ],
+      "recommended_uses": [
+        "Research token architecture, dense product UI, component anatomy, and state language.",
+        "Create a fresh Visual Evidence Card from current Primer sources when the target context is comparable."
+      ],
+      "prohibited_uses": [
+        "Do not copy GitHub branding, exact tokens, icons, or composition into an unrelated product.",
+        "Do not treat this registry row as evidence."
+      ],
+      "can_ground_without_card": false
+    },
+    {
+      "id": "carbon",
+      "name": "IBM Carbon Design System",
+      "source_url": "https://carbondesignsystem.com/components/overview/components/",
+      "source_class": "production_system_candidate",
+      "candidate_evidence_kind": "production_design_system",
+      "observed_mechanisms": [
+        "Systematic component reuse preserves visual and functional consistency across complex product surfaces.",
+        "Component documentation exposes problem-specific patterns rather than one generic card treatment."
+      ],
+      "recommended_uses": [
+        "Research enterprise information density, data-heavy components, and state coverage.",
+        "Create a current evidence card before transferring any mechanism into a project basis."
+      ],
+      "prohibited_uses": [
+        "Do not make Carbon's enterprise visual language a universal default.",
+        "Do not treat this registry row as evidence."
+      ],
+      "can_ground_without_card": false
+    },
+    {
+      "id": "fluent",
+      "name": "Microsoft Fluent 2",
+      "source_url": "https://fluent2.microsoft.design/design-tokens",
+      "source_class": "production_system_candidate",
+      "candidate_evidence_kind": "production_design_system",
+      "observed_mechanisms": [
+        "Separate global raw tokens from semantic alias tokens.",
+        "Tokenize color, typography, spacing, radius, stroke, shadow, duration, and easing so theming changes do not require hardcoded style recipes."
+      ],
+      "recommended_uses": [
+        "Research semantic token layering, theming, accessibility modes, and cross-platform consistency.",
+        "Create a current evidence card when these mechanisms fit the target interaction model."
+      ],
+      "prohibited_uses": [
+        "Do not import Fluent's visual identity merely because the target is a software product.",
+        "Do not treat this registry row as evidence."
+      ],
+      "can_ground_without_card": false
+    },
+    {
+      "id": "spectrum",
+      "name": "Adobe Spectrum",
+      "source_url": "https://github.com/adobe/spectrum-design-data",
+      "source_class": "production_system_candidate",
+      "candidate_evidence_kind": "production_design_system",
+      "observed_mechanisms": [
+        "Represent tokens as a required foundation dataset while components, mode sets, registries, and guidelines remain structured extensions.",
+        "Separate machine-readable design data from a single rendered theme."
+      ],
+      "recommended_uses": [
+        "Research structured design data, component declarations, mode sets, and product-grade visual governance.",
+        "Create a fresh evidence card from current Spectrum sources when context matches."
+      ],
+      "prohibited_uses": [
+        "Do not copy Adobe trade dress or assume creative-tool UI is suitable for every product.",
+        "Do not treat this registry row as evidence."
+      ],
+      "can_ground_without_card": false
+    },
+    {
+      "id": "daisyui",
+      "name": "daisyUI Themes",
+      "source_url": "https://daisyui.com/docs/themes/",
+      "source_class": "exploration_library",
+      "candidate_evidence_kind": "inspiration_only",
+      "observed_mechanisms": [
+        "A shared component vocabulary can support many distinct theme expressions.",
+        "Theme variables can be customized without changing component semantics."
+      ],
+      "recommended_uses": [
+        "Expand the search space for theme variation and test whether component primitives are overly coupled to one look.",
+        "Use only as exploration unless stronger direct production evidence is separately recorded."
+      ],
+      "prohibited_uses": [
+        "Do not select a built-in theme as project direction solely because it is available.",
+        "Do not ground a Visual Basis from this registry entry."
+      ],
+      "can_ground_without_card": false
+    },
+    {
+      "id": "tweakcn",
+      "name": "tweakcn",
+      "source_url": "https://github.com/jnsahaj/tweakcn",
+      "source_class": "exploration_library",
+      "candidate_evidence_kind": "inspiration_only",
+      "observed_mechanisms": [
+        "Visually edit theme parameters around reusable shadcn/Tailwind primitives.",
+        "Use theme variation to break the recognizable default appearance of a component stack."
+      ],
+      "recommended_uses": [
+        "Explore parameter ranges and verify that a chosen component stack does not dictate project identity.",
+        "Use previews as hypotheses, not as proof of suitability."
+      ],
+      "prohibited_uses": [
+        "Do not equate a preset with a validated project style.",
+        "Do not ground a Visual Basis from this registry entry."
+      ],
+      "can_ground_without_card": false
+    },
+    {
+      "id": "ui-ux-pro-max",
+      "name": "UI UX Pro Max",
+      "source_url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "source_class": "discovery_only",
+      "candidate_evidence_kind": "inspiration_only",
+      "observed_mechanisms": [
+        "Expose a broad searchable vocabulary of styles, palettes, typography pairings, product categories, and UX checks.",
+        "Provide candidate search terms that can widen exploration before evidence is collected."
+      ],
+      "recommended_uses": [
+        "Generate diverse search hypotheses and names for visual mechanisms the team may otherwise overlook.",
+        "Use its categories only to seed external research against direct sources."
+      ],
+      "prohibited_uses": [
+        "Never accept product-to-style, product-to-palette, or font-pair recommendations as evidence-backed defaults.",
+        "Never copy its generated design-system output into production without independent project evidence."
+      ],
+      "can_ground_without_card": false
+    }
+  ]
+}

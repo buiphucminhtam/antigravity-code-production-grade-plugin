@@ -100,6 +100,7 @@ visual_evidence:
   card_ids: <exact supporting card ids or none>
   model_prior_used_as_evidence: false
 visual_basis: <validated decisions + must-match/may-vary/prohibited-drift, or none>
+ui_style_profile: <validated ui-style-profile/v1 id/signature for material greenfield UI, or none>
 project_docs:
   contract: <continuous | proportional | legacy>
   manifest: <project-relative manifest path or none>
@@ -217,7 +218,7 @@ Domain overlap is valid only when it is genuinely part of the specialty: prompt 
    per-model input/cached-input/output token rates, estimate role token ranges and
    critical-path latency, then record the spawn/no-spawn plan. Effectiveness and
    speed outrank token cost; missing prices stay `UNVERIFIED`.
-5. **VISUAL EVIDENCE / BASIS** — for material visual work, establish `visual_basis` via `visual-grounding.md`. If current project/user authority is absent, open the mandatory greenfield Research Gate, build/validate the Visual Evidence Library and `visual-basis/v1`, and keep model prior hypothesis-only before costly direction decisions.
+5. **VISUAL EVIDENCE / BASIS** — for material visual work, establish `visual_basis` via `visual-grounding.md`. If current project/user authority is absent, open the mandatory greenfield Research Gate, build/validate the Visual Evidence Library and `visual-basis/v1`, and keep model prior hypothesis-only before costly direction decisions. For material greenfield UI, also validate `ui-style-profile/v1` via `ui-style-diversity.md` so component-stack defaults cannot silently become product identity.
 6. **DISPATCH** — select the smallest necessary specialist set and pass the envelope.
 7. **DOCS WRITE GATE** — before a durable documentation write, apply
    `documentation-governance.md`, search current sources, and record the
@@ -264,7 +265,7 @@ Domain overlap is valid only when it is genuinely part of the specialty: prompt 
    not cryptographic reviewer authentication; same-user forgery remains a
    stated trust limitation.
 6. **RISK CLOSURE** — every material `risk_signal` is resolved, explicitly accepted, or blocking.
-7. **VISUAL CONFORMANCE** — when applicable, first confirm creative/UI/generation artifacts still bind the same validated Visual Basis, then compare rendered output to it; a concrete mismatch outranks a subjective score.
+7. **VISUAL CONFORMANCE** — when applicable, first confirm creative/UI/generation artifacts still bind the same validated Visual Basis and, for material greenfield UI, the same validated UI Style Profile; then compare rendered output to those contracts. A concrete mismatch outranks a subjective score.
 8. **CRITICAL AUDIT** — requirement coverage, contradictions, cross-entry consistency, domain handoff consistency, and proof that no behavioral test oracle changed without an explicit requirement delta.
 9. **LEARN** — record only validated reusable project-local lessons; do not mutate shared skills as a normal delivery side effect.
 

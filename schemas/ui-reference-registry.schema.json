@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://forgewright.dev/schemas/ui-reference-registry.schema.json",
+  "title": "Forgewright UI Reference Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "observed_at", "registry_is_evidence", "entries"],
+  "properties": {
+    "schema_version": { "const": "ui-reference-registry/v1" },
+    "observed_at": { "type": "string", "minLength": 10, "maxLength": 64 },
+    "registry_is_evidence": { "const": false },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "$defs": {
+    "string_list": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": { "type": "string", "minLength": 1, "maxLength": 800 }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "name", "source_url", "source_class", "candidate_evidence_kind",
+        "observed_mechanisms", "recommended_uses", "prohibited_uses",
+        "can_ground_without_card"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "source_url": { "type": "string", "minLength": 8, "maxLength": 2000 },
+        "source_class": {
+          "type": "string",
+          "enum": ["production_system_candidate", "exploration_library", "discovery_only"]
+        },
+        "candidate_evidence_kind": {
+          "type": "string",
+          "enum": ["production_design_system", "inspiration_only"]
+        },
+        "observed_mechanisms": { "$ref": "#/$defs/string_list" },
+        "recommended_uses": { "$ref": "#/$defs/string_list" },
+        "prohibited_uses": { "$ref": "#/$defs/string_list" },
+        "can_ground_without_card": { "const": false }
+      }
+    }
+  }
+}

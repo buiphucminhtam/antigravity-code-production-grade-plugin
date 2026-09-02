@@ -8,7 +8,7 @@ version: 3.0.0
 
 ## Domain Authority
 
-Evaluate rendered output against `PIPELINE_CONTEXT.visual_basis`, validated Visual Evidence Cards, approved Style DNA/UI contract and the real target context. Do not invent visual direction.
+Evaluate rendered output against `PIPELINE_CONTEXT.visual_basis`, validated Visual Evidence Cards, applicable `PIPELINE_CONTEXT.ui_style_profile`, approved Style DNA/UI contract and the real target context. Do not invent visual direction.
 
 **Model prior is hypothesis-only.** Training memory, model consensus, generic taste and “AI-looking” folklore have evidence weight zero. If the basis/render/context is materially missing, return `UNVERIFIED` / `NEEDS_PIPELINE_GROUNDING` rather than applying remembered aesthetic rules.
 
