@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": {
-    "summary": "Forgewright is a local-first, provider-neutral engineering orchestration toolkit with an evidence-backed six-phase delivery pipeline and optional domain capability packs.",
+    "summary": "Forgewright is a local-first, provider-neutral autonomous product-engineering system that preserves an evidence-backed engineering pipeline while adding product intent, environment interaction, outcome verification, and gated learning across web, app, and game.",
     "product_type": "tooling",
     "lifecycle": "active"
   },
@@ -298,6 +298,86 @@
           "anchor": "evidence-schema-v2"
         }
       ]
+    },
+    {
+      "id": "product-factory-pf0",
+      "title": "PF0 — Reset product truth and remove instruction/heuristic entropy",
+      "status": "in_progress",
+      "priority": "critical",
+      "owner": "Forgewright maintainers",
+      "target_date": null,
+      "depends_on": [],
+      "references": [{"path": "docs/active-roadmap.md", "anchor": "product-factory-upgrade-program"}]
+    },
+    {
+      "id": "product-factory-pf1",
+      "title": "PF1 — Add the Product Intent Kernel and hierarchical Product Goal Graph",
+      "status": "planned",
+      "priority": "critical",
+      "owner": "Forgewright maintainers",
+      "target_date": null,
+      "depends_on": ["product-factory-pf0"],
+      "references": [{"path": "docs/active-roadmap.md", "anchor": "product-factory-upgrade-program"}]
+    },
+    {
+      "id": "product-factory-pf2",
+      "title": "PF2 — Add provider-neutral Environment ACI with Web, Mobile, and Game adapters",
+      "status": "planned",
+      "priority": "critical",
+      "owner": "Forgewright maintainers",
+      "target_date": null,
+      "depends_on": ["product-factory-pf1"],
+      "references": [{"path": "docs/active-roadmap.md", "anchor": "product-factory-upgrade-program"}]
+    },
+    {
+      "id": "product-factory-pf3",
+      "title": "PF3 — Verify critical product outcomes in target environments",
+      "status": "planned",
+      "priority": "critical",
+      "owner": "Forgewright maintainers",
+      "target_date": null,
+      "depends_on": ["product-factory-pf2"],
+      "references": [{"path": "docs/active-roadmap.md", "anchor": "product-factory-upgrade-program"}]
+    },
+    {
+      "id": "product-factory-pf4",
+      "title": "PF4 — Build ForgeBench for intent, web, mobile, and game product tasks",
+      "status": "planned",
+      "priority": "critical",
+      "owner": "Forgewright maintainers",
+      "target_date": null,
+      "depends_on": ["product-factory-pf3"],
+      "references": [{"path": "docs/active-roadmap.md", "anchor": "product-factory-upgrade-program"}]
+    },
+    {
+      "id": "product-factory-pf5",
+      "title": "PF5 — Add evidence-gated trajectory learning and promotion",
+      "status": "planned",
+      "priority": "high",
+      "owner": "Forgewright maintainers",
+      "target_date": null,
+      "depends_on": ["product-factory-pf4"],
+      "references": [{"path": "docs/active-roadmap.md", "anchor": "product-factory-upgrade-program"}]
+    },
+    {
+      "id": "product-factory-pf6",
+      "title": "PF6 — Add disposable secure runtime isolation for high-autonomy execution",
+      "status": "planned",
+      "priority": "critical",
+      "owner": "Forgewright maintainers",
+      "target_date": null,
+      "depends_on": ["product-factory-pf4"],
+      "references": [{"path": "docs/active-roadmap.md", "anchor": "product-factory-upgrade-program"}]
+    },
+    {
+      "id": "product-factory-pf7",
+      "title": "PF7 — Release the end-to-end autonomous product factory across maintained web/app/game reference lanes",
+      "status": "planned",
+      "priority": "critical",
+      "owner": "Forgewright maintainers",
+      "target_date": null,
+      "depends_on": ["product-factory-pf5", "product-factory-pf6"],
+      "references": [{"path": "docs/active-roadmap.md", "anchor": "product-factory-upgrade-program"}]
     }
   ],
   "flows": [
@@ -993,9 +1073,9 @@
   "status": {
     "lifecycle": "active",
     "health": "on_track",
-    "phase": "SUSTAIN",
-    "summary": "Continuous Docs Hub, runtime/token-aware dispatch, provider-neutral rule hooks, bounded Stop replay, requirement-locked tests, and exact schema-v2 evidence remain active. PLAN_LOCKED execution, phase-aware routing, adaptive progress controls, independent audit binding, and the source-backed UI/HUD review gate now pass local contracts. Visual direction is now evidence-grounded locally: model training prior is hypothesis-only, greenfield external direction requires current validated Evidence Cards plus a GROUNDED Visual Basis, successful-product adoption is separated from causal claims, and Concept/Art/generation/asset-lifecycle handoffs fail closed on missing or mismatched basis bindings. The local precommit Python budget now covers the suite's declared roadmap replay windows without changing any test oracle, nested roadmap verifiers keep the prepared local-CI virtualenv at the front of PATH instead of escaping to a system Python, lifecycle finalization separates durable-start persistence from the caller cleanup deadline under I/O pressure, and model-call timeout enforcement rejects overdue provider results even when the event loop delays the timeout callback. Material greenfield UI now adds an evidence-bound UI Style Profile and a non-authoritative reference discovery registry; production-system candidates still require Visual Evidence Cards, exploration tools remain hypothesis-only, and unmodified component-stack defaults cannot become grounded product identity. The provider-neutral VisualGameHarness applies capability-verified multimodal render-inspect-revise controls without a vendor SDK/CLI dependency; provider-native swarm remains disabled. A bounded live HUD-perception canary gave both gpt-5.6-luna and gpt-5.6-sol 12/12 oracle accuracy, while AGY tool-hook compatibility, Gemini direct eligibility, Claude authentication, live image-generation quality, provider canary/rollback receipts, and fresh evaluator evidence remain unresolved.",
-    "updated_at": "2026-09-02T18:58:30+07:00",
+    "phase": "DEFINE",
+    "summary": "The Product Factory upgrade is now the primary active program. PF0 is in progress: reset the north star from verified engineering task to verified product outcome, audit conflicting/unsupported instructions, then build Product Intent Graph, cross-domain Environment ACI, Product Outcome Verification, ForgeBench, evidence-gated learning, secure disposable execution, and end-to-end web/app/game reference lanes. Existing engineering evidence-v2, requirement-locked tests, visual grounding, GitNexus, runtime lifecycle, and provider-neutral routing remain mandatory substrate and must not be weakened.",
+    "updated_at": "2026-09-04T07:43:16+07:00",
     "blockers": [
       {
         "id": "live-provider-client-migration",
@@ -1042,15 +1122,21 @@
     ],
     "next_actions": [
       {
-        "id": "live-provider-evidence",
-        "title": "Run the locally verified H5 receipt and paired A/B contract in a supported provider runtime, then collect canary and rollback evidence.",
-        "owner": "Runtime maintainers",
+        "id": "pf0-instruction-provenance-audit",
+        "title": "Inventory and test contradictions/unsupported heuristics across kernel, shared protocols, and routed skill overlays; freeze the current baseline before behavior changes.",
+        "owner": "Forgewright maintainers",
         "due_date": null
       },
       {
-        "id": "visual-game-harness-canary",
-        "title": "After hook/auth repair, compare a harder gameplay frame and image-generation task across authorized capability-compatible models using the same locked visual contract.",
+        "id": "pf1-product-intent-contract",
+        "title": "Design and implement product-intent/v1 plus authority, uncertainty, product-delta, and Product Goal Graph contracts with adversarial tests.",
         "owner": "Orchestration maintainers",
+        "due_date": null
+      },
+      {
+        "id": "pf2-environment-aci-contract",
+        "title": "Define the common Environment ACI contract and acceptance tests before adding Web, Android/mobile, and Unity/game adapters.",
+        "owner": "Runtime maintainers",
         "due_date": null
       }
     ],

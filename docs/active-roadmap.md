@@ -1,28 +1,31 @@
 # Forgewright Active Roadmap
 
-> **North star:** cost per verified, accepted engineering task.
-> **Scope:** the core engineering loop first; game, XR, research, and growth remain optional capability packs until the core loop has production evidence.
-> **Status date:** 2026-09-02.
+> **North star:** cost per verified, accepted product outcome.
+> **Scope:** evolve the verified engineering harness into an autonomous product factory that can understand intent, build, exercise, judge, revise, and ship web, app, and game products. Existing domain packs remain workers under one product-level control plane.
+> **Status date:** 2026-09-04.
 
 ## Product Goal
 
-Forgewright turns a base model into a reliable engineering execution system. It should understand the repository before editing, route work by measured risk, prove changed behavior mechanically, preserve useful project memory within a bounded context budget, and involve a human only at strategic or authority gates.
+Forgewright turns a base model into a reliable autonomous product-engineering system. It should understand both the user's product intent and the current repository/runtime before acting, route work by measured risk, prove changed behavior mechanically, exercise the resulting product in its real interaction environment, preserve useful project memory within a bounded context budget, and involve a human only at strategic or authority gates.
 
 The product promise is:
 
-> Every edit is impact-aware, every success is evidence-backed, and expensive models are used only when measured risk requires them.
+> Every material decision is intent-bound, every edit is impact-aware, every success is evidence-backed, and a product is not considered complete until its critical user outcomes are exercised in the target environment.
 
 ## Operating Principles
 
-1. Optimize cost per verified accepted task, not raw token count or single-run pass rate.
-2. Keep one canonical production runtime and one model-call/tool-execution gateway.
-3. Prefer deterministic checks over model self-assessment.
-4. Start with the least expensive capable model and escalate only from objective evidence.
-5. Give workers a bounded task contract and relevant context slice, never the full conversation by default.
-6. Treat documentation claims as release artifacts: every quantitative or safety claim needs an owner and evidence.
-7. Roll out routing changes in shadow and canary modes before making them default.
-8. Keep execution provider-native: discovery, routing, model calls, verification, usage receipts, and credentials stay inside one provider ecosystem per run.
-9. Do not require paid hosted CI; release evidence must be reproducible with local or provider-included tooling.
+1. Optimize cost per verified accepted **product outcome**, not raw token count, code volume, or single-run pass rate.
+2. Maintain three separate truth layers: **Intent Truth** (what the user wants), **Runtime Truth** (what the product actually does), and **Outcome Truth** (whether the user can achieve the intended result).
+3. Keep one canonical production runtime and one model-call/tool-execution gateway.
+4. Prefer deterministic environment checks and executable scenarios over model self-assessment.
+5. Treat skills as bounded specialist workers; product intent, environment state, outcome evidence, and promotion policy belong to the control plane rather than individual skills.
+6. Start with the least expensive capable model and escalate only from objective evidence.
+7. Give workers a bounded task contract and relevant context slice, never the full conversation by default.
+8. Ask the user only when the unresolved information has material decision value and cannot be recovered from current evidence; reversible defaults remain agent-owned.
+9. Treat documentation claims as release artifacts: every quantitative or safety claim needs an owner and evidence.
+10. Roll out routing, learned context, and policy changes in shadow/canary evaluation before making them default.
+11. Keep execution provider-native: discovery, routing, model calls, verification, usage receipts, and credentials stay inside one provider ecosystem per run.
+12. Do not require paid hosted CI; release evidence must be reproducible with local or provider-included tooling.
 
 ## Verified Baseline
 
@@ -67,6 +70,176 @@ Roadmap completion is recorded on five independent axes in `docs/roadmap-complet
 | Outcome | Is the intended result measured, met only locally, partial, unmeasured, or not met? | Completion of any other axis |
 
 There is no aggregate `implemented` status. The P0–P3 tables below inventory the historical foundation and its intended target outcomes; their prose labels cannot override the machine-readable axes. Each local evidence claim declares exact verifier argv, acceptance IDs, concrete test refs, negative paths, and the report producer. `npm run verify:roadmap` replays those commands fail-closed and rejects a verifier that fails, times out, or mutates the worktree.
+
+## Product Factory Upgrade Program
+
+This program supersedes feature-count growth as the primary product direction. The existing kernel, evidence-v2, GitNexus, visual grounding, security controls, skills, and harness work are retained as the engineering substrate. The upgrade adds product-level state and environment interaction above them rather than duplicating them inside more skills.
+
+### Target architecture
+
+```text
+User request
+  -> Product Intent Graph
+  -> Product Goal / Scenario Graph
+  -> Forgewright engineering workers
+  -> Environment ACI (Web | Mobile | Game)
+  -> Product Outcome Judge
+  -> revise / replan when evidence fails
+  -> ship only after outcome evidence
+  -> trajectory learning -> ForgeBench -> gated promotion
+```
+
+### Truth model
+
+| Truth | Authority | What it prevents |
+|---|---|---|
+| **Intent Truth** | Current explicit user decisions, approved product artifacts, and evidence-bound research | Building a technically correct product that solves the wrong problem |
+| **Runtime Truth** | Current browser/device/engine state, executable checks, telemetry, and rendered evidence | Concluding from source code or model confidence that the product behaves correctly |
+| **Outcome Truth** | Executed user scenarios and product-level acceptance evidence | Treating green unit/integration tests as proof that users can actually achieve their goal |
+
+### Dependency order
+
+`PF0 -> PF1 -> PF2 -> PF3 -> PF4 -> (PF5 || PF6) -> PF7`
+
+PF5 learning may be developed in parallel with PF6 isolation after ForgeBench exists. PF7 cannot enable high-autonomy product execution until both promotion safety and the applicable containment backend pass their own gates.
+
+### PF0 — Product-truth reset and instruction-entropy baseline
+
+**Target outcome:** establish the product-factory contract without weakening the verified engineering baseline.
+
+| Deliverable | Required result |
+|---|---|
+| North-star reset | Product outcome becomes the optimization target while existing engineering evidence remains required. |
+| Core instruction audit | Detect contradictory or obsolete instructions across kernel, shared protocols, and routed LITE/SKILL overlays; current higher-authority rules win deterministically. |
+| Heuristic provenance audit | Domain constants, ratios, thresholds, and “best-practice” values that are not current project/primary evidence are labeled hypothesis/default rather than truth. |
+| Baseline suite | Record current engineering, intent-resolution, clarification burden, environment coverage, and false-success baselines before changing behavior. |
+| Product-factory completion contract | Reserve one final local verifier entry point: `npm run verify:product-factory`. Until it exists and passes on the final tree, the product-factory goal remains incomplete. |
+
+**Exit:** canonical local CI remains green; the instruction/provenance audits have deterministic tests; no roadmap status is upgraded from artifact presence alone.
+
+### PF1 — Product Intent Kernel
+
+**Target outcome:** make user intent a machine-readable first-class state rather than a transient BRD/chat interpretation.
+
+| Component | Contract |
+|---|---|
+| `product-intent/v1` | Problem, target actors, JTBD, desired outcomes, constraints, non-goals, preferences, scenarios, uncertainty, decisions, and acceptance references. |
+| Authority resolver | Explicit current user decision > approved project truth > current workspace/runtime evidence > authoritative research > bounded inference. Memory/model prior cannot override a newer authority. |
+| Uncertainty ledger | Every material unknown records decision impact, evidence, reversibility, owner, and resolution state. |
+| Value-of-information clarification gate | Ask only when an unresolved fact can materially change outcome/cost/risk/public contract and cannot be safely defaulted or researched. No fixed question quota or completeness score may force an interview. |
+| Product delta contract | Separate **current product truth** from the **proposed change** so iterations do not rewrite history or rebuild the product model from scratch. |
+| Product Goal Graph | `Outcome -> Capability -> Scenario -> Feature/Evidence/Metric` dependencies replace a single flat goal string for product work while remaining compatible with the current goal-driven runtime. |
+
+**Exit:** adversarial tests cover vague prompts, “you decide”, conflicting preferences, changed requirements, irrelevant unknowns, and stale memory. The same intent contract can route web, mobile, and game work without domain-specific forks.
+
+### PF2 — Cross-domain Agent-Computer Interface (ACI)
+
+**Target outcome:** give product agents a common way to observe and manipulate the product itself, not only its files.
+
+Canonical provider-neutral interface:
+
+```text
+observe()
+act(action)
+reset()
+snapshot()
+restore(snapshot)
+runScenario(scenario)
+collectEvidence()
+```
+
+Adapters are capability-driven and may expose richer domain operations without changing the common contract:
+
+- **Web ACI:** semantic DOM/accessibility state first, browser actions, network/console evidence, deterministic viewport state, and vision for appearance when needed.
+- **Mobile ACI:** Android emulator/device first, UI hierarchy + gestures + screenshots/runtime state; iOS remains capability-gated rather than assumed.
+- **Game ACI:** Unity first using available engine tooling, then Godot/Unreal adapters; deterministic time/input stepping, inspectable gameplay state, frame/video evidence, and resettable scenarios are the target semantics.
+
+**Exit:** each enabled lane can launch or attach, observe, act, reset, execute at least one locked scenario, and return attributable evidence. Missing capabilities return `UNVERIFIED`; they are never filled by model imagination.
+
+### PF3 — Product Outcome Verification
+
+**Target outcome:** extend acceptance from implementation correctness to real product usability/behavior.
+
+| Capability | Required behavior |
+|---|---|
+| `product-outcome-contract/v1` | Binds intent outcome/scenario IDs to environment adapter, actions, assertions, evidence, negative paths, and limitations. |
+| Product Judge | Composes requirement, environment scenario, visual/reference, accessibility, performance, security, reliability, and release evidence without replacing specialist verifiers. |
+| Critical-journey runner | Executes the actions a target user must perform and verifies the end state in the target environment. |
+| Synthetic user lane | Supports hidden-intent/preferences for benchmark evaluation; simulator output is test evidence, never production user research. |
+| Game quality boundary | “Fun”, taste, and commercial appeal cannot be self-certified. Agent-verifiable proxies such as discoverability, feedback latency, retry/friction patterns, difficulty/runtime state, HUD occlusion, and progression behavior may be measured and clearly labeled. |
+
+**Exit:** a green build/test suite alone cannot complete a material product acceptance when a critical environment scenario is applicable and runnable.
+
+### PF4 — ForgeBench
+
+**Target outcome:** benchmark the entire path from ambiguous product request to verified usable product rather than only isolated coding tasks.
+
+Initial lanes:
+
+1. **Intent:** vague request + hidden requirements/preferences; measure wrong-product rate and unnecessary clarification.
+2. **Web:** task completion in a real browser plus structural, visual, accessibility, performance, and release evidence.
+3. **Mobile:** resettable Android scenarios with randomized state/data where safe.
+4. **Game:** deterministic gameplay scenarios plus runtime-state and rendered evidence.
+
+Canonical metrics include product-outcome success, false-success rate, user-intervention count, clarification burden, retries, wall time, tokens/cost when available, and per-lane limitations. Benchmark thresholds are frozen only after PF0 baseline evidence; they are not invented in advance.
+
+**Exit:** baseline/candidate comparison is reproducible and privacy-safe; `npm run verify:product-factory` includes the required product-factory contract tests and refuses incomplete/mismatched lane evidence.
+
+### PF5 — Evidence-gated Learning Foundry
+
+**Target outcome:** learn from completed trajectories without allowing a running agent to rewrite shared intelligence.
+
+Pipeline:
+
+```text
+trajectory -> cluster -> candidate lesson delta
+           -> offline ForgeBench replay
+           -> baseline/candidate A/B
+           -> independent review
+           -> versioned promotion or rejection
+```
+
+Rules:
+
+- no hot-patching kernel/shared skills during client execution;
+- candidate lessons carry observed context, root cause, correction, applicability boundary, and verifier/source;
+- useful/harmful counters and regression history accumulate incrementally rather than rewriting the whole context from one episode;
+- promotion requires no material safety/quality regression and remains reversible/versioned.
+
+**Exit:** intentionally harmful/stale candidate lessons are rejected; promoted lessons improve at least one frozen benchmark outcome without violating protected acceptance/safety metrics.
+
+### PF6 — Secure Autonomous Runtime
+
+**Target outcome:** close the gap between application-level containment and the process isolation needed for high-autonomy product building.
+
+Deliverables:
+
+- provider-neutral disposable-environment backend contract;
+- local container/sandbox backend first where supported; optional external backends are adapters, not core dependencies;
+- explicit filesystem/network/process/secret/resource capabilities;
+- snapshot/restore and deterministic teardown;
+- egress and private-network policy tests;
+- artifact export through a narrow controlled boundary.
+
+**Exit:** escape, secret-access, resource-exhaustion, stale-snapshot, process-orphan, and unauthorized-network negative paths fail closed. Arbitrary child-process autonomy remains disabled on hosts without a verified backend.
+
+### PF7 — End-to-end Autonomous Product Factory release
+
+**Target outcome:** demonstrate the same product control plane across web, app, and game.
+
+Release candidates must include at least one maintained reference product per lane:
+
+- a web product exercised through Web ACI;
+- a mobile product exercised through the supported mobile ACI;
+- a game product exercised through the supported game ACI.
+
+For each reference run the system must preserve the user's locked intent, produce the product, exercise critical journeys, revise on observed failures, pass applicable engineering/security/visual/runtime gates, produce rollback/release evidence, and keep unresolved subjective/user-research questions explicit rather than self-approving them.
+
+**Program completion:** PF0-PF7 are complete on their independent implementation/integration/activation/production-evidence/outcome axes as applicable, the final tree passes `npm run verify:product-factory`, and no domain lane is presented as production-capable without its own current environment evidence.
+
+### External design references — mindset only
+
+The implementation may study these architectures without making them mandatory runtime dependencies: GitHub Spec Kit/OpenSpec for intent/spec deltas, SWE-agent for Agent-Computer Interface design, Magentic-One for task/progress ledgers, AndroidWorld and GameDevBench for environment benchmarks, ACE-style incremental context learning, and disposable-sandbox systems such as Daytona for isolation. Every adopted mechanism still requires a Forgewright-specific threat, compatibility, and benchmark justification.
 
 ## Historical Foundation Phases
 
@@ -187,9 +360,11 @@ review gates; reviewer identity is not cryptographically authenticated.
 
 ## Next Execution Slice
 
-1. Activate the H5 receipt adapter only in a supported provider runtime, then collect paired baseline/canary/rollback evidence without persisting raw prompts or outputs.
-2. Keep recovery at quiescent boundaries and reject pending disposer callbacks; do not deserialize arbitrary cleanup code.
-3. Keep arbitrary process execution disabled until a verified OS/container backend exists; application checks are not kernel isolation.
-4. Keep H5 production evidence missing until the supported provider returns bound live usage and both sides pass the same verifier contract.
-5. Run the provider-neutral visual/game canary with the same locked plan, GROUNDED Visual Basis/evidence-card bundle, and acceptance verifier on any authorized multimodal model; do not add a vendor SDK/CLI dependency or enable provider-native swarm.
-6. Keep H6 optional until the single-run harness path has production evidence; reuse continuity as context, not completion authority.
+1. **PF0:** inventory kernel/shared/LITE/SKILL contradictions and unsupported domain heuristics; freeze current local baselines before changing behavior.
+2. **PF1:** implement and schema-test `product-intent/v1`, uncertainty/authority resolution, product-delta state, and the Product Goal Graph compatibility layer.
+3. **PF2:** define the provider-neutral Environment ACI contract, then implement Web, Android/mobile, and Unity/game adapters in that order of deterministic observability available on the host.
+4. **PF3:** bind critical user journeys to environment evidence through `product-outcome-contract/v1`; keep subjective “fun/taste” outside automatic completion authority.
+5. **PF4:** establish ForgeBench lanes and the final `npm run verify:product-factory` aggregator before enabling framework self-promotion.
+6. **PF5 + PF6:** build trajectory-learning promotion and disposable isolation in parallel; neither may silently weaken existing evidence, test-oracle, or security contracts.
+7. **PF7:** run maintained web/mobile/game reference products end-to-end and promote only the lanes with current production evidence.
+8. Existing H5/H6 provider evidence remains an important supporting lane, but it no longer blocks local PF0-PF4 product-control-plane work; missing provider evidence remains explicitly missing rather than being inferred from fixtures.
