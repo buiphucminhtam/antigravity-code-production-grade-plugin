@@ -208,17 +208,26 @@ def _init_workspace(source: Path) -> Path:
     policy_target = temp / ".forgewright" / "execution-policy.yaml"
     policy_target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(EXECUTION_POLICY, policy_target)
-    for command in (
-        "git init -q",
-        "git config user.email 'eval-harness@forgewright.local'",
-        "git config user.name 'Forgewright Eval Harness'",
-        "git add .",
-        "git commit -qm 'fixture'",
+    for argv in (
+        ["git", "init", "-q"],
+        ["git", "config", "user.email", "eval-harness@forgewright.local"],
+        ["git", "config", "user.name", "Forgewright Eval Harness"],
+        ["git", "add", "."],
+        ["git", "commit", "-qm", "fixture"],
     ):
-        code, _, stderr = _run(command, temp)
-        if code != 0:
+        proc = subprocess.run(
+            argv,
+            cwd=str(temp),
+            text=True,
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+        if proc.returncode != 0:
             shutil.rmtree(temp, ignore_errors=True)
-            raise EvalError(f"failed to initialize fixture git repo: {stderr.strip()}")
+            raise EvalError(
+                f"failed to initialize fixture git repo: {proc.stderr.strip()}"
+            )
     return temp
 
 

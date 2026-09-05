@@ -71,8 +71,10 @@ def test_docs_continuity_is_in_docs_ci_and_required_release_checks():
 def test_roadmap_evidence_verifier_is_in_required_release_checks():
     package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
     assert package["scripts"]["verify:roadmap"] == (
-        "python3 scripts/ci/verify-roadmap-completion.py"
+        "node scripts/ci/local-ci.mjs roadmap"
     )
+    launcher = (ROOT / "scripts/ci/local-ci.mjs").read_text(encoding="utf-8")
+    assert "roadmap: 'verify-roadmap-completion.py'" in launcher
     required = REQUIRED_CHECKS.read_text(encoding="utf-8")
     assert "run_required roadmap-completion-evidence npm run verify:roadmap" in required
 

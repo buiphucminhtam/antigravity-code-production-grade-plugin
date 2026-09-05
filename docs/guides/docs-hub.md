@@ -99,6 +99,44 @@ runtime and lifecycle entries with:
 bash scripts/hooks/forgewright-hook-doctor.sh --quick --fix
 ```
 
+The installed Stop runtime is a closed adjacent bundle:
+`stop-gate.sh`, `stop_gate.py`, `verify_gate.py`, `evidence_common.py`,
+`continuity_check.py`, and `windows_secure_io.py`. The installer and doctor
+require Python 3.11 or newer and resolve `python3`, `python`, or the Windows
+`py` launcher instead of requiring one fixed executable name.
+On Windows, run their shell entrypoints from Git Bash; the Python runtime may
+remain native Windows CPython. Retry-state locking selects `fcntl` on POSIX and
+`msvcrt` on Windows while retaining bounded state, regular-file, and
+reparse-point checks.
+
+The repair contract restores every missing or drifted member of that bundle,
+then confirmation executes the installed entrypoint rather than accepting hook
+configuration shape as runtime proof. Run the same smoke on every claimed host
+and interpreter; the Windows release check specifically uses Git Bash with
+native Windows Python 3.11 or newer:
+
+```bash
+(
+  set -euo pipefail
+  installed_stop="${FORGEWRIGHT_DIR:-$HOME/.forgewright}/scripts/lite/stop-gate.sh"
+  smoke_dir="$(mktemp -d)"
+  trap 'cd / && rmdir "$smoke_dir"' EXIT
+  cd "$smoke_dir"
+  unset FORGEWRIGHT_WORKSPACE
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Stop smoke must run outside a Git worktree" >&2
+    exit 1
+  fi
+  printf '%s\n' '{"hook_event_name":"Stop","turn_id":"installed-runtime-smoke","session_id":"installed-runtime-smoke","last_assistant_message":""}' |
+    bash "$installed_stop" --platform CODEX |
+    node -e 'const fs=require("node:fs"),assert=require("node:assert/strict"); const actual=JSON.parse(fs.readFileSync(0,"utf8")); const expected={continue:true,forgewright:{schema:"forgewright-stop-decision/v1",host_action:"allow_stop",completion_state:"verified",retry_suppressed:false,reason_code:"no_code_changes"}}; assert.deepEqual(actual,expected); console.log("installed CODEX Stop runtime: PASS")'
+)
+```
+
+The README install section also provides the explicit PowerShell `bash.exe -lc`
+wrapper used to record the native Windows smoke without accidentally exercising
+a project-local gate.
+
 ## Safety model
 
 - Collection is **allowlist-only**.

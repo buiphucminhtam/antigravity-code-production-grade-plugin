@@ -261,11 +261,11 @@ def _replay_timeout() -> float:
 
 
 def _replay_env() -> dict[str, str]:
-    """Keep normal process discovery/environment while dropping secret-like names."""
+    """Keep normal process discovery without leaking gate-interpreter state."""
     return {
         name: value
         for name, value in os.environ.items()
-        if not _SECRET_ENV_NAME.search(name)
+        if not _SECRET_ENV_NAME.search(name) and name.upper() != "PYTHONHOME"
     }
 
 

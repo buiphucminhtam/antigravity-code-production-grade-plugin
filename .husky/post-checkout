@@ -1,6 +1,10 @@
 #!/bin/sh
+# Branch changes only notify; maintenance requires a separate scoped action.
+set -eu
 
-# ⚡ Tự động cập nhật submodule sau khi checkout nhánh
-if [ -x "./scripts/lite/submodule-auto-update.sh" ]; then
-  ./scripts/lite/submodule-auto-update.sh
-fi
+CACHE_DIR=".forgewright/cache"
+mkdir -p "$CACHE_DIR"
+for marker in mcp-sync-needed wiki-sync-needed reindex-needed submodule-update-needed; do
+  : > "$CACHE_DIR/$marker"
+done
+echo "[Forgewright] Checkout completed; project-local maintenance is pending. No shared runtime or submodule was changed."

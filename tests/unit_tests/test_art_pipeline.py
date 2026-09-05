@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -18,6 +19,30 @@ PIPELINE = ROOT / "scripts" / "art-direction" / "art-pipeline.sh"
 REVIEWER = ROOT / "scripts" / "art-direction" / "vision-review.sh"
 
 
+def find_bash() -> str:
+    discovered = shutil.which("bash")
+    if discovered:
+        return discovered
+    if os.name == "nt":
+        for base in dict.fromkeys(
+            filter(
+                None,
+                (
+                    os.environ.get("ProgramFiles"),
+                    os.environ.get("ProgramW6432"),
+                    os.environ.get("ProgramFiles(x86)"),
+                ),
+            )
+        ):
+            candidate = Path(base) / "Git" / "bin" / "bash.exe"
+            if candidate.is_file():
+                return str(candidate)
+    return "/bin/bash" if os.name != "nt" else "bash"
+
+
+BASH = find_bash()
+
+
 def write_contract(tmp_path: Path, *, approved: bool = True) -> Path:
     value = valid_contract()
     if not approved:
@@ -31,8 +56,9 @@ def add_evidence_env(tmp_path: Path, env: dict[str, str]) -> None:
     cards = [evidence_card(f"product-{index}") for index in range(1, 4)]
     basis = visual_basis([str(card["id"]) for card in cards])
     basis_path, cards_dir = write_bundle(tmp_path, cards, basis)
-    env["VISUAL_BASIS_PATH"] = str(basis_path)
-    env["VISUAL_EVIDENCE_CARDS_DIR"] = str(cards_dir)
+    env["VISUAL_BASIS_PATH"] = basis_path.as_posix()
+    env["VISUAL_EVIDENCE_CARDS_DIR"] = cards_dir.as_posix()
+    env["PYTHONIOENCODING"] = "utf-8"
 
 
 def test_generate_uses_contract_compiler_and_has_no_placeholders(
@@ -40,12 +66,13 @@ def test_generate_uses_contract_compiler_and_has_no_placeholders(
 ) -> None:
     contract = write_contract(tmp_path)
     env = os.environ.copy()
-    env["PROJECT_STYLE_GUIDE"] = str(contract)
+    env["PROJECT_STYLE_GUIDE"] = contract.as_posix()
     add_evidence_env(tmp_path, env)
-    env["PATH"] = "/usr/bin:/bin"
+    if os.name != "nt":
+        env["PATH"] = "/usr/bin:/bin"
 
     result = subprocess.run(
-        [str(PIPELINE), "generate", "character", "clockwork-fox"],
+        [BASH, PIPELINE.as_posix(), "generate", "character", "clockwork-fox"],
         cwd=ROOT,
         env=env,
         text=True,
@@ -62,11 +89,11 @@ def test_generate_uses_contract_compiler_and_has_no_placeholders(
 def test_generate_rejects_draft_contract(tmp_path: Path) -> None:
     contract = write_contract(tmp_path, approved=False)
     env = os.environ.copy()
-    env["PROJECT_STYLE_GUIDE"] = str(contract)
+    env["PROJECT_STYLE_GUIDE"] = contract.as_posix()
     add_evidence_env(tmp_path, env)
 
     result = subprocess.run(
-        [str(PIPELINE), "generate", "icon", "coin"],
+        [BASH, PIPELINE.as_posix(), "generate", "icon", "coin"],
         cwd=ROOT,
         env=env,
         text=True,
@@ -95,18 +122,23 @@ def test_reviewer_parses_style_guide_and_type_flags(tmp_path: Path) -> None:
     )
     fake_claude.chmod(0o755)
     env = os.environ.copy()
-    env["PATH"] = f"{fake_bin}:/usr/bin:/bin"
-    env["FAKE_CLAUDE_ARGV_LOG"] = str(argv_log)
-    env["ART_REVIEW_SCORES_DIR"] = str(scores)
+    env["PATH"] = (
+        f"{fake_bin}{os.pathsep}{env.get('PATH', '')}"
+        if os.name == "nt"
+        else f"{fake_bin}:/usr/bin:/bin"
+    )
+    env["FAKE_CLAUDE_ARGV_LOG"] = argv_log.as_posix()
+    env["ART_REVIEW_SCORES_DIR"] = scores.as_posix()
     add_evidence_env(tmp_path, env)
 
     result = subprocess.run(
         [
-            str(REVIEWER),
+            BASH,
+            REVIEWER.as_posix(),
             "review",
-            str(image),
+            image.as_posix(),
             "--style-guide",
-            str(contract),
+            contract.as_posix(),
             "--type",
             "game-2d",
         ],

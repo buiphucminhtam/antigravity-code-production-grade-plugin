@@ -1,0 +1,961 @@
+{
+  "schema_version": "product-factory-instruction-inventory/v1",
+  "sources": [
+    {
+      "authority": "kernel",
+      "path": "kernel/CLARIFY.md"
+    },
+    {
+      "authority": "kernel",
+      "path": "kernel/ENTRY.md"
+    },
+    {
+      "authority": "kernel",
+      "path": "kernel/ESCALATE.md"
+    },
+    {
+      "authority": "kernel",
+      "path": "kernel/POLICY.md"
+    },
+    {
+      "authority": "kernel",
+      "path": "kernel/SOLVE.md"
+    },
+    {
+      "authority": "kernel",
+      "path": "kernel/VERIFY.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/3d-spatial-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/3d-spatial-engineer/SKILL.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/3d-spatial-foundations.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/README.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/brownfield-safety.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/bulkhead.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/circuit-breaker.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/code-intelligence.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/conflict-resolution.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/consulting-risk-radar.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/credit-killing-patterns.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/critical-audit.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/design-mindset-and-rules.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/documentation-governance.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/dryrun-interceptor.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/evidence-first.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/execution-blocker-loop.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/expert-cli-mode.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/game-studio-pipeline.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/game-test-protocol.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/graceful-failure.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/guardrail.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/input-validation.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/merge-arbiter.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/middleware-chain.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/model-tier.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/paperclip-integration.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/parallel-protocol.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/peer-collaboration.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/pipeline-activation.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/pipeline-operating-contract.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/pipeline.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/plan-quality-loop.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/project-onboarding.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/prompt-techniques.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/prompt-templates.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/qa-test-protocol.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/quality-dashboard.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/quality-gate.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/research-gate.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/review-intensity.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/self-check.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/self-healing-execution.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/self-improving-loop.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/senior-execution-contract.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/sensitive-file-protection.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/session-deduplication.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/session-lifecycle.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/shell-filter.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/skill-specialization-contract.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/summarization.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/task-contract.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/task-validator.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/tool-efficiency.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/tool-sandbox.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/ui-style-diversity.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/ux-protocol.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/verification.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/visual-evidence-library.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/visual-grounding.md"
+    },
+    {
+      "authority": "shared_protocol",
+      "path": "skills/_shared/protocols/webhook-telemetry-protocol.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/_test/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/accessibility-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/accessibility-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/ai-behavior-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/ai-behavior-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/ai-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/ai-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/animation-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/animation-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/api-designer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/api-designer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/art-director/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/art-director/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/auto-publish/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/auto-publish/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/autonomous-testing/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/autonomous-testing/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/backend/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/backend/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/build-release-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/build-release-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/business-analyst/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/business-analyst/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/code-quality-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/code-quality-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/code-reviewer-go/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/code-reviewer-go/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/code-reviewer-python/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/code-reviewer-python/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/code-reviewer-rust/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/code-reviewer-rust/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/code-reviewer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/code-reviewer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/concept-artist/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/concept-artist/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/conversion-optimizer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/conversion-optimizer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/data-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/data-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/data-scientist/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/data-scientist/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/database-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/database-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/debugger/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/debugger/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/devops/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/devops/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/eval-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/eval-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/frontend-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/frontend-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/frontend/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/frontend/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/fullstack-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/fullstack-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/game-accessibility-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/game-accessibility-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/game-asset-vfx/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/game-asset-vfx/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/game-audio-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/game-audio-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/game-designer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/game-designer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/game-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/game-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/generated/hook-expert/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/goal-driven/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/goal-driven/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/godot-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/godot-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/godot-multiplayer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/godot-multiplayer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/growth-marketer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/growth-marketer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/instinct-system/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/instinct-system/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/interaction-designer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/interaction-designer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/level-designer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/level-designer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/liveops-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/liveops-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/llm-tester/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/llm-tester/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/mcp-generator/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/mcp-generator/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/memory-manager/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/memory-manager/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/mobile-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/mobile-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/mobile-tester/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/mobile-tester/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/narrative-designer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/narrative-designer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/notebooklm-researcher/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/notebooklm-researcher/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/parallel-dispatch/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/parallel-dispatch/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/performance-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/performance-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/phaser3-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/phaser3-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/physics-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/physics-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/polymath/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/polymath/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/product-manager/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/product-manager/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/production-grade/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/production-grade/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/project-manager/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/project-manager/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/prompt-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/prompt-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/prompt-optimizer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/prompt-optimizer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/qa-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/qa-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/roblox-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/roblox-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/security-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/security-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/skill-maker/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/skill-maker/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/software-engineer-go/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/software-engineer-go/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/software-engineer-python/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/software-engineer-python/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/software-engineer-rust/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/software-engineer-rust/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/software-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/software-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/solution-architect/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/solution-architect/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/sre/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/sre/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/strategic-compaction/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/strategic-compaction/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/technical-artist/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/technical-artist/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/technical-writer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/technical-writer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/threejs-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/threejs-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/token-tracker/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/token-tracker/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/ui-designer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/ui-designer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/unity-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/unity-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/unity-mcp/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/unity-mcp/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/unity-multiplayer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/unity-multiplayer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/unity-shader-artist/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/unity-shader-artist/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/unreal-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/unreal-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/unreal-multiplayer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/unreal-multiplayer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/unreal-technical-artist/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/unreal-technical-artist/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/ux-researcher/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/ux-researcher/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/vision-review/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/vision-review/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/web-scraper/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/web-scraper/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/xlsx-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/xlsx-engineer/SKILL.md"
+    },
+    {
+      "authority": "routed_lite",
+      "path": "skills/xr-engineer/LITE.md"
+    },
+    {
+      "authority": "routed_skill",
+      "path": "skills/xr-engineer/SKILL.md"
+    }
+  ]
+}

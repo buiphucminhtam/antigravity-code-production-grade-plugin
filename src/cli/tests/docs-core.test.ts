@@ -52,6 +52,29 @@ const fixtureRoot = join(
 );
 const tempRoots: string[] = [];
 
+function supportsFileSymlinks(): boolean {
+  const root = mkdtempSync(join(tmpdir(), "forgewright-symlink-probe-"));
+  try {
+    const target = join(root, "target.txt");
+    writeFileSync(target, "probe\n", "utf8");
+    symlinkSync(target, join(root, "link.txt"), "file");
+    return true;
+  } catch (error) {
+    if (
+      process.platform === "win32" &&
+      (error as NodeJS.ErrnoException).code === "EPERM"
+    ) {
+      return false;
+    }
+    throw error;
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+const fileSymlinksSupported = supportsFileSymlinks();
+const directorySymlinkType = process.platform === "win32" ? "junction" : "dir";
+
 function tempProject(name: string): string {
   const root = mkdtempSync(join(tmpdir(), `forgewright-docs-${name}-`));
   tempRoots.push(root);
@@ -263,7 +286,29 @@ describe("docs manifest and registry", () => {
     ).toThrow();
   });
 
-  it("rejects canonical state files reached through file or directory symlinks", () => {
+  it.skipIf(!fileSymlinksSupported)(
+    "rejects canonical state files reached through file symlinks",
+    () => {
+      const root = copyFixture("forgewright");
+      const realDirectory = join(root, "real-state");
+      mkdirSync(realDirectory);
+      writeJson(
+        join(realDirectory, "project-state.json"),
+        createDefaultProjectState(root),
+      );
+      symlinkSync(
+        join(realDirectory, "project-state.json"),
+        join(root, "state-link.json"),
+        "file",
+      );
+
+      expect(safeLoadProjectState(root, "state-link.json").error?.code).toBe(
+        "containment",
+      );
+    },
+  );
+
+  it("rejects canonical state files reached through directory symlinks", () => {
     const root = copyFixture("forgewright");
     const realDirectory = join(root, "real-state");
     mkdirSync(realDirectory);
@@ -271,12 +316,12 @@ describe("docs manifest and registry", () => {
       join(realDirectory, "project-state.json"),
       createDefaultProjectState(root),
     );
-    symlinkSync("real-state/project-state.json", join(root, "state-link.json"));
-    symlinkSync("real-state", join(root, "state-dir-link"));
-
-    expect(safeLoadProjectState(root, "state-link.json").error?.code).toBe(
-      "containment",
+    symlinkSync(
+      realDirectory,
+      join(root, "state-dir-link"),
+      directorySymlinkType,
     );
+
     expect(
       safeLoadProjectState(root, "state-dir-link/project-state.json").error
         ?.code,
@@ -388,51 +433,59 @@ describe("privacy-safe scanning and deterministic normalization", () => {
     ).toBe(true);
   });
 
-  it("reports a broken contained symlink without treating it as a privacy escape", () => {
-    const root = tempProject("broken-symlink");
-    mkdirSync(join(root, "Docs"), { recursive: true });
-    symlinkSync(
-      join(root, "Docs", "missing.md"),
-      join(root, "Docs", "link.md"),
-    );
-    initManifest(root);
+  it.skipIf(!fileSymlinksSupported)(
+    "reports a broken contained symlink without treating it as a privacy escape",
+    () => {
+      const root = tempProject("broken-symlink");
+      mkdirSync(join(root, "Docs"), { recursive: true });
+      symlinkSync(
+        join(root, "Docs", "missing.md"),
+        join(root, "Docs", "link.md"),
+        "file",
+      );
+      initManifest(root);
 
-    const catalog = scanProject(root);
-    expect(
-      catalog.diagnostics.some(
-        (diagnostic) =>
-          diagnostic.code === "BROKEN_SYMLINK" &&
-          diagnostic.severity === "warning",
-      ),
-    ).toBe(true);
-    expect(
-      catalog.diagnostics.some(
-        (diagnostic) => diagnostic.code === "PATH_CONTAINMENT_FAILED",
-      ),
-    ).toBe(false);
-  });
+      const catalog = scanProject(root);
+      expect(
+        catalog.diagnostics.some(
+          (diagnostic) =>
+            diagnostic.code === "BROKEN_SYMLINK" &&
+            diagnostic.severity === "warning",
+        ),
+      ).toBe(true);
+      expect(
+        catalog.diagnostics.some(
+          (diagnostic) => diagnostic.code === "PATH_CONTAINMENT_FAILED",
+        ),
+      ).toBe(false);
+    },
+  );
 
-  it("blocks a symlink that resolves outside the project root", () => {
-    const root = tempProject("symlink-escape");
-    const outside = tempProject("outside");
-    mkdirSync(join(root, "Docs"), { recursive: true });
-    writeFileSync(join(outside, "external.md"), "# External\n", "utf8");
-    symlinkSync(
-      join(outside, "external.md"),
-      join(root, "Docs", "external.md"),
-    );
-    initManifest(root);
+  it.skipIf(!fileSymlinksSupported)(
+    "blocks a symlink that resolves outside the project root",
+    () => {
+      const root = tempProject("symlink-escape");
+      const outside = tempProject("outside");
+      mkdirSync(join(root, "Docs"), { recursive: true });
+      writeFileSync(join(outside, "external.md"), "# External\n", "utf8");
+      symlinkSync(
+        join(outside, "external.md"),
+        join(root, "Docs", "external.md"),
+        "file",
+      );
+      initManifest(root);
 
-    const catalog = scanProject(root);
-    expect(
-      catalog.diagnostics.some(
-        (diagnostic) =>
-          diagnostic.code === "PATH_CONTAINMENT_FAILED" &&
-          diagnostic.severity === "error",
-      ),
-    ).toBe(true);
-    expect(catalog.documents).toHaveLength(0);
-  });
+      const catalog = scanProject(root);
+      expect(
+        catalog.diagnostics.some(
+          (diagnostic) =>
+            diagnostic.code === "PATH_CONTAINMENT_FAILED" &&
+            diagnostic.severity === "error",
+        ),
+      ).toBe(true);
+      expect(catalog.documents).toHaveLength(0);
+    },
+  );
 
   it("keeps stable IDs and catalog fingerprints across repeated scans", () => {
     const root = copyFixture("forgewright");
@@ -471,15 +524,6 @@ describe("privacy-safe scanning and deterministic normalization", () => {
     expect(scanProject(root).diagnostics.map((item) => item.code)).toContain(
       "PROJECT_STATE_INVALID",
     );
-
-    const ownedState = join(root, "docs", "owned-state.json");
-    writeJson(ownedState, createDefaultProjectState(root));
-    rmSync(statePath);
-    symlinkSync("owned-state.json", statePath);
-    expect(scanProject(root).diagnostics.map((item) => item.code)).toContain(
-      "PROJECT_STATE_INVALID",
-    );
-    rmSync(statePath);
 
     const stale = createDefaultProjectState(root);
     stale.status.updated_at = "2020-01-01T00:00:00Z";
@@ -538,6 +582,23 @@ describe("privacy-safe scanning and deterministic normalization", () => {
       "PROJECT_DOCS_CONTRACT_MISSING",
     );
   });
+
+  it.skipIf(!fileSymlinksSupported)(
+    "rejects a canonical project-state file symlink",
+    () => {
+      const root = copyFixture("forgewright");
+      initManifest(root);
+      const statePath = join(root, "docs", "project-state.json");
+      const ownedState = join(root, "docs", "owned-state.json");
+      writeJson(ownedState, createDefaultProjectState(root));
+      rmSync(statePath);
+      symlinkSync(ownedState, statePath, "file");
+
+      expect(scanProject(root).diagnostics.map((item) => item.code)).toContain(
+        "PROJECT_STATE_INVALID",
+      );
+    },
+  );
 
   it("reports broken links, anchors, diagrams and stale indexes", () => {
     const root = tempProject("doctor");

@@ -95,8 +95,8 @@ describe('ProcessPolicyEvaluator', () => {
       script,
       [
         '#!/usr/bin/env bash',
-        '[[ "$(pwd -P)" = "$(cd "$FORGEWRIGHT_WORKSPACE" && pwd -P)" ]] || exit 3',
-        '[[ "$FORGEWRIGHT_POLICY_FILE" = "$FORGEWRIGHT_WORKSPACE/.forgewright/execution-policy.yaml" ]] || exit 3',
+        '[[ "$(pwd -P)" -ef "$FORGEWRIGHT_WORKSPACE" ]] || exit 3',
+        '[[ "$FORGEWRIGHT_POLICY_FILE" -ef "$FORGEWRIGHT_WORKSPACE/.forgewright/execution-policy.yaml" ]] || exit 3',
         'exit 0',
       ].join('\n'),
       { mode: 0o700 },
@@ -123,7 +123,7 @@ describe('ProcessPolicyEvaluator', () => {
       script,
       [
         '#!/usr/bin/env bash',
-        '[[ "$(cd "$(dirname "$FORGEWRIGHT_POLICY_FILE")/.." && pwd -P)" = "$(pwd -P)" ]] || exit 3',
+        '[[ "$(dirname "$FORGEWRIGHT_POLICY_FILE")/.." -ef "$(pwd -P)" ]] || exit 3',
         'exit 0',
       ].join('\n'),
       { mode: 0o700 },

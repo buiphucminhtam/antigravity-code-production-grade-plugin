@@ -39,7 +39,7 @@ describe('Skill Parser', () => {
             fs.mkdirSync(externalSkillsDir);
             fs.writeFileSync(join(externalSkillsDir, 'SKILL.md'), 'external skill');
             fs.rmSync(skillsDir, { recursive: true, force: true });
-            fs.symlinkSync(externalSkillsDir, skillsDir, 'dir');
+            fs.symlinkSync(externalSkillsDir, skillsDir, process.platform === 'win32' ? 'junction' : 'dir');
             _setRootOverride(root);
             const readFileSpy = vi.spyOn(fs, 'readFileSync');
             expect(getAllSkills()).toEqual([]);
@@ -48,7 +48,7 @@ describe('Skill Parser', () => {
         it('skips a broken skills root symlink safely', () => {
             const { root, skillsDir, outsideDir } = createFixture();
             fs.rmSync(skillsDir, { recursive: true, force: true });
-            fs.symlinkSync(join(outsideDir, 'missing-skills'), skillsDir, 'dir');
+            fs.symlinkSync(join(outsideDir, 'missing-skills'), skillsDir, process.platform === 'win32' ? 'junction' : 'dir');
             _setRootOverride(root);
             expect(() => getAllSkills()).not.toThrow();
             expect(getAllSkills()).toEqual([]);
@@ -61,7 +61,7 @@ describe('Skill Parser', () => {
             const externalProtocol = join(externalProtocolsDir, 'external.md');
             fs.writeFileSync(externalProtocol, 'external protocol');
             fs.rmSync(skillsDir, { recursive: true, force: true });
-            fs.symlinkSync(externalSkillsDir, skillsDir, 'dir');
+            fs.symlinkSync(externalSkillsDir, skillsDir, process.platform === 'win32' ? 'junction' : 'dir');
             _setRootOverride(root);
             const readFileSpy = vi.spyOn(fs, 'readFileSync');
             expect(getSharedProtocols()).toEqual([]);
@@ -72,13 +72,13 @@ describe('Skill Parser', () => {
             const outsideSkillDir = join(outsideDir, 'escaped');
             fs.mkdirSync(outsideSkillDir);
             fs.writeFileSync(join(outsideSkillDir, 'SKILL.md'), 'outside directory skill');
-            fs.symlinkSync(outsideSkillDir, join(skillsDir, 'escaped'), 'dir');
+            fs.symlinkSync(outsideSkillDir, join(skillsDir, 'escaped'), process.platform === 'win32' ? 'junction' : 'dir');
             _setRootOverride(root);
             const readFileSpy = vi.spyOn(fs, 'readFileSync');
             expect(getAllSkills()).toEqual([]);
             expect(readFileSpy.mock.calls.some(([filePath]) => filePath.toString().startsWith(outsideDir))).toBe(false);
         });
-        it('does not accept symlinked SKILL.md files', () => {
+        (process.platform === 'win32' ? it.skip : it)('does not accept symlinked SKILL.md files', () => {
             const { root, skillsDir, outsideDir } = createFixture();
             const linkedSkillDir = join(skillsDir, 'linked-file');
             const outsideSkill = join(outsideDir, 'SKILL.md');
@@ -90,7 +90,7 @@ describe('Skill Parser', () => {
             expect(getAllSkills()).toEqual([]);
             expect(readFileSpy.mock.calls.some(([filePath]) => filePath.toString() === outsideSkill)).toBe(false);
         });
-        it('skips broken SKILL.md symlinks safely', () => {
+        (process.platform === 'win32' ? it.skip : it)('skips broken SKILL.md symlinks safely', () => {
             const { root, skillsDir, outsideDir } = createFixture();
             const brokenSkillDir = join(skillsDir, 'broken');
             fs.mkdirSync(brokenSkillDir);
@@ -129,17 +129,21 @@ describe('Skill Parser', () => {
             expect(() => loadSkillOverlay('../outside')).toThrowError('INVALID_SKILL_NAME');
             expect(() => loadSkillOverlay('missing')).toThrowError('UNKNOWN_SKILL');
         });
-        it('rejects symlinked and oversized LITE overlays', () => {
+        it('rejects oversized LITE overlays and symlinked overlays where supported', () => {
             const { root, skillsDir, outsideDir } = createFixture();
             fs.mkdirSync(join(skillsDir, 'linked'));
             fs.writeFileSync(join(skillsDir, 'linked', 'SKILL.md'), 'metadata');
             fs.writeFileSync(join(outsideDir, 'LITE.md'), 'external');
-            fs.symlinkSync(join(outsideDir, 'LITE.md'), join(skillsDir, 'linked', 'LITE.md'));
+            if (process.platform !== 'win32') {
+                fs.symlinkSync(join(outsideDir, 'LITE.md'), join(skillsDir, 'linked', 'LITE.md'));
+            }
             fs.mkdirSync(join(skillsDir, 'large'));
             fs.writeFileSync(join(skillsDir, 'large', 'SKILL.md'), 'metadata');
             fs.writeFileSync(join(skillsDir, 'large', 'LITE.md'), 'x'.repeat(48 * 1024 + 1));
             _setRootOverride(root);
-            expect(() => loadSkillOverlay('linked')).toThrowError('SYMLINK_REJECTED');
+            if (process.platform !== 'win32') {
+                expect(() => loadSkillOverlay('linked')).toThrowError('SYMLINK_REJECTED');
+            }
             expect(() => loadSkillOverlay('large')).toThrowError('OVERLAY_TOO_LARGE');
         });
         it('loads a uniquely discovered nested skill and rejects duplicate basenames', () => {

@@ -377,11 +377,13 @@ export class LifecycleLeaseStore {
     }
     await chmod(temporary, 0o600);
     await rename(temporary, destination);
-    const directory = await open(this.root, 'r');
-    try {
-      await directory.sync();
-    } finally {
-      await directory.close();
+    if (process.platform !== 'win32') {
+      const directory = await open(this.root, 'r');
+      try {
+        await directory.sync();
+      } finally {
+        await directory.close();
+      }
     }
   }
 
@@ -396,7 +398,13 @@ export class LifecycleLeaseStore {
         handle = await open(lockPath, 'wx', 0o600);
         break;
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+        const code = (error as NodeJS.ErrnoException).code;
+        // Create-new can report a sharing violation while Windows finishes
+        // unlinking an owned lock. Retry only within the existing bound; never
+        // enter the critical section without obtaining the exclusive handle.
+        const windowsSharingViolation =
+          process.platform === 'win32' && (code === 'EPERM' || code === 'EACCES');
+        if (code !== 'EEXIST' && !windowsSharingViolation) throw error;
         await this.wait(retryDelayMs);
       }
     }

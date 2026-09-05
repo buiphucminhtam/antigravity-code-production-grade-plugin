@@ -3,6 +3,7 @@ import os
 import sys
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -41,6 +42,49 @@ def test_local_ci_exposes_provider_neutral_modes() -> None:
     assert module.MIN_NODE_MAJOR == 22
     assert module.NODE_MATRIX == (22, 24)
     assert module.PRECOMMIT_PYTHON_UNIT_TIMEOUT_SECONDS == 1800
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Git Bash discovery is Windows-specific")
+def test_local_ci_discovers_git_bash_outside_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module = _module()
+    program_files = tmp_path / "Program Files"
+    git_bash = program_files / "Git" / "bin" / "bash.exe"
+    git_bash.parent.mkdir(parents=True)
+    git_bash.write_bytes(b"fixture")
+
+    monkeypatch.setenv("ProgramFiles", str(program_files))
+    monkeypatch.delenv("ProgramW6432", raising=False)
+    monkeypatch.delenv("ProgramFiles(x86)", raising=False)
+    monkeypatch.delenv("LOCALAPPDATA", raising=False)
+    monkeypatch.delenv("FORGEWRIGHT_BASH", raising=False)
+    original_which = module._which
+    monkeypatch.setattr(
+        module,
+        "_which",
+        lambda name: None if name in {"bash", "git"} else original_which(name),
+    )
+
+    runner = module.LocalCI(dry_run=True, keep_going=False, timeout=1, base_ref=None)
+    assert runner.bash == str(git_bash)
+
+
+def test_windows_child_environment_exposes_resolved_git_bash_without_global_changes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module = _module()
+    runner = module.LocalCI(dry_run=True, keep_going=False, timeout=1, base_ref=None)
+    bash = tmp_path / "Git/bin/bash.exe"
+    original_path = os.environ.get("PATH", "")
+    # Simulate only this module's host choice; pathlib keeps the actual host semantics.
+    monkeypatch.setattr(
+        module, "os", SimpleNamespace(name="nt", environ=os.environ, pathsep=os.pathsep)
+    )
+    monkeypatch.setattr(module.LocalCI, "bash", property(lambda self: str(bash)))
+    environment = runner._effective_env()
+    assert str(bash.parent) in environment["PATH"].split(os.pathsep)
+    assert os.environ.get("PATH", "") == original_path
 
 
 def test_hosted_ci_is_not_a_canonical_runtime_dependency() -> None:
@@ -85,6 +129,25 @@ def test_precommit_runs_mandatory_docs_continuity_gate() -> None:
     assert "timeout=PRECOMMIT_PYTHON_UNIT_TIMEOUT_SECONDS" in MODULE_PATH.read_text(
         encoding="utf-8"
     )
+
+
+def test_staged_formatters_use_their_component_configuration() -> None:
+    module = _module()
+    runner = module.LocalCI(dry_run=True, keep_going=False, timeout=1, base_ref=None)
+    runner._staged_files = lambda: [
+        ROOT / "mcp/src/index.ts",
+        ROOT / "src/cli/src/index.ts",
+    ]
+    runner._node_bin = lambda component, name: f"/{component}/{name}"
+
+    runner._format_staged()
+
+    steps = {result.name: result for result in runner.results}
+    assert Path(steps["mcp-eslint-staged"].cwd) == ROOT / "mcp"
+    assert Path(steps["mcp-prettier-staged"].cwd) == ROOT / "mcp"
+    assert Path(steps["cli-prettier-staged"].cwd) == ROOT / "src/cli"
+    assert "--fix" in steps["mcp-eslint-staged"].argv
+    assert "--write" in steps["mcp-prettier-staged"].argv
 
 
 def test_timeout_terminates_spawned_process_tree(tmp_path: Path) -> None:

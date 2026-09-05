@@ -1,0 +1,97 @@
+{
+  "baseline_head": "aa2ff807cd1ab2230c506f27f0e3e0de0055595f",
+  "baseline_tree": {
+    "tree_sha": "71d8d8eb321b0f2f3ca6394cf1e9451ce5c0b703",
+    "worktree_status": "clean"
+  },
+  "captured_at": "2026-09-04T06:46:10.359350+00:00",
+  "engineering_quick_suite": {
+    "commands": [
+      {
+        "argv": [
+          "${REPO_ROOT}/.forgewright/local-ci-venv/bin/python",
+          "scripts/ci/verify-product-truth.py"
+        ],
+        "cwd": "${REPO_ROOT}",
+        "duration_ms": 40,
+        "exit_code": 0,
+        "name": "product-truth",
+        "note": "",
+        "status": "pass"
+      },
+      {
+        "argv": [
+          "${REPO_ROOT}/.forgewright/local-ci-venv/bin/python",
+          "evals/adversarial-weak-model/run-evals.py",
+          "--self-test"
+        ],
+        "cwd": "${REPO_ROOT}",
+        "duration_ms": 2400,
+        "exit_code": 0,
+        "name": "adversarial-weak-model-rails",
+        "note": "",
+        "status": "pass"
+      },
+      {
+        "argv": [
+          "${REPO_ROOT}/.forgewright/local-ci-venv/bin/python",
+          "scripts/lite/validate-overlays.py"
+        ],
+        "cwd": "${REPO_ROOT}",
+        "duration_ms": 40,
+        "exit_code": 0,
+        "name": "lite-overlays",
+        "note": "",
+        "status": "pass"
+      },
+      {
+        "argv": [
+          "${BASH}",
+          "scripts/lite/test-kernel-tokens.sh"
+        ],
+        "cwd": "${REPO_ROOT}",
+        "duration_ms": 238,
+        "exit_code": 0,
+        "name": "kernel-token-budget",
+        "note": "",
+        "status": "pass"
+      },
+      {
+        "argv": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "cwd": "${REPO_ROOT}",
+        "duration_ms": 20,
+        "exit_code": 0,
+        "name": "git-diff-check",
+        "note": "",
+        "status": "pass"
+      }
+    ],
+    "evidence_path": "product-factory/baseline-evidence.v1.json",
+    "evidence_sha256": "2b94d3641d4784acc47f6396c240da1aacc18599e77f762e8704e4d0aa18d034",
+    "status": "pass"
+  },
+  "environment": {
+    "capabilities": {
+      "git_at_capture": "available",
+      "historical_report": "available",
+      "tracked_evidence": "available"
+    },
+    "host": {
+      "node": "26.7.0",
+      "node_binary": "${NODE_BINARY}",
+      "os": "Darwin",
+      "python": "3.11.14"
+    }
+  },
+  "measurement_gaps": {
+    "clarification": "not_measured",
+    "environment_coverage": "not_measured",
+    "false_success": "not_measured",
+    "intent": "unavailable"
+  },
+  "schema_version": "product-factory-baseline-receipt/v1"
+}

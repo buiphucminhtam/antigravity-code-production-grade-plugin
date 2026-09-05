@@ -10,7 +10,6 @@ unverified.
 from __future__ import annotations
 
 import argparse
-import fcntl
 import hashlib
 import json
 import os
@@ -24,6 +23,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+if os.name == "nt":
+    import msvcrt
+else:
+    import fcntl
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from evidence_common import (
@@ -33,6 +37,10 @@ from evidence_common import (
     read_evidence_bytes,
     read_evidence_json,
     worktree_fingerprint,
+)
+from windows_secure_io import (
+    atomic_write_bytes as windows_atomic_write_bytes,
+    open_anchored_lock_file as windows_open_anchored_lock_file,
 )
 
 try:
@@ -232,7 +240,7 @@ def _evidence_digest(root: Path, turn: str) -> str:
         # project verify directory and use the shared descriptor-anchored,
         # bounded reader so a large file cannot be allocated before checking
         # its size and no symlink component can redirect the read.
-        if not hasattr(os, "O_NOFOLLOW"):
+        if os.name != "nt" and not hasattr(os, "O_NOFOLLOW"):
             return "missing"
         return _sha256_bytes(
             read_evidence_bytes(root, candidate, max_bytes=MAX_EVIDENCE_BYTES)
@@ -242,7 +250,7 @@ def _evidence_digest(root: Path, turn: str) -> str:
 
 
 def _has_symlink_component(root: Path, path: Path) -> bool:
-    """Return whether an existing path component is a symlink or escapes root."""
+    """Return whether an existing path component is a link or escapes root."""
 
     try:
         root_lexical = Path(os.path.abspath(root))
@@ -269,8 +277,17 @@ def _has_symlink_component(root: Path, path: Path) -> bool:
     for component in relative.parts:
         current /= component
         try:
-            if current.is_symlink():
+            info = current.lstat()
+            if stat.S_ISLNK(info.st_mode) or (
+                os.name == "nt"
+                and bool(
+                    getattr(info, "st_file_attributes", 0)
+                    & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+                )
+            ):
                 return True
+        except FileNotFoundError:
+            continue
         except OSError:
             return True
     try:
@@ -297,15 +314,29 @@ def _state_entry_safe(root: Path, directory: Path, path: Path) -> bool:
 def _read_bounded_regular(path: Path, limit: int) -> bytes | None:
     """Read a regular file with a pre-allocation size bound and no-follow."""
 
-    if limit < 0 or not hasattr(os, "O_NOFOLLOW"):
+    if limit < 0 or (os.name != "nt" and not hasattr(os, "O_NOFOLLOW")):
         return None
+    nofollow = 0 if os.name == "nt" else os.O_NOFOLLOW
     try:
         initial = path.lstat()
-        if not stat.S_ISREG(initial.st_mode) or initial.st_size > limit:
+        if (
+            not stat.S_ISREG(initial.st_mode)
+            or initial.st_size > limit
+            or (
+                os.name == "nt"
+                and bool(
+                    getattr(initial, "st_file_attributes", 0)
+                    & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+                )
+            )
+        ):
             return None
         fd = os.open(
             path,
-            os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
+            os.O_RDONLY
+            | nofollow
+            | getattr(os, "O_BINARY", 0)
+            | getattr(os, "O_CLOEXEC", 0),
         )
     except OSError:
         return None
@@ -316,6 +347,13 @@ def _read_bounded_regular(path: Path, limit: int) -> bytes | None:
             not stat.S_ISREG(opened.st_mode)
             or opened.st_size > limit
             or identity != (initial.st_dev, initial.st_ino)
+            or (
+                os.name == "nt"
+                and bool(
+                    getattr(opened, "st_file_attributes", 0)
+                    & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+                )
+            )
         ):
             return None
         chunks: list[bytes] = []
@@ -335,6 +373,19 @@ def _read_bounded_regular(path: Path, limit: int) -> bytes | None:
             or final.st_mtime_ns != opened.st_mtime_ns
         ):
             return None
+        if os.name == "nt":
+            current = path.lstat()
+            if (
+                not stat.S_ISREG(current.st_mode)
+                or (current.st_dev, current.st_ino) != identity
+                or current.st_size != final.st_size
+                or current.st_mtime_ns != final.st_mtime_ns
+                or bool(
+                    getattr(current, "st_file_attributes", 0)
+                    & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+                )
+            ):
+                return None
         return b"".join(chunks)
     except (OSError, ValueError):
         return None
@@ -390,7 +441,14 @@ def _identity(root: Path, payload: dict[str, Any]) -> tuple[str, str]:
     return scope, key
 
 
-def _atomic_json(path: Path, value: dict[str, Any]) -> None:
+def _atomic_json(root: Path, path: Path, value: dict[str, Any]) -> None:
+    payload = json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    if len(payload) > MAX_RETRY_STATE_BYTES:
+        raise OSError("retry state exceeds the bounded size limit")
+    if os.name == "nt":
+        windows_atomic_write_bytes(root, path, payload)
+        return
+
     if not hasattr(os, "O_NOFOLLOW"):
         raise OSError("atomic state writes require O_NOFOLLOW")
     directory = path.parent
@@ -405,11 +463,6 @@ def _atomic_json(path: Path, value: dict[str, Any]) -> None:
     fd = -1
     try:
         os.fchmod(directory_fd, 0o700)
-        payload = json.dumps(value, sort_keys=True, separators=(",", ":")).encode(
-            "utf-8"
-        )
-        if len(payload) > MAX_RETRY_STATE_BYTES:
-            raise OSError("retry state exceeds the bounded size limit")
         for _ in range(100):
             temp_name = f".{path.name}.{next(tempfile._get_candidate_names())}"
             try:
@@ -459,6 +512,31 @@ def _atomic_json(path: Path, value: dict[str, Any]) -> None:
             pass
 
 
+def _open_lock_file(root: Path, directory: Path, path: Path) -> int:
+    """Open a regular non-reparse lock file without following Windows links."""
+
+    flags = os.O_RDWR | getattr(os, "O_CLOEXEC", 0)
+    if os.name != "nt":
+        return os.open(path, flags | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+    return windows_open_anchored_lock_file(root, directory, path)
+
+
+def _lock_exclusive(stream: Any) -> None:
+    if os.name == "nt":
+        stream.seek(0)
+        msvcrt.locking(stream.fileno(), msvcrt.LK_LOCK, 1)
+        return
+    fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+
+
+def _unlock_exclusive(stream: Any) -> None:
+    if os.name == "nt":
+        stream.seek(0)
+        msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+        return
+    fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+
+
 def _retry_state(root: Path, scope: str, key: str, *, record: bool) -> tuple[bool, str]:
     directory = _state_dir(root)
     if directory is None:
@@ -483,75 +561,75 @@ def _retry_state(root: Path, scope: str, key: str, *, record: bool) -> tuple[boo
     if (
         not _state_entry_safe(root, directory, lock_path)
         or not _state_entry_safe(root, directory, path)
-        or not hasattr(os, "O_NOFOLLOW")
+        or (os.name != "nt" and not hasattr(os, "O_NOFOLLOW"))
     ):
         return False, "validation_failed"
     lock_fd = -1
     try:
-        lock_fd = os.open(
-            lock_path,
-            os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
-            0o600,
-        )
+        lock_fd = _open_lock_file(root, directory, lock_path)
         lock_info = os.fstat(lock_fd)
         if not stat.S_ISREG(lock_info.st_mode):
             return False, "validation_failed"
-        os.fchmod(lock_fd, 0o600)
-        with os.fdopen(lock_fd, "r+", encoding="utf-8") as lock:
+        if hasattr(os, "fchmod"):
+            os.fchmod(lock_fd, 0o600)
+        with os.fdopen(lock_fd, "r+b") as lock:
             lock_fd = -1
-            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
-            if not _state_entry_safe(root, directory, path):
-                return False, "validation_failed"
-            state: dict[str, Any] = {
-                "attempts": 0,
-                "keys": {},
-                "updated_at": 0.0,
-            }
+            _lock_exclusive(lock)
             try:
-                info = path.lstat()
-            except FileNotFoundError:
-                info = None
-            except OSError:
-                return False, "validation_failed"
-            if info is not None:
-                raw_state = _read_bounded_regular(path, MAX_RETRY_STATE_BYTES)
-                if raw_state is None:
-                    # Do not overwrite malformed/oversized state: this keeps
-                    # a persistence fault fail-open and write-free.
-                    return False, "validation_failed"
-                try:
-                    loaded = json.loads(raw_state.decode("utf-8"))
-                except (UnicodeDecodeError, json.JSONDecodeError, TypeError):
-                    return False, "validation_failed"
-                if not isinstance(loaded, dict):
-                    return False, "validation_failed"
-                state.update(loaded)
-            try:
-                age = time.time() - float(state.get("updated_at", 0.0) or 0.0)
-                attempts = int(state.get("attempts", 0) or 0)
-            except (TypeError, ValueError, OverflowError):
-                return False, "validation_failed"
-            if age > STATE_TTL_SECONDS:
-                state = {"attempts": 0, "keys": {}, "updated_at": 0.0}
-                attempts = 0
-            keys = state.get("keys")
-            if not isinstance(keys, dict):
-                return False, "validation_failed"
-            if key in keys:
-                return True, "duplicate_invalid_stop"
-            if attempts >= MAX_ATTEMPTS_PER_SCOPE:
-                return True, "retry_budget_exhausted"
-            if record:
-                keys[key] = 1
-                state = {
-                    "attempts": attempts + 1,
-                    "keys": keys,
-                    "updated_at": time.time(),
-                }
                 if not _state_entry_safe(root, directory, path):
                     return False, "validation_failed"
-                _atomic_json(path, state)
-            return False, "validation_failed"
+                state: dict[str, Any] = {
+                    "attempts": 0,
+                    "keys": {},
+                    "updated_at": 0.0,
+                }
+                try:
+                    info = path.lstat()
+                except FileNotFoundError:
+                    info = None
+                except OSError:
+                    return False, "validation_failed"
+                if info is not None:
+                    raw_state = _read_bounded_regular(path, MAX_RETRY_STATE_BYTES)
+                    if raw_state is None:
+                        # Do not overwrite malformed/oversized state: this keeps
+                        # a persistence fault fail-open and write-free.
+                        return False, "validation_failed"
+                    try:
+                        loaded = json.loads(raw_state.decode("utf-8"))
+                    except (UnicodeDecodeError, json.JSONDecodeError, TypeError):
+                        return False, "validation_failed"
+                    if not isinstance(loaded, dict):
+                        return False, "validation_failed"
+                    state.update(loaded)
+                try:
+                    age = time.time() - float(state.get("updated_at", 0.0) or 0.0)
+                    attempts = int(state.get("attempts", 0) or 0)
+                except (TypeError, ValueError, OverflowError):
+                    return False, "validation_failed"
+                if age > STATE_TTL_SECONDS:
+                    state = {"attempts": 0, "keys": {}, "updated_at": 0.0}
+                    attempts = 0
+                keys = state.get("keys")
+                if not isinstance(keys, dict):
+                    return False, "validation_failed"
+                if key in keys:
+                    return True, "duplicate_invalid_stop"
+                if attempts >= MAX_ATTEMPTS_PER_SCOPE:
+                    return True, "retry_budget_exhausted"
+                if record:
+                    keys[key] = 1
+                    state = {
+                        "attempts": attempts + 1,
+                        "keys": keys,
+                        "updated_at": time.time(),
+                    }
+                    if not _state_entry_safe(root, directory, path):
+                        return False, "validation_failed"
+                    _atomic_json(root, path, state)
+                return False, "validation_failed"
+            finally:
+                _unlock_exclusive(lock)
     except (OSError, ValueError, TypeError, OverflowError):
         # Persistence failures must not turn into an exception or an external
         # write.  The caller retains the existing Stop validation result.
@@ -646,6 +724,7 @@ def _validator_once(root: Path, payload: dict[str, Any]) -> tuple[bool, str]:
         **os.environ,
         "FORGEWRIGHT_WORKSPACE": str(root),
         "FORGEWRIGHT_TURN": str(payload.get("turn", "")),
+        "PYTHONIOENCODING": "utf-8",
     }
     result = subprocess.run(
         [sys.executable, str(validator), "--runtime"],
@@ -653,6 +732,7 @@ def _validator_once(root: Path, payload: dict[str, Any]) -> tuple[bool, str]:
         env=environment,
         input=json.dumps(payload, ensure_ascii=False),
         text=True,
+        encoding="utf-8",
         capture_output=True,
         timeout=float(os.environ.get("FORGEWRIGHT_STOP_VALIDATION_TIMEOUT", "320")),
         check=False,

@@ -1,12 +1,11 @@
-# ⚡ Tự động đồng bộ MCP Global khi phát hiện thay đổi trong thư mục mcp/ sau khi merge/pull
-if git diff-tree --no-commit-id --name-only -r ORIG_HEAD HEAD | grep -q '^mcp/'; then
-  echo "⚡ [Forgewright] Phát hiện thay đổi trong MCP từ nhánh nguồn. Đang tự động đồng bộ MCP Global..."
-  if [ -x "./scripts/forgewright-mcp-setup.sh" ]; then
-    bash ./scripts/forgewright-mcp-setup.sh
-  fi
-fi
+#!/bin/sh
+# A source pull is not permission to update shared runtimes or other workspaces.
+# Keep maintenance explicit, just like post-commit; never spawn hidden work.
+set -eu
 
-# ⚡ Tự động cập nhật submodule
-if [ -x "./scripts/lite/submodule-auto-update.sh" ]; then
-  ./scripts/lite/submodule-auto-update.sh
-fi
+CACHE_DIR=".forgewright/cache"
+mkdir -p "$CACHE_DIR"
+for marker in mcp-sync-needed wiki-sync-needed reindex-needed submodule-update-needed; do
+  : > "$CACHE_DIR/$marker"
+done
+echo "[Forgewright] Source updated; project-local maintenance is pending. No shared runtime or submodule was changed."

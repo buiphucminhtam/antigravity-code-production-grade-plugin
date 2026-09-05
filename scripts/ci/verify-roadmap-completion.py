@@ -21,6 +21,9 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts" / "lite"))
 from evidence_common import worktree_fingerprint  # noqa: E402
 
+sys.path.insert(0, str(ROOT / "scripts" / "ci"))
+from native_commands import native_argv, native_environment  # noqa: E402
+
 
 DEFAULT_MANIFEST = ROOT / "docs" / "roadmap-completion.json"
 MANIFEST_SCHEMA = "forgewright-roadmap-completion/v2"
@@ -75,7 +78,12 @@ def _project_file(relative: str) -> Path | None:
 def _command_binds_ref(command: list[str], test_ref: str) -> bool:
     command_text = " ".join(command)
     path = _test_path(test_ref)
-    return path in command_text or path.removeprefix("mcp/") in command_text
+    candidates = {
+        path,
+        path.removeprefix("mcp/"),
+        path.removeprefix("src/cli/"),
+    }
+    return any(candidate in command_text for candidate in candidates)
 
 
 def _test_ref_exists(test_ref: str) -> bool:
@@ -200,11 +208,12 @@ def _run_verifier(
     timed_out = False
     try:
         result = subprocess.run(
-            command,
+            native_argv(command),
             cwd=workspace,
-            env=environment,
+            env=native_environment(environment),
             capture_output=True,
             text=True,
+            encoding="utf-8",
             timeout=verification["timeout_seconds"],
             check=False,
         )

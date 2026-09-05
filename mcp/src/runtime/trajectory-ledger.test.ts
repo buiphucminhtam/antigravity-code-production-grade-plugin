@@ -158,9 +158,11 @@ describe('TrajectoryLedger durable chain', () => {
     expect(events.map((event) => event.sequence)).toEqual([1, 2]);
     expect(events[1].previousHash).toBe(events[0].hash);
     expect(await ledger.tip()).toEqual({ sequence: 2, hash: events[1].hash });
-    expect(lstatSync(join(root, 'trajectory-a')).mode & 0o777).toBe(0o700);
+    if (process.platform !== 'win32') {
+      expect(lstatSync(join(root, 'trajectory-a')).mode & 0o777).toBe(0o700);
+    }
     for (const path of eventPaths(root)) {
-      expect(lstatSync(path).mode & 0o777).toBe(0o600);
+      if (process.platform !== 'win32') expect(lstatSync(path).mode & 0o777).toBe(0o600);
       const raw = readFileSync(path, 'utf8');
       expect(raw).toBe(`${canonicalJson(JSON.parse(raw))}\n`);
     }
@@ -330,21 +332,31 @@ describe('TrajectoryLedger durable chain', () => {
     const directory = fixture();
     const outside = mkdtempSync(join(tmpdir(), 'forgewright-trajectory-outside-'));
     roots.push(outside);
-    symlinkSync(outside, join(directory.root, 'trajectory-a'));
+    symlinkSync(
+      outside,
+      join(directory.root, 'trajectory-a'),
+      process.platform === 'win32' ? 'junction' : 'dir',
+    );
     await expectCode(directory.ledger.reconstruct(), 'SYMLINK_REJECTED');
 
-    const record = fixture();
-    await record.ledger.reconstruct();
-    const target = join(record.root, 'target');
-    writeFileSync(target, '{}\n');
-    symlinkSync(target, join(record.root, 'trajectory-a', '00000000000000000001.event.json'));
-    await expectCode(record.ledger.reconstruct(), 'SYMLINK_REJECTED');
+    if (process.platform !== 'win32') {
+      const record = fixture();
+      await record.ledger.reconstruct();
+      const target = join(record.root, 'target');
+      writeFileSync(target, '{}\n');
+      symlinkSync(target, join(record.root, 'trajectory-a', '00000000000000000001.event.json'));
+      await expectCode(record.ledger.reconstruct(), 'SYMLINK_REJECTED');
+    }
 
     const ancestorRoot = mkdtempSync(join(tmpdir(), 'forgewright-trajectory-ancestor-'));
     const ancestorOutside = mkdtempSync(join(tmpdir(), 'forgewright-trajectory-ancestor-outside-'));
     roots.push(ancestorRoot, ancestorOutside);
     mkdirSync(join(ancestorRoot, 'canonical'));
-    symlinkSync(ancestorOutside, join(ancestorRoot, 'canonical', 'linked'));
+    symlinkSync(
+      ancestorOutside,
+      join(ancestorRoot, 'canonical', 'linked'),
+      process.platform === 'win32' ? 'junction' : 'dir',
+    );
     const ancestorLedger = new TrajectoryLedger({
       root: join(ancestorRoot, 'canonical', 'linked', 'nested'),
       ledgerId: 'trajectory-a',

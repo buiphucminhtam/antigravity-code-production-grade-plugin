@@ -11,7 +11,7 @@ const workspaces: string[] = [];
 function workspace(): string {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'forgewright-state-'));
   workspaces.push(directory);
-  return directory;
+  return fs.realpathSync(directory);
 }
 
 function repository(root: string, options = {}) {
@@ -41,7 +41,11 @@ describe('FileSystemStateRepository', () => {
     const external = outside(root);
     const sentinel = path.join(external, 'sentinel');
     fs.writeFileSync(sentinel, 'safe');
-    fs.symlinkSync(external, path.join(root, '.forgewright'));
+    fs.symlinkSync(
+      external,
+      path.join(root, '.forgewright'),
+      process.platform === 'win32' ? 'junction' : 'dir',
+    );
     expect(() => repository(root)).toThrow(StatePersistenceError);
     expect(fs.readFileSync(sentinel, 'utf-8')).toBe('safe');
 
@@ -57,14 +61,15 @@ describe('FileSystemStateRepository', () => {
     const sentinel = path.join(external, 'sentinel');
     fs.writeFileSync(sentinel, 'safe');
     fs.mkdirSync(path.join(root, '.forgewright'));
-    fs.symlinkSync(sentinel, stateFile(root));
-    expect(() => repository(root)).toThrow(StatePersistenceError);
-    fs.unlinkSync(stateFile(root));
-    fs.symlinkSync(sentinel, `${stateFile(root)}.lock`);
-    expect(() => repository(root)).toThrow(StatePersistenceError);
-    expect(fs.readFileSync(sentinel, 'utf-8')).toBe('safe');
-
-    fs.unlinkSync(`${stateFile(root)}.lock`);
+    if (process.platform !== 'win32') {
+      fs.symlinkSync(sentinel, stateFile(root));
+      expect(() => repository(root)).toThrow(StatePersistenceError);
+      fs.unlinkSync(stateFile(root));
+      fs.symlinkSync(sentinel, `${stateFile(root)}.lock`);
+      expect(() => repository(root)).toThrow(StatePersistenceError);
+      expect(fs.readFileSync(sentinel, 'utf-8')).toBe('safe');
+      fs.unlinkSync(`${stateFile(root)}.lock`);
+    }
     await expect(
       repository(root, { maxStateBytes: 20 }).save(DEFAULT_STATE),
     ).rejects.toBeInstanceOf(StatePersistenceError);
@@ -219,7 +224,7 @@ describe('FileSystemStateRepository', () => {
       withLock(operation: () => Promise<void>): Promise<void>;
     };
 
-    await expect(lockHarness.withLock(async () => undefined)).resolves.toBeUndefined();
+    await expect(lockHarness.withLock(async () => undefined)).rejects.toBe(cleanupError);
     readFileSync.mockRestore();
   });
 

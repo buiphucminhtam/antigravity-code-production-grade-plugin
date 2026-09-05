@@ -4,6 +4,12 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { ToolExecutionGateway } from '../runtime/tool-execution-gateway.js';
 import { loadSkillOverlay, SkillOverlayError } from '../parsers/skill-parser.js';
 import {
+  createProductIntentToolRuntime,
+  isProductIntentToolName,
+  ProductIntentToolRuntimeFactory,
+  productIntentToolErrorCode,
+} from '../product-factory/product-intent-runtime.js';
+import {
   startPipeline,
   getState,
   advancePhase,
@@ -22,7 +28,11 @@ import {
 export function registerTools(
   server: Server,
   toolGateway = new ToolExecutionGateway(),
-  context: { sessionId?: string; deferredSkillNames?: readonly string[] } = {},
+  context: {
+    sessionId?: string;
+    deferredSkillNames?: readonly string[];
+    productIntentRuntimeFactory?: ProductIntentToolRuntimeFactory;
+  } = {},
 ) {
   // stdio serves one MCP client per server process. Keep its cache namespace
   // stable across calls while keeping separate server instances isolated.
@@ -31,6 +41,10 @@ export function registerTools(
   let turnNumber = 0;
   const deferredSkillNames = new Set(context.deferredSkillNames ?? []);
   const loadedSkills = new Set<string>();
+  let productIntentRuntime: ReturnType<ProductIntentToolRuntimeFactory> | undefined;
+  const getProductIntentRuntime = () =>
+    (productIntentRuntime ??=
+      context.productIntentRuntimeFactory?.() ?? createProductIntentToolRuntime());
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
@@ -239,6 +253,54 @@ export function registerTools(
             },
           },
         },
+        {
+          name: 'fw_get_product_intent',
+          description: 'Read the canonical product intent for the current workspace.',
+          inputSchema: {
+            type: 'object',
+            properties: {},
+            additionalProperties: false,
+          },
+        },
+        {
+          name: 'fw_initialize_product_intent',
+          description:
+            'Initialize canonical product intent exactly once for the current workspace.',
+          inputSchema: {
+            type: 'object',
+            properties: { intent: { type: 'object' } },
+            required: ['intent'],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: 'fw_apply_product_delta',
+          description: 'Apply a validated ProductDelta to canonical product intent.',
+          inputSchema: {
+            type: 'object',
+            properties: { delta: { type: 'object' } },
+            required: ['delta'],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: 'fw_get_product_goal_projection',
+          description: 'Project canonical product intent into the legacy goal read model.',
+          inputSchema: {
+            type: 'object',
+            properties: {},
+            additionalProperties: false,
+          },
+        },
+        {
+          name: 'fw_evaluate_product_clarification',
+          description: 'Evaluate whether unresolved product uncertainty requires clarification.',
+          inputSchema: {
+            type: 'object',
+            properties: { userDirective: { type: 'string' } },
+            additionalProperties: false,
+          },
+        },
       ],
     };
   });
@@ -255,6 +317,17 @@ export function registerTools(
         },
         async () => {
           try {
+            if (isProductIntentToolName(request.params.name)) {
+              try {
+                return await getProductIntentRuntime().execute(
+                  request.params.name,
+                  (request.params.arguments ?? {}) as Record<string, unknown>,
+                );
+              } catch (error) {
+                const code = productIntentToolErrorCode(error);
+                return { isError: true, content: [{ type: 'text', text: code }] };
+              }
+            }
             if (request.params.name === 'fw_load_skill_overlay') {
               const name = request.params.arguments?.name;
               if (typeof name !== 'string') {

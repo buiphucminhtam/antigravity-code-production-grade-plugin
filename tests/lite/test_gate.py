@@ -51,15 +51,504 @@ VERIFY_SH = SCRIPTS_DIR / "verify-gate.sh"
 STOP_SH = SCRIPTS_DIR / "stop-gate.sh"
 REVIEW_ATTEST = SCRIPTS_DIR / "review_attest.py"
 sys.path.insert(0, str(SCRIPTS_DIR))
+import review_attest as review_attest_module  # noqa: E402
+import continuity_check as continuity_check_module  # noqa: E402
+import stop_gate as stop_gate_module  # noqa: E402
+import verify_gate as verify_gate_module  # noqa: E402
+import windows_secure_io as windows_secure_io_module  # noqa: E402
+
 from evidence_common import (  # noqa: E402
     command_text,
     execution_manifest,
+    read_evidence_bytes,
     sha256_text,
     worktree_fingerprint,
 )
 
 
+def test_replay_env_drops_launcher_pythonhome(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A gate interpreter's stdlib must not contaminate a replayed Python."""
+
+    monkeypatch.setenv("PYTHONHOME", "C:/gate-python-3.11")
+    monkeypatch.setenv("FORGEWRIGHT_REPLAY_SENTINEL", "preserved")
+
+    replay_env = verify_gate_module._replay_env()
+
+    assert "PYTHONHOME" not in replay_env
+    assert replay_env["FORGEWRIGHT_REPLAY_SENTINEL"] == "preserved"
+
+
 # ── helpers ───────────────────────────────────────────────────────────────────
+
+
+def _symlink_or_skip(
+    link: Path, target: Path, *, target_is_directory: bool = False
+) -> None:
+    try:
+        link.symlink_to(target, target_is_directory=target_is_directory)
+    except OSError as error:
+        if os.name == "nt" and getattr(error, "winerror", None) == 1314:
+            pytest.skip("Windows symlink privilege is unavailable")
+        raise
+
+
+def _windows_junction(link: Path, target: Path) -> None:
+    created = subprocess.run(
+        ["cmd.exe", "/d", "/c", "mklink", "/J", str(link), str(target)],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    assert created.returncode == 0, created.stderr or created.stdout
+
+
+def _windows_try_set_mount_point(directory: Path, target: Path) -> tuple[bool, int]:
+    import ctypes
+    import struct
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    create_file = kernel32.CreateFileW
+    create_file.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    create_file.restype = wintypes.HANDLE
+    device_io = kernel32.DeviceIoControl
+    device_io.argtypes = [
+        wintypes.HANDLE,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        ctypes.POINTER(wintypes.DWORD),
+        wintypes.LPVOID,
+    ]
+    device_io.restype = wintypes.BOOL
+    close_handle = kernel32.CloseHandle
+    close_handle.argtypes = [wintypes.HANDLE]
+    close_handle.restype = wintypes.BOOL
+
+    handle = create_file(
+        str(directory),
+        0x40000000,
+        0x00000001 | 0x00000002,
+        None,
+        3,
+        0x02000000 | 0x00200000,
+        None,
+    )
+    if handle == wintypes.HANDLE(-1).value:
+        return False, ctypes.get_last_error()
+    try:
+        print_name = str(target.resolve())
+        substitute = f"\\??\\{print_name}".encode("utf-16-le")
+        printable = print_name.encode("utf-16-le")
+        path_buffer = substitute + b"\0\0" + printable + b"\0\0"
+        reparse_data = (
+            struct.pack(
+                "<IHHHHHH",
+                0xA0000003,
+                8 + len(path_buffer),
+                0,
+                0,
+                len(substitute),
+                len(substitute) + 2,
+                len(printable),
+            )
+            + path_buffer
+        )
+        raw = ctypes.create_string_buffer(reparse_data)
+        returned = wintypes.DWORD()
+        if device_io(
+            handle,
+            0x000900A4,
+            raw,
+            len(reparse_data),
+            None,
+            0,
+            ctypes.byref(returned),
+            None,
+        ):
+            return True, 0
+        return True, ctypes.get_last_error()
+    finally:
+        close_handle(handle)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX symlink semantics")
+def test_review_attest_rejects_symlinked_verify_output(tmp_path: Path) -> None:
+    forge_dir = tmp_path / ".forgewright"
+    forge_dir.mkdir()
+    outside = Path(tempfile.mkdtemp(prefix="fw_external_review_"))
+    verify_dir = forge_dir / "verify"
+    verify_dir.symlink_to(outside, target_is_directory=True)
+    escaped = outside / "escaped-review.json"
+    try:
+        with pytest.raises(ValueError, match="symlink|reparse"):
+            resolved_verify = review_attest_module._verify_dir(tmp_path)
+            review_attest_module._atomic_write(resolved_verify / escaped.name, b"{}\n")
+        assert not escaped.exists()
+    finally:
+        verify_dir.unlink(missing_ok=True)
+        shutil.rmtree(outside, ignore_errors=True)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows junction semantics")
+def test_review_attest_rejects_junctioned_verify_output(tmp_path: Path) -> None:
+    forge_dir = tmp_path / ".forgewright"
+    forge_dir.mkdir()
+    outside = Path(tempfile.mkdtemp(prefix="fw_external_review_"))
+    verify_dir = forge_dir / "verify"
+    _windows_junction(verify_dir, outside)
+    escaped = outside / "escaped-review.json"
+    try:
+        with pytest.raises(ValueError, match="symlink|reparse"):
+            resolved_verify = review_attest_module._verify_dir(tmp_path)
+            review_attest_module._atomic_write(resolved_verify / escaped.name, b"{}\n")
+        assert not escaped.exists()
+    finally:
+        verify_dir.rmdir()
+        shutil.rmtree(outside, ignore_errors=True)
+
+
+def test_review_attest_atomic_write_preserves_descriptor_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    verify_dir = tmp_path / ".forgewright" / "verify"
+    verify_dir.mkdir(parents=True)
+    output = verify_dir / "review.json"
+
+    def fail_fstat(_descriptor: int) -> os.stat_result:
+        raise OSError("forced fstat failure")
+
+    monkeypatch.setattr(review_attest_module.os, "fstat", fail_fstat)
+    with pytest.raises(OSError, match="forced fstat failure"):
+        review_attest_module._atomic_write(verify_dir, output, b"{}\n")
+    assert not output.exists()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows directory sharing semantics")
+def test_review_attest_atomic_write_blocks_junction_swap_after_guard(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    forge_dir = tmp_path / ".forgewright"
+    verify_dir = forge_dir / "verify"
+    verify_dir.mkdir(parents=True)
+    original_verify = forge_dir / "verify-original"
+    outside = Path(tempfile.mkdtemp(prefix="fw_external_review_race_"))
+    output = verify_dir / "review.json"
+    real_writer = review_attest_module.windows_atomic_write_bytes
+
+    def guarded_writer(root: Path, target: Path, payload: bytes) -> None:
+        def swap() -> None:
+            verify_dir.replace(original_verify)
+            _windows_junction(verify_dir, outside)
+
+        real_writer(root, target, payload, after_guard=swap)
+
+    monkeypatch.setattr(
+        review_attest_module, "windows_atomic_write_bytes", guarded_writer
+    )
+    try:
+        with pytest.raises((OSError, ValueError)) as caught:
+            review_attest_module._atomic_write(
+                verify_dir, output, b'{"secret":"written-outside"}\n'
+            )
+        assert list(outside.iterdir()) == []
+        assert isinstance(caught.value, OSError)
+        assert getattr(caught.value, "winerror", None) in {5, 32, 33}
+    finally:
+        if verify_dir.exists():
+            verify_dir.rmdir()
+        if original_verify.exists():
+            original_verify.replace(verify_dir)
+        shutil.rmtree(outside, ignore_errors=True)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows directory sharing semantics")
+def test_stop_retry_writer_blocks_parent_swap_after_guard(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state_dir = tmp_path / ".forgewright" / "runtime" / "stop-attempts"
+    state_dir.mkdir(parents=True)
+    original = state_dir.with_name("stop-attempts-original")
+    target = state_dir / "state.json"
+    real_writer = stop_gate_module.windows_atomic_write_bytes
+
+    def guarded_writer(root: Path, path: Path, payload: bytes) -> None:
+        def swap() -> None:
+            state_dir.replace(original)
+
+        real_writer(root, path, payload, after_guard=swap)
+
+    monkeypatch.setattr(stop_gate_module, "windows_atomic_write_bytes", guarded_writer)
+    with pytest.raises(OSError) as caught:
+        stop_gate_module._atomic_json(tmp_path, target, {"keys": []})
+    assert getattr(caught.value, "winerror", None) in {5, 32, 33}
+    assert not target.exists()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows directory sharing semantics")
+def test_continuity_retry_writer_blocks_parent_swap_after_guard(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state_dir = tmp_path / ".forgewright" / "runtime" / "docs-continuity"
+    original = state_dir.with_name("docs-continuity-original")
+    observed: dict[str, OSError] = {}
+    real_writer = continuity_check_module.windows_atomic_write_bytes
+
+    def guarded_writer(root: Path, path: Path, payload: bytes) -> None:
+        def swap() -> None:
+            try:
+                state_dir.replace(original)
+            except OSError as error:
+                observed["error"] = error
+                raise
+
+        real_writer(root, path, payload, after_guard=swap)
+
+    monkeypatch.setattr(
+        continuity_check_module, "windows_atomic_write_bytes", guarded_writer
+    )
+    assert not continuity_check_module._retry_once(
+        tmp_path, {"session_id": "windows-race"}, ["README.md"]
+    )
+    assert getattr(observed["error"], "winerror", None) in {5, 32, 33}
+    assert not original.exists()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows directory sharing semantics")
+@pytest.mark.parametrize("writer", ["stop", "continuity"])
+def test_windows_state_lock_blocks_parent_swap_before_open(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, writer: str
+) -> None:
+    module = stop_gate_module if writer == "stop" else continuity_check_module
+    directory_name = "stop-attempts" if writer == "stop" else "docs-continuity"
+    state_dir = tmp_path / ".forgewright" / "runtime" / directory_name
+    original = state_dir.with_name(f"{directory_name}-original")
+    outside = tmp_path / f"{directory_name}-outside"
+    outside.mkdir()
+    real_open = module.windows_open_anchored_lock_file
+
+    def guarded_open(root: Path, directory: Path, path: Path) -> int:
+        def swap() -> None:
+            state_dir.replace(original)
+            _windows_junction(state_dir, outside)
+
+        return real_open(root, directory, path, before_open=swap)
+
+    monkeypatch.setattr(module, "windows_open_anchored_lock_file", guarded_open)
+    if writer == "stop":
+        assert module._retry_state(
+            tmp_path, "windows-lock-race", "key", record=True
+        ) == (False, "validation_failed")
+    else:
+        assert not module._retry_once(
+            tmp_path, {"session_id": "windows-lock-race"}, ["README.md"]
+        )
+    assert not original.exists()
+    assert list(outside.iterdir()) == []
+    assert not (state_dir / ".lock").exists()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="native Windows lock-anchor semantics")
+@pytest.mark.parametrize("writer", ["stop", "continuity"])
+def test_windows_state_lock_anchor_blocks_parent_mutation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, writer: str
+) -> None:
+    module = stop_gate_module if writer == "stop" else continuity_check_module
+    directory_name = "stop-attempts" if writer == "stop" else "docs-continuity"
+    state_dir = tmp_path / ".forgewright" / "runtime" / directory_name
+    renamed = state_dir.with_name(f"{directory_name}-renamed")
+    outside = tmp_path / f"{directory_name}-outside"
+    outside.mkdir()
+    observed: dict[str, object] = {}
+    real_open = module.windows_open_anchored_lock_file
+
+    def guarded_open(root: Path, directory: Path, path: Path) -> int:
+        def attack() -> None:
+            try:
+                state_dir.replace(renamed)
+            except OSError as error:
+                observed["rename_error"] = error
+            else:
+                raise AssertionError("the lock anchor allowed its parent to move")
+            opened, error = _windows_try_set_mount_point(state_dir, outside)
+            observed["reparse_opened"] = opened
+            observed["reparse_error"] = error
+            if error == 0:
+                raise AssertionError("the lock-anchored parent became a junction")
+
+        return real_open(root, directory, path, after_open=attack)
+
+    monkeypatch.setattr(module, "windows_open_anchored_lock_file", guarded_open)
+    if writer == "stop":
+        assert module._retry_state(
+            tmp_path, "windows-lock-anchor", "key", record=True
+        ) == (False, "validation_failed")
+    else:
+        assert module._retry_once(
+            tmp_path, {"session_id": "windows-lock-anchor"}, ["README.md"]
+        )
+    assert getattr(observed["rename_error"], "winerror", None) in {5, 32, 33}
+    assert observed["reparse_opened"] is True
+    assert observed["reparse_error"] in {5, 32, 145}
+    assert not renamed.exists()
+    assert list(outside.iterdir()) == []
+
+
+@pytest.mark.skipif(os.name != "nt", reason="native Windows rename semantics")
+def test_windows_atomic_writer_keeps_published_target_on_postcheck_error(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "state.json"
+    target.write_bytes(b"old")
+
+    def fail_after_publish() -> None:
+        raise OSError("forced post-publication check failure")
+
+    with pytest.raises(OSError, match="forced post-publication"):
+        windows_secure_io_module.atomic_write_bytes(
+            tmp_path,
+            target,
+            b"new",
+            after_publish=fail_after_publish,
+        )
+    assert target.read_bytes() == b"new"
+    assert list(tmp_path.glob(".*.tmp")) == []
+
+
+@pytest.mark.skipif(os.name != "nt", reason="native Windows anchor semantics")
+def test_windows_atomic_writer_temp_anchor_blocks_parent_mutation(
+    tmp_path: Path,
+) -> None:
+    parent = tmp_path / "state"
+    parent.mkdir()
+    renamed = tmp_path / "state-renamed"
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    target = parent / "state.json"
+    observed: dict[str, object] = {}
+
+    def attack_after_parent_reopen() -> None:
+        try:
+            parent.replace(renamed)
+        except OSError as error:
+            observed["rename_error"] = error
+        else:
+            raise AssertionError("the temporary anchor allowed its parent to move")
+        opened, error = _windows_try_set_mount_point(parent, outside)
+        observed["reparse_opened"] = opened
+        observed["reparse_error"] = error
+        if error == 0:
+            raise AssertionError("the nonempty anchored parent became a junction")
+
+    windows_secure_io_module.atomic_write_bytes(
+        tmp_path,
+        target,
+        b"anchored",
+        after_anchor=attack_after_parent_reopen,
+    )
+    assert getattr(observed["rename_error"], "winerror", None) in {5, 32, 33}
+    assert observed["reparse_opened"] is True
+    assert observed["reparse_error"] in {5, 32, 145}
+    assert target.read_bytes() == b"anchored"
+    assert list(outside.iterdir()) == []
+
+
+@pytest.mark.skipif(os.name != "nt", reason="native Windows cleanup semantics")
+def test_windows_atomic_writer_preserves_primary_cleanup_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "state.json"
+
+    def fail_rename(_descriptor: int, _directory: int, _name: str) -> None:
+        raise OSError("primary rename failure")
+
+    def fail_cleanup(_descriptor: int) -> None:
+        raise OSError("forced cleanup failure")
+
+    monkeypatch.setattr(windows_secure_io_module, "_rename_open_file", fail_rename)
+    monkeypatch.setattr(windows_secure_io_module, "_dispose_open_file", fail_cleanup)
+    with pytest.raises(OSError, match="primary rename failure") as caught:
+        windows_secure_io_module.atomic_write_bytes(tmp_path, target, b"payload")
+    assert any("cleanup also failed" in note for note in caught.value.__notes__)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="native Windows rename semantics")
+def test_review_attest_atomic_write_replaces_long_name_from_workspace_cwd(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    verify_dir = tmp_path / ".forgewright" / "verify"
+    verify_dir.mkdir(parents=True)
+    output = verify_dir / "windows-keyless-review-review.json"
+    output.write_bytes(b"stale\n")
+    monkeypatch.chdir(tmp_path)
+
+    for iteration in range(32):
+        payload = f'{{"iteration":{iteration}}}\n'.encode()
+        review_attest_module._atomic_write(verify_dir, output, payload)
+        assert output.read_bytes() == payload
+
+
+def test_read_evidence_bytes_accepts_valid_regular_file(tmp_path: Path) -> None:
+    verify_dir = tmp_path / ".forgewright" / "verify"
+    verify_dir.mkdir(parents=True)
+    evidence = verify_dir / "valid.json"
+    evidence.write_bytes(b'{"schema_version":"2"}')
+
+    assert read_evidence_bytes(tmp_path, evidence) == evidence.read_bytes()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="NTFS alternate data streams")
+def test_read_evidence_bytes_rejects_windows_alternate_data_stream(
+    tmp_path: Path,
+) -> None:
+    verify_dir = tmp_path / ".forgewright" / "verify"
+    verify_dir.mkdir(parents=True)
+    carrier = verify_dir / "carrier.json"
+    carrier_payload = b'{"schema_version":"2","carrier":true}'
+    carrier.write_bytes(carrier_payload)
+    alternate_stream = Path(f"{carrier}:proof")
+    alternate_payload = b'{"schema_version":"2","forged":true}'
+    try:
+        alternate_stream.write_bytes(alternate_payload)
+        assert alternate_stream.read_bytes() == alternate_payload
+    except OSError:
+        pytest.skip("NTFS alternate data streams are unavailable")
+
+    with pytest.raises(ValueError, match="safe relative path"):
+        read_evidence_bytes(tmp_path, alternate_stream)
+    assert carrier.read_bytes() == carrier_payload
+    assert alternate_stream.read_bytes() == alternate_payload
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows junction semantics")
+def test_read_evidence_bytes_rejects_windows_junction(tmp_path: Path) -> None:
+    forge_dir = tmp_path / ".forgewright"
+    forge_dir.mkdir()
+    outside = tmp_path.parent / f"{tmp_path.name}-outside-evidence"
+    outside.mkdir()
+    evidence = outside / "junction.json"
+    evidence.write_bytes(b'{"schema_version":"2"}')
+    junction = forge_dir / "verify"
+    _windows_junction(junction, outside)
+    try:
+        with pytest.raises(ValueError, match="regular non-symlink"):
+            read_evidence_bytes(tmp_path, junction / evidence.name)
+        assert evidence.read_bytes() == b'{"schema_version":"2"}'
+    finally:
+        junction.rmdir()
+        shutil.rmtree(outside, ignore_errors=True)
 
 
 def _run_py(
@@ -1203,6 +1692,17 @@ class TestDirtyBaseline:
 
         assert before != after
 
+    def test_ignored_node_modules_dependency_cache_is_not_fingerprinted(self):
+        (self.tmp / ".gitignore").write_text("node_modules/\n", encoding="utf-8")
+        cached = self.tmp / "tools" / "node_modules" / "fixture" / "index.js"
+        cached.parent.mkdir(parents=True)
+        cached.write_text("module.exports = 1;\n", encoding="utf-8")
+        before = worktree_fingerprint(self.tmp)
+        cached.write_text("module.exports = 2;\n", encoding="utf-8")
+        after = worktree_fingerprint(self.tmp)
+
+        assert after == before
+
     def test_runtime_owned_state_is_excluded_but_project_config_remains_covered(self):
         (self.tmp / ".gitignore").write_text(".forgewright/\n", encoding="utf-8")
         volatile_paths = [
@@ -1546,6 +2046,17 @@ class TestEvidenceV2BypassRegressions:
         )
         assert mismatch.returncode == 1
         assert "linked mutation command" in mismatch.stderr
+
+    @pytest.mark.skipif(os.name != "nt", reason="native Windows file modes")
+    def test_keyless_review_create_uses_native_windows_mode_path(self):
+        final, _ = _keyless_hard_review(self.tmp, "windows-keyless-review")
+        payload = json.loads(final.read_text(encoding="utf-8"))
+        review_path = final.parent / payload["reviewer"]["evidence_ref"]
+        review = json.loads(review_path.read_text(encoding="utf-8"))
+
+        assert review_path.is_file()
+        assert review["schema_version"] == "review-2"
+        assert review["turn"] == "windows-keyless-review"
 
     def test_link_traversal_and_same_tree_red_mutation_rejected(self):
         source = self.tmp / "purchase.py"
@@ -2145,6 +2656,55 @@ class TestVerifyGateSh:
         assert second_payload["forgewright"]["retry_suppressed"] is True
         assert second_payload["forgewright"]["reason_code"] == "duplicate_invalid_stop"
 
+    @pytest.mark.skipif(os.name != "nt", reason="native Windows lock backend")
+    def test_codex_concurrent_identical_invalid_stop_has_one_retry(self):
+        """Concurrent native Stops share one msvcrt-protected retry decision."""
+        source = self.tmp / "fixture.py"
+        source.write_text("print('changed')\n")
+        evidence = _make_evidence(self.tmp, turn="concurrent-stop-evidence")
+        payload = {
+            "hook_event_name": "Stop",
+            "last_assistant_message": _strict_response(evidence).replace(
+                "COMMAND:", "COMMAND: mismatched ", 1
+            ),
+            "turn": "concurrent-stop-routing",
+            "session_id": "concurrent-stop-session",
+            "stop_hook_active": True,
+        }
+        state_dir = self.tmp / ".forgewright" / "runtime" / "stop-attempts"
+        env = {**os.environ, "FORGEWRIGHT_STOP_STATE_DIR": str(state_dir)}
+        processes = [
+            subprocess.Popen(
+                ["bash", str(STOP_SH), "--platform", "codex"],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                cwd=str(self.tmp),
+                env=env,
+            )
+            for _ in range(6)
+        ]
+        results = [
+            process.communicate(json.dumps(payload), timeout=60)
+            for process in processes
+        ]
+        assert all(process.returncode == 0 for process in processes), results
+        decisions = [json.loads(stdout) for stdout, _stderr in results]
+        retries = [item for item in decisions if item.get("decision") == "block"]
+        suppressed = [
+            item
+            for item in decisions
+            if item.get("forgewright", {}).get("retry_suppressed") is True
+        ]
+        assert len(retries) == 1
+        assert len(suppressed) == 5
+        records = list(state_dir.glob("*.json"))
+        assert len(records) == 1
+        state = json.loads(records[0].read_text(encoding="utf-8"))
+        assert state["attempts"] == 1
+        assert len(state["keys"]) == 1
+
     def test_codex_retry_state_symlink_lock_fails_open_without_external_write(self):
         """An attacker-controlled lock symlink cannot redirect Stop state writes."""
         source = self.tmp / "fixture.py"
@@ -2163,7 +2723,7 @@ class TestVerifyGateSh:
         outside = Path(tempfile.mkdtemp(prefix="fw_external_stop_state_"))
         try:
             outside_target = outside / "redirected-lock"
-            (state_dir / ".lock").symlink_to(outside_target)
+            _symlink_or_skip(state_dir / ".lock", outside_target)
             env = {**os.environ, "FORGEWRIGHT_STOP_STATE_DIR": str(state_dir)}
             result = subprocess.run(
                 ["bash", str(STOP_SH), "--platform", "codex"],
@@ -2180,6 +2740,80 @@ class TestVerifyGateSh:
             assert list(outside.iterdir()) == []
             assert not list(state_dir.glob("*.json"))
         finally:
+            shutil.rmtree(outside, ignore_errors=True)
+
+    @pytest.mark.skipif(os.name != "nt", reason="native Windows hardlink semantics")
+    def test_codex_retry_state_hardlink_lock_never_writes_outside(self):
+        """A lock hardlink fails open without mutating its external inode."""
+        source = self.tmp / "fixture.py"
+        source.write_text("print('changed')\n")
+        evidence = _make_evidence(self.tmp, turn="hardlink-lock-evidence")
+        payload = {
+            "hook_event_name": "Stop",
+            "last_assistant_message": _strict_response(evidence).replace(
+                "COMMAND:", "COMMAND: mismatched ", 1
+            ),
+            "turn": "hardlink-lock-routing",
+            "session_id": "hardlink-lock-session",
+        }
+        state_dir = self.tmp / ".forgewright" / "runtime" / "stop-attempts"
+        state_dir.mkdir(parents=True)
+        outside = Path(tempfile.mkdtemp(prefix="fw_external_hardlink_state_"))
+        try:
+            outside_target = outside / "external-lock"
+            outside_target.write_bytes(b"")
+            os.link(outside_target, state_dir / ".lock")
+            env = {**os.environ, "FORGEWRIGHT_STOP_STATE_DIR": str(state_dir)}
+            result = subprocess.run(
+                ["bash", str(STOP_SH), "--platform", "codex"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                cwd=str(self.tmp),
+                env=env,
+                input=json.dumps(payload),
+            )
+            assert result.returncode == 0, result.stderr
+            assert json.loads(result.stdout)["decision"] == "block"
+            assert outside_target.read_bytes() == b""
+            assert not list(state_dir.glob("*.json"))
+        finally:
+            shutil.rmtree(outside, ignore_errors=True)
+
+    @pytest.mark.skipif(os.name != "nt", reason="native Windows junction semantics")
+    def test_codex_retry_state_directory_junction_never_writes_outside(self):
+        """A configured state-dir junction cannot redirect Stop state writes."""
+        source = self.tmp / "fixture.py"
+        source.write_text("print('changed')\n")
+        evidence = _make_evidence(self.tmp, turn="junction-state-evidence")
+        payload = {
+            "hook_event_name": "Stop",
+            "last_assistant_message": _strict_response(evidence).replace(
+                "COMMAND:", "COMMAND: mismatched ", 1
+            ),
+            "turn": "junction-state-routing",
+            "session_id": "junction-state-session",
+        }
+        outside = Path(tempfile.mkdtemp(prefix="fw_external_junction_state_"))
+        state_dir = self.tmp / ".forgewright" / "runtime" / "stop-junction"
+        state_dir.parent.mkdir(parents=True)
+        _windows_junction(state_dir, outside)
+        try:
+            env = {**os.environ, "FORGEWRIGHT_STOP_STATE_DIR": str(state_dir)}
+            result = subprocess.run(
+                ["bash", str(STOP_SH), "--platform", "codex"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                cwd=str(self.tmp),
+                env=env,
+                input=json.dumps(payload),
+            )
+            assert result.returncode == 0, result.stderr
+            assert json.loads(result.stdout)["decision"] == "block"
+            assert list(outside.iterdir()) == []
+        finally:
+            state_dir.rmdir()
             shutil.rmtree(outside, ignore_errors=True)
 
     def test_codex_oversized_retry_state_fails_open_without_rewrite(self):
@@ -2336,7 +2970,7 @@ class TestVerifyGateSh:
         try:
             external = external_dir / "symlink-turn.json"
             evidence.replace(external)
-            evidence.symlink_to(external)
+            _symlink_or_skip(evidence, external)
             payload = {
                 "hook_event_name": "Stop",
                 "last_assistant_message": response,

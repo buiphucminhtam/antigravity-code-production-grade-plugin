@@ -381,6 +381,7 @@ function selectedProjectView(
       "--quiet",
       "--no-checkout",
       "--local",
+      "--no-hardlinks",
       "--",
       repositoryRoot,
       snapshotRoot,

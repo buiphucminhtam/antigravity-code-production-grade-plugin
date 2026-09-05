@@ -14,6 +14,13 @@ Before any stable release is published, the following criteria must be met and c
 ## 2. Installation and Portability
 - [ ] Clean-install tests succeed from a new, relocated path (no machine-specific absolute dependency paths).
 - [ ] MCP package starts successfully in a clean, relocated environment.
+- [ ] The installed Stop bundle contains adjacent `stop-gate.sh`, `stop_gate.py`, `verify_gate.py`, `evidence_common.py`, `continuity_check.py`, and `windows_secure_io.py`; doctor repair restores missing or drifted members.
+- [ ] An actual installed Stop entrypoint smoke succeeds on every claimed OS/interpreter; configuration-schema checks alone are insufficient. Claimed Windows support requires observed Git Bash plus native Windows Python 3.11+ evidence from the release tree.
+- [ ] Native hooks run from both the repository root and a nested working directory; Unicode transport and immutable baseline digests survive the checkout unchanged.
+- [ ] CI uses each component's lint/format configuration and exposes resolved Git Bash to Windows child verifiers without changing the host's global PATH.
+- [ ] Git maintenance hooks retain LF and an explicit interpreter. Pulling or switching a branch only writes project-local maintenance markers; it never implicitly updates shared MCP runtimes, submodules, or another project.
+
+Run `npm run verify:platform -- --browser --report .forgewright/reports/native-platform.json` on each claimed host after installing the declared project-local dependencies. It executes native hook/evidence tests, Product Factory conformance, MCP tests/lint/format, CLI tests, and the actual-browser reference. Keep each host report separate. A passing native-platform report has `production_eligible: false`: source synchronization for testing does not replace independent release review, trusted production evidence, or owner activation authority.
 
 ## 3. Documentation and Experience
 - [ ] README quick-start smoke test runs successfully from a clean clone.

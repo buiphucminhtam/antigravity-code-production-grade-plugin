@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; form-action 'none'; base-uri 'none'; frame-src 'none'; worker-src 'none'">
+<title>Focus list — Forgewright Web reference</title>
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; padding: 32px 20px; font: 17px/1.5 system-ui, sans-serif; color: #20242a; background: #f5f4ef; }
+main { max-width: 680px; margin: 0 auto; padding: 28px; border: 1px solid #d5d3cb; background: white; }
+h1 { font-size: 32px; line-height: 1.2; margin: 8px 0 14px; }
+p { margin: 12px 0; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+label { display: block; margin-bottom: 6px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+input[type=text] { flex: 1 1 200px; min-width: 0; padding: 12px; border: 1px solid #777; font: inherit; }
+button { padding: 12px 18px; color: white; background: #253b32; border: 0; font: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 3px solid #6b7b9e; outline-offset: 3px; }
+ol { padding: 0; list-style: none; }
+li { border-top: 1px solid #ddd; padding: 14px 0; overflow-wrap: anywhere; }
+li label { display: flex; gap: 12px; align-items: center; margin: 0; }
+input[type=checkbox] { width: 22px; height: 22px; flex-shrink: 0; }
+input:checked + span { text-decoration: line-through; color: #62676b; }
+[role=alert] { color: #913a25; min-height: 26px; }
+footer { font-size: 13px; margin-top: 28px; color: #62676b; }
+@media (max-width: 440px) { body { padding: 16px 12px; } main { padding: 20px 16px; } button { width: 100%; } }
+</style>
+</head>
+<body>
+<main>
+<p class="eyebrow">Maintained local reference · not a production release</p>
+<h1>Focus list</h1>
+<p>Add one task. Finish it. See what remains.</p>
+<form id="task-form">
+<label for="task-name">Task name</label>
+<div class="row"><input id="task-name" type="text" maxlength="80" autocomplete="off"><button type="submit">Add task</button></div>
+</form>
+<p id="validation" role="alert"></p>
+<ol id="tasks" aria-label="Tasks"></ol>
+<p id="summary" role="status" aria-live="polite">0 tasks remaining</p>
+<footer>Single-page test specimen. No accounts, storage, telemetry or network dependencies.</footer>
+</main>
+<script>
+'use strict';
+const form = document.getElementById('task-form');
+const field = document.getElementById('task-name');
+const tasks = document.getElementById('tasks');
+const validation = document.getElementById('validation');
+function update() {
+  const remaining = [...tasks.querySelectorAll('input[type=checkbox]')].filter(item => !item.checked).length;
+  document.getElementById('summary').textContent = `${remaining} ${remaining === 1 ? 'task' : 'tasks'} remaining`;
+}
+form.addEventListener('submit', event => {
+  event.preventDefault();
+  const text = field.value.trim();
+  if (!text) { validation.textContent = 'Enter a task name.'; return; }
+  if (tasks.children.length >= 20) { validation.textContent = 'Keep the list to 20 tasks.'; return; }
+  if ([...tasks.querySelectorAll('span')].some(item => item.textContent === text)) {
+    validation.textContent = 'This task is already listed.'; return;
+  }
+  validation.textContent = '';
+  const item = document.createElement('li');
+  const label = document.createElement('label');
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.setAttribute('aria-label', `Complete ${text}`);
+  const title = document.createElement('span');
+  title.textContent = text;
+  checkbox.addEventListener('change', update);
+  label.append(checkbox, title);
+  item.append(label);
+  tasks.append(item);
+  field.value = '';
+  field.focus();
+  update();
+});
+</script>
+</body>
+</html>

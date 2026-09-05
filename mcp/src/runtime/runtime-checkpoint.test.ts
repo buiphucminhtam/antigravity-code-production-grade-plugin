@@ -155,7 +155,7 @@ describe('RuntimeCheckpointStore', () => {
 
     const outside = root();
     const linked = join(root(), 'linked-root');
-    symlinkSync(outside, linked, 'dir');
+    symlinkSync(outside, linked, process.platform === 'win32' ? 'junction' : 'dir');
     expect(() => new RuntimeCheckpointStore(linked)).toThrowError('CHECKPOINT_SYMLINK');
     expect(() => new RuntimeCheckpointStore(join(linked, 'nested'))).toThrowError(
       'CHECKPOINT_SYMLINK',

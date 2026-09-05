@@ -218,8 +218,15 @@ Please ensure the following dependencies are installed and available in your sys
 
 - **Node.js**: v22.x or higher for supported Forgewright runtime and CLI usage; CI validates Node.js 24 LTS with a Node.js 22 compatibility lane.
 - **Git**: v2.30+ (required for repository management and history tracking).
-- **Python**: v3.8+ (required for the FluxMem SQLite GraphRAG memory layer).
+- **Python**: v3.11+ for the hook installer, hook doctor, and Stop runtime. On Windows, the launcher may be exposed as `python3.exe`, `python.exe`, or `py.exe`; setup resolves a supported interpreter and the native PowerShell adapter re-resolves one at hook invocation. The optional FluxMem SQLite GraphRAG memory layer alone remains compatible with Python v3.8+.
+- **Windows shell**: Git Bash from Git for Windows is required for installer and hook shell entrypoints; those entrypoints support native Windows CPython rather than requiring WSL.
 - **Supported IDE**: Cursor, Claude Desktop, or Codex CLI.
+
+On Windows, the checked-in project Codex hooks are the exception to the shell
+entrypoint rule: `.codex/config.toml` selects `command_windows`, which invokes
+`scripts/lite/codex-hook-windows.ps1` with native PowerShell from any repository
+subdirectory. Git Bash remains required for setup, doctor, and the installed
+global shell entrypoint.
 
 ### Verified Install Paths for Supported IDEs
 
@@ -278,14 +285,65 @@ bash forgewright/scripts/forgewright-hook-doctor.sh --quick --fix
 bash forgewright/scripts/lite/install-submodule-update-hooks.sh "$PWD"
 ```
 
+The installer distributes the complete Stop runtime as one adjacent bundle:
+`stop-gate.sh`, `stop_gate.py`, `verify_gate.py`, `evidence_common.py`,
+`continuity_check.py`, and `windows_secure_io.py`. The Stop state lock uses the
+POSIX backend on POSIX and
+the native Windows backend on Windows. On Windows, run setup and doctor from
+Git Bash with native Windows Python 3.11 or newer.
+
 The installer adds the native named `PreToolUse` policy hook to
 `~/.gemini/config/hooks.json`. This is Antigravity CLI configuration and is
 separate from Gemini CLI's `.gemini/settings.json`. Setup and `doctor --fix`
 also seed `.forgewright/execution-policy.yaml` into the parent workspace when
-it is missing; an existing file or symlink is always preserved. Confirm the installation:
+it is missing; an existing file or symlink is always preserved. The doctor
+repairs missing or drifted members of the installed Stop bundle, but a valid
+hook schema alone is not runtime evidence. Confirm both configuration and the
+actual installed entrypoint:
 
 ```bash
 bash forgewright/scripts/forgewright-hook-doctor.sh --quick
+
+# Run the installed CODEX entrypoint from outside every Git worktree.
+(
+  set -euo pipefail
+  installed_stop="${FORGEWRIGHT_DIR:-$HOME/.forgewright}/scripts/lite/stop-gate.sh"
+  smoke_dir="$(mktemp -d)"
+  trap 'cd / && rmdir "$smoke_dir"' EXIT
+  cd "$smoke_dir"
+  unset FORGEWRIGHT_WORKSPACE
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Stop smoke must run outside a Git worktree" >&2
+    exit 1
+  fi
+  printf '%s\n' '{"hook_event_name":"Stop","turn_id":"installed-runtime-smoke","session_id":"installed-runtime-smoke","last_assistant_message":""}' |
+    bash "$installed_stop" --platform CODEX |
+    node -e 'const fs=require("node:fs"),assert=require("node:assert/strict"); const actual=JSON.parse(fs.readFileSync(0,"utf8")); const expected={continue:true,forgewright:{schema:"forgewright-stop-decision/v1",host_action:"allow_stop",completion_state:"verified",retry_suppressed:false,reason_code:"no_code_changes"}}; assert.deepEqual(actual,expected); console.log("installed CODEX Stop runtime: PASS")'
+)
+```
+
+From PowerShell on Windows, run that Git Bash pipeline explicitly; the installed
+entrypoint resolves `python3.exe`, `python.exe`, or `py.exe` and rejects anything
+older than native Windows CPython 3.11:
+
+```powershell
+$gitBash = 'C:\Program Files\Git\bin\bash.exe'
+& $gitBash -lc @'
+set -euo pipefail
+installed_stop="${FORGEWRIGHT_DIR:-$HOME/.forgewright}/scripts/lite/stop-gate.sh"
+smoke_dir="$(mktemp -d)"
+trap 'cd / && rmdir "$smoke_dir"' EXIT
+cd "$smoke_dir"
+unset FORGEWRIGHT_WORKSPACE
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "Stop smoke must run outside a Git worktree" >&2
+  exit 1
+fi
+printf '%s\n' '{"hook_event_name":"Stop","turn_id":"installed-runtime-smoke","session_id":"installed-runtime-smoke","last_assistant_message":""}' |
+  bash "$installed_stop" --platform CODEX |
+  node -e 'const fs=require("node:fs"),assert=require("node:assert/strict"); const actual=JSON.parse(fs.readFileSync(0,"utf8")); const expected={continue:true,forgewright:{schema:"forgewright-stop-decision/v1",host_action:"allow_stop",completion_state:"verified",retry_suppressed:false,reason_code:"no_code_changes"}}; assert.deepEqual(actual,expected); console.log("installed CODEX Stop runtime: PASS")'
+'@
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
 After this one-time setup, `post-merge` and `post-checkout` in the parent
@@ -324,7 +382,7 @@ Forgewright adapts to the scale of your project, offering different tiers of aut
 | --- | --- | --- | --- |
 | **Level 1**<br/>Zero Setup | Basic chat, 84 auto-activated skills | Just run your AI chat | Quick questions, single-file scripts |
 | **Level 2**<br/>Code Intelligence | `gitnexus_impact`, `gitnexus_query`, `gitnexus_rename` | `gitnexus setup` | Refactoring, code reviews, debugging |
-| **Level 3**<br/>Continuity + GraphRAG | Event-driven bounded checkpoints plus optional local retrieval context | Python 3.8+ | Long-running projects, complex domains |
+| **Level 3**<br/>Continuity + GraphRAG | Event-driven bounded checkpoints plus optional local retrieval context | Python 3.8+ for GraphRAG; Python 3.11+ for lifecycle hooks and Stop | Long-running projects, complex domains |
 | **Level 4**<br/>Full Power | Parallel dispatch, multi-repo support, full pipeline orchestration | MCP Setup script | Team projects, end-to-end autonomous dev |
 
 ### How to Access Different Levels
@@ -339,10 +397,12 @@ To utilize Level 2 Code Intelligence, ensure `gitnexus` is installed globally an
 
 #### Level 3: GraphRAG Memory
 
-Level 3 requires Python 3.8+ and can add a local SQLite retrieval index. Durable
-resume state is stored separately as project/session-scoped continuity
-checkpoints under `.forgewright/runtime/`; retrieved memory is re-grounded
-against current files and cannot authorize execution or verification.
+The optional GraphRAG part of Level 3 requires Python 3.8+ and can add a local
+SQLite retrieval index; lifecycle hooks and the Stop runtime require Python
+3.11+. Durable resume state is stored separately as project/session-scoped
+continuity checkpoints under `.forgewright/runtime/`; retrieved memory is
+re-grounded against current files and cannot authorize execution or
+verification.
 
 #### Level 4: Full Power
 
