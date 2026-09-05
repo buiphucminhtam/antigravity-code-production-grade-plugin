@@ -16,6 +16,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_TIMEOUT_SECONDS = 300
+sys.path.insert(0, str(ROOT / "scripts" / "ci"))
+from native_commands import native_argv, native_environment  # noqa: E402
 
 
 def run(
@@ -29,8 +31,9 @@ def run(
     print("    " + " ".join(argv), flush=True)
     try:
         completed = subprocess.run(
-            argv,
+            native_argv(argv),
             cwd=cwd,
+            env=native_environment(),
             check=False,
             timeout=timeout_seconds,
         )

@@ -457,7 +457,15 @@ describe('product-intent canonical MCP tools', () => {
     const outsideTarget = path.join(directory, 'outside-events.log');
     fs.mkdirSync(stateDirectory);
     fs.writeFileSync(outsideTarget, 'sentinel\n');
-    fs.symlinkSync(outsideTarget, path.join(stateDirectory, 'events.log'));
+    const linkTarget =
+      process.platform === 'win32' ? path.join(directory, 'outside-events') : outsideTarget;
+    if (process.platform === 'win32') fs.mkdirSync(linkTarget);
+    fs.symlinkSync(
+      linkTarget,
+      path.join(stateDirectory, 'events.log'),
+      process.platform === 'win32' ? 'junction' : 'file',
+    );
+    expect(fs.lstatSync(path.join(stateDirectory, 'events.log')).isSymbolicLink()).toBe(true);
     const service = createProductIntentToolService(directory);
     expect(service).toBeDefined();
     expect(() => new ProductIntentEventLogPublisher(directory)).not.toThrow();

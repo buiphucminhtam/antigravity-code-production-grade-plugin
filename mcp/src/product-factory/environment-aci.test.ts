@@ -949,7 +949,11 @@ describe('environment-aci/v1', () => {
     fs.mkdirSync(path.join(root, 'evidence'));
     fs.writeFileSync(path.join(root, 'evidence', 'valid.json'), '{}');
     fs.writeFileSync(path.join(outside, 'secret.json'), '{}');
-    fs.symlinkSync(outside, path.join(root, 'escape'));
+    fs.symlinkSync(
+      outside,
+      path.join(root, 'escape'),
+      process.platform === 'win32' ? 'junction' : 'dir',
+    );
     const validate = createTrustedArtifactRefValidator(root);
     const bytes = Buffer.byteLength('{}');
     const sha256 = createHash('sha256').update('{}').digest('hex');

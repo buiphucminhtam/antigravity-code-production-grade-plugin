@@ -11,7 +11,7 @@ const workspaces: string[] = [];
 function workspace(): string {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'forgewright-state-'));
   workspaces.push(directory);
-  return directory;
+  return fs.realpathSync(directory);
 }
 
 function repository(root: string, options = {}) {

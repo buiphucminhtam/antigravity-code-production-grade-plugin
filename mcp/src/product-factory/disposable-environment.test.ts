@@ -967,7 +967,11 @@ describe('PF6 pinned network and input boundaries', () => {
     });
 
     const pathValue = fixture();
-    symlinkSync(pathValue.root, join(pathValue.root, 'work', 'mounts', 'escape'));
+    symlinkSync(
+      pathValue.root,
+      join(pathValue.root, 'work', 'mounts', 'escape'),
+      process.platform === 'win32' ? 'junction' : 'dir',
+    );
     expect(() =>
       createDisposableEnvironmentPolicy({
         policyId: 'bad-target',

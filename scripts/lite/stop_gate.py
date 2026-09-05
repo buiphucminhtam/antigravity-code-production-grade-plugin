@@ -724,6 +724,7 @@ def _validator_once(root: Path, payload: dict[str, Any]) -> tuple[bool, str]:
         **os.environ,
         "FORGEWRIGHT_WORKSPACE": str(root),
         "FORGEWRIGHT_TURN": str(payload.get("turn", "")),
+        "PYTHONIOENCODING": "utf-8",
     }
     result = subprocess.run(
         [sys.executable, str(validator), "--runtime"],
@@ -731,6 +732,7 @@ def _validator_once(root: Path, payload: dict[str, Any]) -> tuple[bool, str]:
         env=environment,
         input=json.dumps(payload, ensure_ascii=False),
         text=True,
+        encoding="utf-8",
         capture_output=True,
         timeout=float(os.environ.get("FORGEWRIGHT_STOP_VALIDATION_TIMEOUT", "320")),
         check=False,

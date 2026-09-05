@@ -130,11 +130,15 @@ export class ProductIntentEventLogPublisher implements IEventPublisher {
       const written = fs.writeSync(descriptor, line, 0, line.length, null);
       if (written !== line.length) throw new Error('PRODUCT_INTENT_EVENT_WRITE_INCOMPLETE');
       fs.fsyncSync(descriptor);
-      const directoryDescriptor = fs.openSync(this.directory, fs.constants.O_RDONLY);
-      try {
-        fs.fsyncSync(directoryDescriptor);
-      } finally {
-        fs.closeSync(directoryDescriptor);
+      // Windows does not expose directory fsync through Node. The event file is
+      // flushed above; POSIX retains the stronger directory-entry durability.
+      if (process.platform !== 'win32') {
+        const directoryDescriptor = fs.openSync(this.directory, fs.constants.O_RDONLY);
+        try {
+          fs.fsyncSync(directoryDescriptor);
+        } finally {
+          fs.closeSync(directoryDescriptor);
+        }
       }
     } finally {
       if (descriptor !== undefined) fs.closeSync(descriptor);

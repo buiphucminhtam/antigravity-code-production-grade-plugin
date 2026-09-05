@@ -1,0 +1,7 @@
+# Executable POSIX adapters retain LF even with core.autocrlf on Windows.
+*.sh text eol=lf
+.husky/* text eol=lf
+
+# Immutable, digest-bound historical test inputs must survive Windows checkout unchanged.
+tests/fixtures/product-factory/baseline-local-ci.json -text
+product-factory/baseline-evidence.v1.json -text

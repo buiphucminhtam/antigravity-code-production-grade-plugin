@@ -1,0 +1,82 @@
+{
+  "schema": "forgewright-local-ci/v1",
+  "mode": "quick",
+  "status": "pass",
+  "dryRun": false,
+  "startedAt": "2026-09-04T06:46:10.359350+00:00",
+  "durationMs": 2845,
+  "host": {
+    "os": "Darwin",
+    "python": "3.11.14",
+    "node": "26.7.0",
+    "nodeBinary": "/opt/homebrew/Cellar/node/26.7.0/bin/node"
+  },
+  "repository": {
+    "head": "aa2ff807cd1ab2230c506f27f0e3e0de0055595f",
+    "branch": "main"
+  },
+  "steps": [
+    {
+      "name": "product-truth",
+      "argv": [
+        "/Users/buiphucminhtam/GitHub/forgewright/.forgewright/local-ci-venv/bin/python",
+        "scripts/ci/verify-product-truth.py"
+      ],
+      "cwd": "/Users/buiphucminhtam/GitHub/forgewright",
+      "exit_code": 0,
+      "duration_ms": 40,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "name": "adversarial-weak-model-rails",
+      "argv": [
+        "/Users/buiphucminhtam/GitHub/forgewright/.forgewright/local-ci-venv/bin/python",
+        "evals/adversarial-weak-model/run-evals.py",
+        "--self-test"
+      ],
+      "cwd": "/Users/buiphucminhtam/GitHub/forgewright",
+      "exit_code": 0,
+      "duration_ms": 2400,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "name": "lite-overlays",
+      "argv": [
+        "/Users/buiphucminhtam/GitHub/forgewright/.forgewright/local-ci-venv/bin/python",
+        "scripts/lite/validate-overlays.py"
+      ],
+      "cwd": "/Users/buiphucminhtam/GitHub/forgewright",
+      "exit_code": 0,
+      "duration_ms": 40,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "name": "kernel-token-budget",
+      "argv": [
+        "/bin/bash",
+        "scripts/lite/test-kernel-tokens.sh"
+      ],
+      "cwd": "/Users/buiphucminhtam/GitHub/forgewright",
+      "exit_code": 0,
+      "duration_ms": 238,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "name": "git-diff-check",
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/Users/buiphucminhtam/GitHub/forgewright",
+      "exit_code": 0,
+      "duration_ms": 20,
+      "status": "pass",
+      "note": ""
+    }
+  ]
+}

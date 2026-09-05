@@ -20,6 +20,8 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts" / "lite"))
 from evidence_common import worktree_fingerprint  # noqa: E402
+sys.path.insert(0, str(ROOT / "scripts" / "ci"))
+from native_commands import native_argv, native_environment  # noqa: E402
 
 
 DEFAULT_MANIFEST = ROOT / "docs" / "roadmap-completion.json"
@@ -205,11 +207,12 @@ def _run_verifier(
     timed_out = False
     try:
         result = subprocess.run(
-            command,
+            native_argv(command),
             cwd=workspace,
-            env=environment,
+            env=native_environment(environment),
             capture_output=True,
             text=True,
+            encoding="utf-8",
             timeout=verification["timeout_seconds"],
             check=False,
         )
