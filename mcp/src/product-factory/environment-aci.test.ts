@@ -139,7 +139,6 @@ class FakeAdapter implements EnvironmentAciAdapter {
   mismatchAction = false;
   mismatchEvidence = false;
   lateEvidence = false;
-  delayMs = 0;
   failCleanup = false;
   private readonly deferredCalls = new Map<string, Array<ReturnType<typeof deferredCall>>>();
 
@@ -166,7 +165,6 @@ class FakeAdapter implements EnvironmentAciAdapter {
         deferred.markStarted();
         await deferred.waitForRelease;
       }
-      if (this.delayMs > 0) await new Promise((resolve) => setTimeout(resolve, this.delayMs));
       return create();
     } finally {
       this.active.current -= 1;
@@ -494,7 +492,7 @@ describe('environment-aci/v1', () => {
 
   it('shares serialization and sequence across coordinators and recovers after rejection', async () => {
     const adapter = new FakeAdapter();
-    adapter.delayMs = 2;
+    const firstReset = adapter.deferNext('reset');
     const first = createEnvironmentAciCoordinator(adapter, hostCapability(), {
       now: () => NOW,
       artifactValidator: acceptArtifacts,
@@ -503,12 +501,21 @@ describe('environment-aci/v1', () => {
       now: () => NOW,
       artifactValidator: acceptArtifacts,
     });
-    const [one, two] = await Promise.all([
-      first.runScenario(scenario()),
-      second.runScenario(
-        scenario({ scenarioId: 'scenario-shared', executionId: 'execution-shared' }),
-      ),
-    ]);
+    const pendingFirst = first.runScenario(scenario());
+    await firstReset.started;
+    const pendingSecond = second.runScenario(
+      scenario({ scenarioId: 'scenario-shared', executionId: 'execution-shared' }),
+    );
+    try {
+      // Observe overlap at a controlled boundary, not through wall-clock sleeps
+      // that compete with the unchanged operation deadline on busy hosts.
+      await Promise.resolve();
+      expect(adapter.calls).toEqual(['reset']);
+      expect(adapter.active).toEqual({ current: 1, maximum: 1 });
+    } finally {
+      firstReset.release();
+    }
+    const [one, two] = await Promise.all([pendingFirst, pendingSecond]);
     expect(one.status).toBe('PASS');
     expect(two.status).toBe('PASS');
     expect(adapter.active.maximum).toBe(1);

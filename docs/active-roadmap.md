@@ -241,6 +241,8 @@ Rules:
 
 ### PF6 — Secure Autonomous Runtime
 
+**Owner disposition (2026-09-05):** `done` (administrative closure only), temporarily accepted at the owner's explicit request with this caveat. Production OS-isolation verification is deferred and `UNVERIFIED`; this disposition does not waive the production exit criteria or certify a container/sandbox backend. The independent completion axes remain `integration: partial`, `activation: not-enabled`, `production_evidence: missing`, and `outcome: partially-met`. Reopen PF6 before enabling arbitrary child-process or production autonomy and obtain the required real-backend evidence. PF7 remains `blocked`; this roadmap status alone cannot satisfy its isolation or release gates.
+
 **Target outcome:** close the gap between application-level containment and the process isolation needed for high-autonomy product building.
 
 Deliverables:

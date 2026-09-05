@@ -121,9 +121,32 @@ def test_completion_manifest_covers_every_declared_local_deliverable_once() -> N
         "product-factory-pf3": "done",
         "product-factory-pf4": "done",
         "product-factory-pf5": "done",
-        "product-factory-pf6": "in_progress",
+        "product-factory-pf6": "done",
         "product-factory-pf7": "blocked",
     }
+    # Owner-requested administrative closure does not certify production readiness.
+    pf6 = next(item for item in state["roadmap"] if item["id"] == "product-factory-pf6")
+    assert "owner-closed; production unverified" in pf6["title"]
+    assert (
+        "PF6 is administratively done at the owner's request"
+        in state["status"]["summary"]
+    )
+    assert (
+        "production OS-isolation verification remains deferred and UNVERIFIED"
+        in state["status"]["summary"]
+    )
+    pf6_section = (
+        ROADMAP.read_text(encoding="utf-8")
+        .split("### PF6 — Secure Autonomous Runtime", 1)[1]
+        .split("### PF7", 1)[0]
+    )
+    assert "`done` (administrative closure only)" in pf6_section
+    assert "does not waive the production exit criteria" in pf6_section
+    assert (
+        "Reopen PF6 before enabling arbitrary child-process or production autonomy"
+        in pf6_section
+    )
+    assert "PF7 remains `blocked`" in pf6_section
 
 
 def test_harness_upgrade_dependencies_precede_live_provider_routing() -> None:
