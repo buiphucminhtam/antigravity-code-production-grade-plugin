@@ -37,6 +37,14 @@ Run `npm run verify:platform -- --browser --report .forgewright/reports/native-p
 - [ ] Security and dependency review completed with no P0/P1 findings.
 - [ ] Script compatibility-shim status is documented (no breaking removals without deprecation warnings).
 
+### Dependency security baseline — 2026-09-05
+
+The root workspace and standalone MCP package pin `fast-uri` to `3.1.7` and `qs` to `6.16.0`, with matching registry integrity values in both lockfiles. These updates address the upstream URI authority/host-confusion and query-string denial-of-service advisories; no runtime contract, test oracle, or audit threshold is relaxed. Run `npm run ci:security` against the selected release tree, then replay the affected MCP/CLI and real-browser checks after a clean dependency install. A source merge with passing local checks does not complete PF6/PF7 or enable production activation.
+
+Upstream advisories: [fast-uri authority validation](https://github.com/fastify/fast-uri/security/advisories/GHSA-qw65-cvwx-89v3), [fast-uri security releases](https://github.com/fastify/fast-uri/releases), and [qs denial of service](https://github.com/ljharb/qs/security/advisories/GHSA-4mjr-xmp4-gh2g).
+
+**Open replay-quality risk:** the initial full precommit run on 2026-09-05 reported one PF2 serialization/recovery failure inside the 33-deliverable roadmap replay. The unchanged focused command subsequently passed all 64 PF2 tests. The fixture uses a real 50 ms operation timeout, but the original failure's exact cause has not been proven. Preserve this failure evidence, require the full gates to pass before source integration, and do not treat a passing rerun as closure of this intermittent release-quality risk. No timeout, test oracle, runtime source or requirement was changed for this recheck.
+
 ## 5. Rollback and Recovery
 - [ ] Rollback plan is documented and tested (e.g., ability to revert to previous stable tag seamlessly).
 - [ ] Failure policies are communicated and mitigation steps are ready.

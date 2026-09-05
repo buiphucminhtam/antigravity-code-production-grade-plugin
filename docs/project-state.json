@@ -1257,12 +1257,12 @@
     "lifecycle": "active",
     "health": "at_risk",
     "phase": "BUILD",
-    "summary": "PF6 remains in progress overall: local implementation/conformance exists, but production OS-isolation authority remains unavailable. PF7 is blocked: maintained web/mobile/game production evidence, frozen thresholds, trusted learning/isolation authority and independent exact-tree review remain missing. Mac native verification, including actual Chromium, and all 33 roadmap verifiers pass. Windows hook entrypoints, MCP runtime and real-browser tests pass; focused re-verification confirms native Node/npm execution, bounded structural CLI ingestion and MCP lint/format portability. Native permissions stay unchanged and file-symlink tests remain capability-scoped. Per-host run evidence is retained under .forgewright/reports/cross-platform-20260905. Source synchronization does not activate shared runtimes, submodules, another project or production. Shared-host test execution is capped at two isolated fork workers, and operation-timeout fixtures wait for actual startup; production deadlines are unchanged.",
-    "updated_at": "2026-09-05T14:34:38+07:00",
+    "summary": "PF6 remains in progress overall: local implementation/conformance exists, but production OS-isolation authority remains unavailable. PF7 is blocked: maintained web/mobile/game production evidence, frozen thresholds, trusted learning/isolation authority and independent exact-tree review remain missing. Mac native verification, including actual Chromium, and all 33 roadmap verifiers pass. Windows hook entrypoints, MCP runtime and real-browser tests pass; focused re-verification confirms native Node/npm execution, bounded structural CLI ingestion and MCP lint/format portability. Native permissions stay unchanged and file-symlink tests remain capability-scoped. Per-host run evidence is retained under .forgewright/reports/cross-platform-20260905. Source synchronization does not activate shared runtimes, submodules, another project or production. Shared-host test execution is capped at two isolated fork workers, and operation-timeout fixtures wait for actual startup; production deadlines are unchanged. Independent source-integration verification on Mac mini passes all seven native-platform checks, including real Chromium, and a fresh Windows focused run passes 50 lifecycle, guardrail and release-contract tests. The production dependency audit initially rejected fast-uri 3.1.5; root and standalone MCP pins/lockfiles now use fast-uri 3.1.7 and qs 6.16.0, and both production dependency audits report zero vulnerabilities. The dependency patch changes no runtime source or test oracle; final-tree replay remains required before merge. This is bounded source-integration evidence, not a complete independent production-release approval. The first full precommit run reported one failure in the nested PF2 serialization/recovery test (759 Python tests passed and 11 skipped); the unchanged PF2 command then passed all 64 focused tests. Its fixture uses a real 50 ms operation timeout. The exact intermittent cause remains unconfirmed and is an open release-quality risk; no timeout, test assertion, runtime source or requirement was changed to obtain a green result.",
+    "updated_at": "2026-09-05T09:28:13+00:00",
     "blockers": [
       {
         "id": "pf7-independent-final-tree-review",
-        "title": "Independent exact-tree approval is missing for PF7 and the new Web action/evidence integration; passing local and actual-browser tests do not approve the existing multi-phase dirty worktree for release.",
+        "title": "Comprehensive independent exact-tree production approval remains missing for PF7 and the Web action/evidence integration. Bounded source-integration review and passing local/browser checks do not certify all production authority, isolation, learning and outcome requirements.",
         "owner": "Release maintainers / independent reviewer"
       },
       {
@@ -1322,7 +1322,7 @@
     "next_actions": [
       {
         "id": "pf7-release-readiness",
-        "title": "Independently review the recovered PF7 exact tree and rerun full release gates before committing the existing multi-phase worktree; preserve all local-only authority restrictions.",
+        "title": "Complete an independent PF7 production-authority review and full production release gates after the bounded native source integration; preserve all local-only authority restrictions and do not promote missing evidence.",
         "owner": "Release maintainers / independent reviewer",
         "due_date": null
       },
