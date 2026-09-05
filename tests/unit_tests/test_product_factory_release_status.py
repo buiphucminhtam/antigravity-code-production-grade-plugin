@@ -68,6 +68,10 @@ def test_product_factory_verifier_bounds_every_subprocess(
         assert kwargs["timeout"] == 7
         raise subprocess.TimeoutExpired(argv, timeout=7)
 
+    # This test isolates timeout handling from native executable resolution.
+    # Windows correctly rejects the synthetic `probe` executable before launch,
+    # so keep argv identity-bound while exercising only subprocess timeout semantics.
+    monkeypatch.setattr(module, "native_argv", lambda argv: list(argv))
     monkeypatch.setattr(module.subprocess, "run", expire)
     with pytest.raises(SystemExit, match="probe-gate timed out after 7 seconds"):
         module.run("probe-gate", ["probe"], timeout_seconds=7)
