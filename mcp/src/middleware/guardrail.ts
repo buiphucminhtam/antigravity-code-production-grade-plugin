@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
-import { dirname, resolve } from 'node:path';
+import { delimiter, dirname, join, resolve } from 'node:path';
 
 export type PolicyAction = 'allow' | 'warn' | 'block' | 'config-error';
 
@@ -23,7 +23,7 @@ export interface ProcessPolicyEvaluatorOptions {
   maxOutputBytes?: number;
 }
 
-const DEFAULT_TIMEOUT_MS = 2_000;
+const DEFAULT_TIMEOUT_MS = process.platform === 'win32' ? 5_000 : 2_000;
 const DEFAULT_MAX_OUTPUT_BYTES = 64 * 1024;
 const ANSI_COLOR_PATTERN = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
 
@@ -67,6 +67,31 @@ function findWorkspaceRoot(startDirectory: string): string {
   return directory;
 }
 
+function resolveBashExecutable(): string {
+  const configured = process.env.FORGEWRIGHT_BASH?.trim();
+  if (configured) return configured;
+  if (process.platform !== 'win32') return '/bin/bash';
+
+  const candidates: string[] = [];
+  for (const envName of ['ProgramFiles', 'ProgramW6432', 'ProgramFiles(x86)']) {
+    const base = process.env[envName]?.trim();
+    if (base) {
+      candidates.push(join(base, 'Git', 'bin', 'bash.exe'));
+      candidates.push(join(base, 'Git', 'usr', 'bin', 'bash.exe'));
+    }
+  }
+  const localAppData = process.env.LOCALAPPDATA?.trim();
+  if (localAppData) {
+    candidates.push(join(localAppData, 'Programs', 'Git', 'bin', 'bash.exe'));
+    candidates.push(join(localAppData, 'Programs', 'Git', 'usr', 'bin', 'bash.exe'));
+  }
+  for (const entry of (process.env.PATH ?? '').split(delimiter)) {
+    const directory = entry.replace(/^"|"$/g, '').trim();
+    if (directory) candidates.push(join(directory, 'bash.exe'));
+  }
+  return candidates.find((candidate) => existsSync(candidate)) ?? 'bash.exe';
+}
+
 function defaultScriptPath(workspaceRoot: string): string {
   const configuredRoot = process.env.FORGEWRIGHT_DIR;
   if (configuredRoot) {
@@ -75,9 +100,19 @@ function defaultScriptPath(workspaceRoot: string): string {
   }
   const workspaceScript = findPolicyScript(workspaceRoot);
   if (existsSync(workspaceScript)) return workspaceScript;
-  const canonicalScript = resolve(homedir(), '.forgewright/scripts/lite/policy-check.sh');
+  const canonicalScript = resolve(
+    process.env.HOME || homedir(),
+    '.forgewright/scripts/lite/policy-check.sh',
+  );
   if (existsSync(canonicalScript)) return canonicalScript;
   return findPolicyScript(process.cwd());
+}
+
+function shellPath(value: string): string {
+  if (process.platform !== 'win32') return value;
+  const normalized = value.replace(/\\/g, '/');
+  const drive = /^([A-Za-z]):\/(.*)$/.exec(normalized);
+  return drive ? `/${drive[1].toLowerCase()}/${drive[2]}` : normalized;
 }
 
 function safePolicyEnvironment(cwd: string, policyFile: string): NodeJS.ProcessEnv {
@@ -87,11 +122,11 @@ function safePolicyEnvironment(cwd: string, policyFile: string): NodeJS.ProcessE
     LANG: process.env.LANG,
     LC_ALL: process.env.LC_ALL,
     TMPDIR: process.env.TMPDIR,
-    FORGEWRIGHT_WORKSPACE: cwd,
-    FORGEWRIGHT_POLICY_FILE: policyFile,
+    FORGEWRIGHT_WORKSPACE: shellPath(cwd),
+    FORGEWRIGHT_POLICY_FILE: shellPath(policyFile),
   };
   if (process.env.FORGEWRIGHT_TELEMETRY_DIR) {
-    environment.FORGEWRIGHT_TELEMETRY_DIR = process.env.FORGEWRIGHT_TELEMETRY_DIR;
+    environment.FORGEWRIGHT_TELEMETRY_DIR = shellPath(process.env.FORGEWRIGHT_TELEMETRY_DIR);
   }
   return Object.fromEntries(
     Object.entries(environment).filter(
@@ -103,7 +138,8 @@ function safePolicyEnvironment(cwd: string, policyFile: string): NodeJS.ProcessE
 function secureRegularFile(path: string, label: string): string {
   const info = lstatSync(path);
   if (!info.isFile() || info.isSymbolicLink()) throw new Error(`${label} is not a regular file`);
-  if ((info.mode & 0o022) !== 0) throw new Error(`${label} is writable by group or others`);
+  if (process.platform !== 'win32' && (info.mode & 0o022) !== 0)
+    throw new Error(`${label} is writable by group or others`);
   if (typeof process.getuid === 'function' && info.uid !== process.getuid()) {
     throw new Error(`${label} is not owned by the current user`);
   }
@@ -168,7 +204,7 @@ export class ProcessPolicyEvaluator implements PolicyEvaluator {
         return;
       }
       const child = spawn(
-        '/bin/bash',
+        resolveBashExecutable(),
         [this.scriptPath, 'check', toolName, serializePolicyArguments(arguments_)],
         {
           cwd: this.cwd,

@@ -192,7 +192,7 @@ export function createDefaultManifest(projectRootInput: string): DocsManifest {
     title: humanizeProjectTitle(basename(projectRoot)),
   };
   const sources = discoverSources(projectRoot);
-  const projectStatePath = join("docs", "project-state.json");
+  const projectStatePath = "docs/project-state.json";
   if (!sources.some((source) => source.path === projectStatePath)) {
     sources.push({ path: projectStatePath, type: "metadata" });
   }
@@ -259,7 +259,7 @@ export function initManifest(
       JSON.parse(readFileSync(manifestPath, "utf8")),
     );
     if (!existing.project_docs) {
-      const statePath = join("docs", "project-state.json");
+      const statePath = "docs/project-state.json";
       const sources = existing.sources.some(
         (source) => source.path === statePath,
       )

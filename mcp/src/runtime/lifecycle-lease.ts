@@ -377,11 +377,13 @@ export class LifecycleLeaseStore {
     }
     await chmod(temporary, 0o600);
     await rename(temporary, destination);
-    const directory = await open(this.root, 'r');
-    try {
-      await directory.sync();
-    } finally {
-      await directory.close();
+    if (process.platform !== 'win32') {
+      const directory = await open(this.root, 'r');
+      try {
+        await directory.sync();
+      } finally {
+        await directory.close();
+      }
     }
   }
 

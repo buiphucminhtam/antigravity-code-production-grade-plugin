@@ -9,13 +9,13 @@ explicit ``enforce`` mode asks the agent to refresh a provably stale build.
 
 from __future__ import annotations
 
-import fcntl
 import hashlib
 import json
 import os
 import re
 import stat
 import subprocess
+import sys
 import tempfile
 import time
 import unicodedata
@@ -23,6 +23,18 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
+
+if os.name == "nt":
+    import msvcrt
+else:
+    import fcntl
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from windows_secure_io import (  # noqa: E402
+    atomic_write_bytes as windows_atomic_write_bytes,
+    open_anchored_lock_file as windows_open_anchored_lock_file,
+)
 
 
 MAX_METADATA_BYTES = 512 * 1024
@@ -241,8 +253,17 @@ def _has_symlink_component(root: Path, path: Path) -> bool:
     for component in relative.parts:
         current /= component
         try:
-            if current.is_symlink():
+            info = current.lstat()
+            if stat.S_ISLNK(info.st_mode) or (
+                os.name == "nt"
+                and bool(
+                    getattr(info, "st_file_attributes", 0)
+                    & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+                )
+            ):
                 return True
+        except FileNotFoundError:
+            continue
         except OSError:
             return True
     try:
@@ -264,11 +285,21 @@ def _read_bounded(path: Path, limit: int) -> bytes | None:
 
     if limit < 0:
         return None
-    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_CLOEXEC", 0)
     nofollow = getattr(os, "O_NOFOLLOW", 0)
     try:
         initial = path.lstat()
-        if not stat.S_ISREG(initial.st_mode) or initial.st_size > limit:
+        if (
+            not stat.S_ISREG(initial.st_mode)
+            or initial.st_size > limit
+            or (
+                os.name == "nt"
+                and bool(
+                    getattr(initial, "st_file_attributes", 0)
+                    & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+                )
+            )
+        ):
             return None
         fd = os.open(path, flags | nofollow)
     except OSError:
@@ -279,6 +310,13 @@ def _read_bounded(path: Path, limit: int) -> bytes | None:
             not stat.S_ISREG(opened.st_mode)
             or opened.st_size > limit
             or (opened.st_dev, opened.st_ino) != (initial.st_dev, initial.st_ino)
+            or (
+                os.name == "nt"
+                and bool(
+                    getattr(opened, "st_file_attributes", 0)
+                    & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+                )
+            )
         ):
             return None
         chunks: list[bytes] = []
@@ -299,6 +337,19 @@ def _read_bounded(path: Path, limit: int) -> bytes | None:
             or final.st_mtime_ns != opened.st_mtime_ns
         ):
             return None
+        if os.name == "nt":
+            current = path.lstat()
+            if (
+                not stat.S_ISREG(current.st_mode)
+                or (current.st_dev, current.st_ino) != identity
+                or current.st_size != final.st_size
+                or current.st_mtime_ns != final.st_mtime_ns
+                or bool(
+                    getattr(current, "st_file_attributes", 0)
+                    & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+                )
+            ):
+                return None
         return b"".join(chunks)
     except (OSError, ValueError):
         return None
@@ -1182,6 +1233,35 @@ def _retry_scope(root: Path, payload: dict[str, Any], material: Iterable[str]) -
     return _sha256(_canonical(identity))
 
 
+def _open_retry_lock(root: Path, directory: Path, path: Path) -> int:
+    """Open a regular non-reparse retry lock without following Windows links."""
+
+    flags = os.O_RDWR | getattr(os, "O_CLOEXEC", 0)
+    if os.name != "nt":
+        return os.open(
+            path,
+            flags | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0),
+            0o600,
+        )
+    return windows_open_anchored_lock_file(root, directory, path)
+
+
+def _lock_exclusive(stream: Any) -> None:
+    if os.name == "nt":
+        stream.seek(0)
+        msvcrt.locking(stream.fileno(), msvcrt.LK_LOCK, 1)
+        return
+    fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+
+
+def _unlock_exclusive(stream: Any) -> None:
+    if os.name == "nt":
+        stream.seek(0)
+        msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+        return
+    fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+
+
 def _retry_once(root: Path, payload: dict[str, Any], material: Iterable[str]) -> bool:
     directory = _state_dir(root)
     if directory is None:
@@ -1196,21 +1276,16 @@ def _retry_once(root: Path, payload: dict[str, Any], material: Iterable[str]) ->
         lock_path = directory / ".lock"
         if _has_symlink_component(root, lock_path):
             return False
-        lock_flags = (
-            os.O_RDWR
-            | os.O_CREAT
-            | getattr(os, "O_CLOEXEC", 0)
-            | getattr(os, "O_NOFOLLOW", 0)
-        )
-        lock_fd = os.open(lock_path, lock_flags, 0o600)
+        lock_fd = _open_retry_lock(root, directory, lock_path)
         try:
-            lock = os.fdopen(lock_fd, "r+", encoding="utf-8")
+            lock = os.fdopen(lock_fd, "r+b")
         except BaseException:
             os.close(lock_fd)
             raise
         with lock:
-            os.chmod(lock_path, 0o600)
-            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            if os.name != "nt":
+                os.chmod(lock_path, 0o600)
+            _lock_exclusive(lock)
             try:
                 if path.exists() and not _state_path_safe(root, path):
                     return False
@@ -1224,22 +1299,45 @@ def _retry_once(root: Path, payload: dict[str, Any], material: Iterable[str]) ->
                 ):
                     return False
                 payload = {"attempts": 1, "scope": scope, "updated_at": time.time()}
+                if os.name == "nt":
+                    encoded = json.dumps(
+                        payload, sort_keys=True, separators=(",", ":")
+                    ).encode("utf-8")
+                    windows_atomic_write_bytes(root, path, encoded)
+                    return True
                 fd, raw_temp = tempfile.mkstemp(prefix=f".{scope}.", dir=directory)
-                temp = Path(raw_temp)
+                temp: Path | None = Path(raw_temp)
                 try:
-                    os.fchmod(fd, 0o600)
-                    with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                    os.fstat(fd)
+                    if hasattr(os, "fchmod"):
+                        os.fchmod(fd, 0o600)
+                    stream = os.fdopen(fd, "w", encoding="utf-8")
+                    fd = -1
+                    with stream:
                         json.dump(
                             payload, stream, sort_keys=True, separators=(",", ":")
                         )
                         stream.flush()
                         os.fsync(stream.fileno())
+                    if (
+                        _has_symlink_component(root, directory)
+                        or _has_symlink_component(root, temp)
+                        or not _state_path_safe(root, path)
+                    ):
+                        return False
                     os.replace(temp, path)
+                    temp = None
                 finally:
-                    temp.unlink(missing_ok=True)
+                    if fd >= 0:
+                        try:
+                            os.close(fd)
+                        except OSError:
+                            pass
+                    if temp is not None:
+                        temp.unlink(missing_ok=True)
                 return True
             finally:
-                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+                _unlock_exclusive(lock)
     except (OSError, ValueError, TypeError, OverflowError):
         # A persistence failure is infrastructure, not permission to block a
         # host Stop event.  The caller will emit UNVERIFIED and allow stop.

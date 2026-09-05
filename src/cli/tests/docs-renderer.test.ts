@@ -3,6 +3,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -14,6 +15,29 @@ import { exportObsidianVault } from "../src/docs/obsidian.js";
 import { buildDocsHub, renderStaticSite } from "../src/docs/render.js";
 import { buildSearchIndex, searchDocuments } from "../src/docs/search.js";
 import type { DocsCatalog, DocsProjectState } from "../src/docs/types.js";
+
+function supportsFileSymlinks(): boolean {
+  const root = mkdtempSync(join(tmpdir(), "forgewright-symlink-probe-"));
+  try {
+    const target = join(root, "target.txt");
+    writeFileSync(target, "probe\n", "utf8");
+    symlinkSync(target, join(root, "link.txt"), "file");
+    return true;
+  } catch (error) {
+    if (
+      process.platform === "win32" &&
+      (error as NodeJS.ErrnoException).code === "EPERM"
+    ) {
+      return false;
+    }
+    throw error;
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+const fileSymlinksSupported = supportsFileSymlinks();
+const directorySymlinkType = process.platform === "win32" ? "junction" : "dir";
 
 function catalog(root: string): DocsCatalog {
   const doc = {
@@ -546,7 +570,7 @@ describe("Docs Hub static presentation", () => {
       join(tmpdir(), "forgewright-obsidian-symlink-"),
     );
     const symlinkOutput = join(symlinkParent, "vault");
-    symlinkSync(source, symlinkOutput, "dir");
+    symlinkSync(source, symlinkOutput, directorySymlinkType);
     expect(() => exportObsidianVault([sourceCatalog], symlinkOutput)).toThrow(
       /outside project root/,
     );
@@ -569,23 +593,6 @@ describe("Docs Hub static presentation", () => {
         relativePath: join("projects", "demo", "docs", "Docs"),
         broken: true,
       },
-      {
-        name: "document file target",
-        relativePath: join("projects", "demo", "docs", "Docs", "Guide.md.html"),
-        file: true,
-      },
-      {
-        name: "asset file target",
-        relativePath: join(
-          "projects",
-          "demo",
-          "assets",
-          "Docs",
-          "assets",
-          "diagram.svg",
-        ),
-        file: true,
-      },
     ];
 
     for (const scenario of scenarios) {
@@ -600,7 +607,7 @@ describe("Docs Hub static presentation", () => {
       symlinkSync(
         scenario.broken ? join(outside, "missing") : outside,
         link,
-        scenario.file ? undefined : "dir",
+        directorySymlinkType,
       );
 
       expect(
@@ -609,6 +616,53 @@ describe("Docs Hub static presentation", () => {
       ).toThrow(/contains a symlink/);
     }
   });
+
+  it.skipIf(!fileSymlinksSupported)(
+    "rejects nested document and asset file symlink destinations",
+    () => {
+      const scenarios = [
+        {
+          name: "document file target",
+          relativePath: join(
+            "projects",
+            "demo",
+            "docs",
+            "Docs",
+            "Guide.md.html",
+          ),
+        },
+        {
+          name: "asset file target",
+          relativePath: join(
+            "projects",
+            "demo",
+            "assets",
+            "Docs",
+            "assets",
+            "diagram.svg",
+          ),
+        },
+      ];
+
+      for (const scenario of scenarios) {
+        const root = mkdtempSync(
+          join(tmpdir(), `forgewright-renderer-${scenario.name}-`),
+        );
+        const output = join(root, "site");
+        const outside = join(root, "outside.txt");
+        writeFileSync(outside, "outside\n", "utf8");
+        const link = join(output, scenario.relativePath);
+        mkdirSync(dirname(link), { recursive: true });
+        symlinkSync(outside, link, "file");
+
+        expect(
+          () =>
+            renderStaticSite([catalogWithAsset(root)], { outputDir: output }),
+          scenario.name,
+        ).toThrow(/contains a symlink/);
+      }
+    },
+  );
 
   it("writes normal nested document and asset destinations", () => {
     const root = mkdtempSync(join(tmpdir(), "forgewright-renderer-nested-"));
@@ -650,16 +704,6 @@ describe("Docs Hub static presentation", () => {
         relativePath: join("demo", "Docs"),
         broken: true,
       },
-      {
-        name: "document file target",
-        relativePath: join("demo", "Docs", "Guide.md"),
-        file: true,
-      },
-      {
-        name: "asset file target",
-        relativePath: join("demo", "Docs", "assets", "diagram.svg"),
-        file: true,
-      },
     ];
 
     for (const scenario of scenarios) {
@@ -677,7 +721,7 @@ describe("Docs Hub static presentation", () => {
       symlinkSync(
         scenario.broken ? join(outside, "missing") : outside,
         link,
-        scenario.file ? undefined : "dir",
+        directorySymlinkType,
       );
 
       expect(
@@ -686,6 +730,42 @@ describe("Docs Hub static presentation", () => {
       ).toThrow(/contains a symlink/);
     }
   });
+
+  it.skipIf(!fileSymlinksSupported)(
+    "rejects nested document and asset file symlinks in Obsidian output",
+    () => {
+      const scenarios = [
+        {
+          name: "document file target",
+          relativePath: join("demo", "Docs", "Guide.md"),
+        },
+        {
+          name: "asset file target",
+          relativePath: join("demo", "Docs", "assets", "diagram.svg"),
+        },
+      ];
+
+      for (const scenario of scenarios) {
+        const root = mkdtempSync(
+          join(tmpdir(), `forgewright-obsidian-${scenario.name}-`),
+        );
+        const output = join(
+          resolve(root, ".."),
+          `vault-${scenario.name}-${Date.now()}`,
+        );
+        const outside = join(root, "outside.txt");
+        writeFileSync(outside, "outside\n", "utf8");
+        const link = join(output, scenario.relativePath);
+        mkdirSync(dirname(link), { recursive: true });
+        symlinkSync(outside, link, "file");
+
+        expect(
+          () => exportObsidianVault([catalogWithAsset(root)], output),
+          scenario.name,
+        ).toThrow(/contains a symlink/);
+      }
+    },
+  );
 
   it("writes normal nested document and asset destinations to Obsidian", () => {
     const root = mkdtempSync(join(tmpdir(), "forgewright-obsidian-nested-"));

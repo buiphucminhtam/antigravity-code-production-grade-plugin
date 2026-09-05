@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { writeFileSync, readFileSync, rmSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { tmpdir } from "node:os";
 import { EventEmitter } from "node:events";
 import { Readable } from "node:stream";
@@ -93,7 +93,7 @@ describe("Gemini adapter — fake-binary integration", () => {
     );
 
     // Inject the fake bin directory at the front of PATH.
-    const patchedPath = `${fakeBinDir}:${process.env.PATH ?? ""}`;
+    const patchedPath = `${fakeBinDir}${delimiter}${process.env.PATH ?? ""}`;
 
     const { spawn: realSpawn } = await import("node:child_process");
     const patchedSpawn: typeof realSpawn = (program, args, options) => {
@@ -101,6 +101,13 @@ describe("Gemini adapter — fake-binary integration", () => {
         ...(options ?? {}),
         env: { ...(options as any)?.env, PATH: patchedPath },
       };
+      if (process.platform === "win32" && program === "gemini") {
+        return realSpawn(
+          process.execPath,
+          [fakeBin, ...(args as string[])],
+          merged as any,
+        ) as any;
+      }
       return realSpawn(program, args as string[], merged as any) as any;
     };
 

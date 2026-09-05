@@ -9,7 +9,6 @@ tree and rule-ledger head.
 from __future__ import annotations
 
 import argparse
-import fcntl
 import hashlib
 import json
 import os
@@ -24,6 +23,16 @@ from typing import Any
 
 LITE_DIR = Path(__file__).resolve().parents[1] / "lite"
 sys.path.insert(0, str(LITE_DIR))
+
+if os.name == "nt":
+    import msvcrt
+
+    from windows_secure_io import (  # noqa: E402
+        atomic_write_bytes as windows_atomic_write_bytes,
+        open_anchored_lock_file as windows_open_anchored_lock_file,
+    )
+else:
+    import fcntl
 
 from evidence_common import worktree_fingerprint  # noqa: E402
 
@@ -147,12 +156,28 @@ def _workspace_id(workspace: Path) -> str:
     return _sha256(_canonical_bytes(_repo_identity(workspace)))
 
 
+def _is_link_or_reparse(path: Path) -> bool:
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return True
+    return stat.S_ISLNK(info.st_mode) or bool(
+        getattr(info, "st_file_attributes", 0)
+        & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x0400)
+    )
+
+
 def _has_symlink_component(path: Path) -> bool:
     current = Path(path.anchor)
     for part in path.parts[1:]:
         current = current / part
-        if current.is_symlink():
-            info = current.lstat()
+        if _is_link_or_reparse(current):
+            try:
+                info = current.lstat()
+            except OSError:
+                return True
             if not hasattr(os, "getuid") or info.st_uid == os.getuid():
                 return True
         if not current.exists():
@@ -171,24 +196,24 @@ def _state_root(workspace: Path) -> Path:
         base = workspace.resolve()
         for part in (".forgewright", "runtime", "continuity"):
             candidate = base / part
-            if candidate.is_symlink():
+            if _is_link_or_reparse(candidate):
                 raise ContinuityError("continuity_root_symlink")
             base = candidate
     root = base / _workspace_id(workspace)
-    if root.is_symlink():
+    if _is_link_or_reparse(root):
         raise ContinuityError("continuity_root_symlink")
     return root.resolve(strict=False)
 
 
 def _session_directory(workspace: Path, session: str, *, create: bool) -> Path:
     root = _state_root(workspace)
-    if root.is_symlink():
+    if _is_link_or_reparse(root):
         raise ContinuityError("continuity_root_symlink")
     if create:
         root.mkdir(parents=True, exist_ok=True, mode=0o700)
         os.chmod(root, 0o700)
     session_dir = root / session
-    if session_dir.is_symlink():
+    if _is_link_or_reparse(session_dir):
         raise ContinuityError("continuity_session_symlink")
     if create:
         session_dir.mkdir(mode=0o700, exist_ok=True)
@@ -373,6 +398,9 @@ def _validate_payload(payload: Any) -> dict[str, Any]:
 def _atomic_write(path: Path, content: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(path.parent, 0o700)
+    if os.name == "nt":
+        windows_atomic_write_bytes(path.parent, path, content)
+        return
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f".{path.name}.", dir=path.parent
     )
@@ -396,15 +424,28 @@ def _atomic_write(path: Path, content: bytes) -> None:
 def _open_writer_lock(session_dir: Path):
     lock_path = session_dir / ".writer.lock"
     try:
-        descriptor = os.open(
-            lock_path,
-            os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0),
-            0o600,
-        )
-        os.fchmod(descriptor, 0o600)
+        if os.name == "nt":
+            descriptor = windows_open_anchored_lock_file(
+                session_dir, session_dir, lock_path
+            )
+        else:
+            descriptor = os.open(
+                lock_path,
+                os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW,
+                0o600,
+            )
+            os.fchmod(descriptor, 0o600)
         return os.fdopen(descriptor, "a+", encoding="utf-8")
     except OSError as error:
         raise ContinuityError("checkpoint_lock_unsafe") from error
+
+
+def _lock_exclusive(stream: Any) -> None:
+    if os.name == "nt":
+        stream.seek(0)
+        msvcrt.locking(stream.fileno(), msvcrt.LK_LOCK, 1)
+        return
+    fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
 
 
 def _load_json(path: Path) -> dict[str, Any] | None:
@@ -413,6 +454,10 @@ def _load_json(path: Path) -> dict[str, Any] | None:
         info = path.lstat()
         if (
             stat.S_ISLNK(info.st_mode)
+            or bool(
+                getattr(info, "st_file_attributes", 0)
+                & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x0400)
+            )
             or not stat.S_ISREG(info.st_mode)
             or info.st_size > MAX_CHECKPOINT_BYTES
         ):
@@ -468,20 +513,20 @@ def _validated_chain(
     files = _checkpoint_files(session_dir)
     head_path = session_dir / "head.json"
     if not files:
-        if head_path.exists() or head_path.is_symlink():
+        if head_path.exists() or _is_link_or_reparse(head_path):
             raise ContinuityError("checkpoint_head_mismatch")
         return None
 
-    head = None if head_path.is_symlink() else _load_json(head_path)
+    head = None if _is_link_or_reparse(head_path) else _load_json(head_path)
     if head is None:
         raise ContinuityError("checkpoint_head_mismatch")
 
     previous_hash = ""
     latest: dict[str, Any] | None = None
     for expected_sequence, path in enumerate(files, start=1):
-        value = None if path.is_symlink() else _load_json(path)
+        value = None if _is_link_or_reparse(path) else _load_json(path)
         if value is None or not _valid_checkpoint(value):
-            if quarantine_corrupt and not path.is_symlink():
+            if quarantine_corrupt and not _is_link_or_reparse(path):
                 _quarantine(path)
             raise ContinuityError("corrupt_checkpoint")
         ledger = value.get("ledger") if isinstance(value.get("ledger"), dict) else {}
@@ -533,7 +578,7 @@ def write_checkpoint(
     cleaned = _validate_payload(payload)
     session_dir = _session_directory(workspace, session, create=True)
     with _open_writer_lock(session_dir) as lock:
-        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        _lock_exclusive(lock)
         previous = _validated_chain(session_dir, session)
         sequence = int(previous.get("sequence", 0)) + 1 if previous else 1
         now = _now()
@@ -605,17 +650,17 @@ def _validated_receipts(
     receipt_dir = session_dir / "receipts" / checkpoint_hash
     if not receipt_dir.exists():
         return [], 0, 0
-    if receipt_dir.is_symlink() or not receipt_dir.is_dir():
+    if _is_link_or_reparse(receipt_dir) or not receipt_dir.is_dir():
         raise ContinuityError("continuation_receipt_corrupt")
     files = sorted(receipt_dir.glob("receipt-*.json"))
     if len(files) > MAX_RECEIPT_FILES:
         raise ContinuityError("continuation_receipt_count_exceeded")
     head_path = receipt_dir / "head.json"
     if not files:
-        if head_path.exists() or head_path.is_symlink():
+        if head_path.exists() or _is_link_or_reparse(head_path):
             raise ContinuityError("continuation_receipt_head_mismatch")
         return [], 0, 0
-    head = None if head_path.is_symlink() else _load_json(head_path)
+    head = None if _is_link_or_reparse(head_path) else _load_json(head_path)
     if head is None:
         raise ContinuityError("continuation_receipt_head_mismatch")
     previous_hash = ""
@@ -639,7 +684,7 @@ def _validated_receipts(
         "hash",
     }
     for sequence, path in enumerate(files, start=1):
-        value = None if path.is_symlink() else _load_json(path)
+        value = None if _is_link_or_reparse(path) else _load_json(path)
         if not isinstance(value, dict) or set(value) != required:
             raise ContinuityError("continuation_receipt_corrupt")
         if (
@@ -688,7 +733,7 @@ def resume_checkpoint(
         session_dir = _session_directory(workspace, session, create=False)
     except ContinuityError as error:
         return {"status": "fresh-start", "reasons": [str(error)]}
-    if not session_dir.is_dir() or session_dir.is_symlink():
+    if not session_dir.is_dir() or _is_link_or_reparse(session_dir):
         return {"status": "fresh-start", "reasons": ["checkpoint_missing"]}
     try:
         checkpoint = _validated_chain(session_dir, session, quarantine_corrupt=True)
@@ -806,10 +851,10 @@ def consume_checkpoint(
         session_dir = _session_directory(workspace, session, create=False)
     except ContinuityError as error:
         raise ContinuityError("continuation_fresh_start_required") from error
-    if not session_dir.is_dir() or session_dir.is_symlink():
+    if not session_dir.is_dir() or _is_link_or_reparse(session_dir):
         raise ContinuityError("continuation_fresh_start_required")
     with _open_writer_lock(session_dir) as lock:
-        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        _lock_exclusive(lock)
         resumed = resume_checkpoint(workspace, session, expected_trajectory)
         if resumed.get("status") != "resumable-context":
             raise ContinuityError("continuation_fresh_start_required")

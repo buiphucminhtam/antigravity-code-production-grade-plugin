@@ -24,6 +24,7 @@ from evidence_common import (  # noqa: E402
     resolve_evidence_link,
     schema_errors,
 )
+from windows_secure_io import atomic_write_bytes as windows_atomic_write_bytes  # noqa: E402
 
 
 REVIEW_SCHEMA = "review-2"
@@ -53,15 +54,71 @@ def _within(path: Path, directory: Path) -> bool:
         return False
 
 
+def _is_link_or_reparse(info: os.stat_result) -> bool:
+    return stat.S_ISLNK(info.st_mode) or bool(
+        getattr(info, "st_file_attributes", 0)
+        & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    )
+
+
+def _validated_directory(root: Path, directory: Path) -> Path:
+    """Return a lexical directory path after rejecting redirected components."""
+
+    root_lexical = Path(os.path.abspath(root))
+    directory_lexical = Path(os.path.abspath(directory))
+    try:
+        relative = directory_lexical.relative_to(root_lexical)
+    except ValueError as error:
+        raise ValueError("review path must stay inside the workspace") from error
+
+    current = root_lexical
+    for component in (None, *relative.parts):
+        if component is not None:
+            current /= component
+        try:
+            info = current.lstat()
+        except OSError as error:
+            raise ValueError("review directory must already exist") from error
+        if not stat.S_ISDIR(info.st_mode) or _is_link_or_reparse(info):
+            raise ValueError(
+                "review directory must not use symlink or reparse-point components"
+            )
+    return directory_lexical
+
+
+def _validated_output_path(verify_dir: Path, path: Path) -> Path:
+    workspace = verify_dir.parent.parent
+    safe_verify_dir = _validated_directory(workspace, verify_dir)
+    candidate = Path(os.path.abspath(path))
+    try:
+        relative = candidate.relative_to(safe_verify_dir)
+    except ValueError as error:
+        raise ValueError("review output must be inside .forgewright/verify") from error
+    if (
+        not relative.parts
+        or relative.is_absolute()
+        or "\0" in str(relative)
+        or any(part in {"", ".", ".."} for part in relative.parts)
+        or (os.name == "nt" and any(":" in part for part in relative.parts))
+    ):
+        raise ValueError("review output must use a safe relative path")
+
+    parent = safe_verify_dir.joinpath(*relative.parts[:-1])
+    _validated_directory(safe_verify_dir, parent)
+    try:
+        info = candidate.lstat()
+    except FileNotFoundError:
+        return candidate
+    except OSError as error:
+        raise ValueError("review output must be inspectable") from error
+    if not stat.S_ISREG(info.st_mode) or _is_link_or_reparse(info):
+        raise ValueError("review output must not replace a symlink or reparse point")
+    return candidate
+
+
 def _verify_dir(workspace: Path) -> Path:
-    verify_dir = (workspace / ".forgewright" / "verify").resolve()
-    if not verify_dir.is_dir():
-        raise ValueError(".forgewright/verify must be an existing directory")
-    for directory in (workspace / ".forgewright", verify_dir):
-        info = directory.lstat()
-        if stat.S_ISLNK(info.st_mode):
-            raise ValueError(".forgewright/verify must not use symlinked directories")
-    return verify_dir
+    workspace = workspace.resolve()
+    return _validated_directory(workspace, workspace / ".forgewright" / "verify")
 
 
 def _evidence_path(raw_path: str, workspace: Path, verify_dir: Path) -> Path:
@@ -83,30 +140,32 @@ def _output_path(
     evidence_ref = evidence.get("reviewer", {}).get("evidence_ref")
     if not isinstance(evidence_ref, str) or not evidence_ref.strip():
         raise ValueError("final evidence reviewer.evidence_ref is required")
+    relative = Path(evidence_ref)
+    if (
+        relative.is_absolute()
+        or "\0" in evidence_ref
+        or any(part in {"", ".", ".."} for part in relative.parts)
+        or (os.name == "nt" and any(":" in part for part in relative.parts))
+    ):
+        raise ValueError("reviewer.evidence_ref must be a safe relative path")
+    ref_candidate = _validated_output_path(verify_dir, verify_dir / relative)
     _, ref_error = resolve_evidence_link(workspace, evidence_ref)
     if ref_error and not ref_error.startswith("MISSING:"):
         raise ValueError(f"reviewer.evidence_ref is invalid: {ref_error}")
-    ref_candidate = (verify_dir / Path(evidence_ref)).resolve()
-    if not _within(ref_candidate, verify_dir) or ref_candidate == verify_dir:
-        raise ValueError("reviewer.evidence_ref must stay inside .forgewright/verify")
     if raw_path is None:
         output = ref_candidate
     else:
         supplied = Path(raw_path).expanduser()
-        output = (
-            supplied if supplied.is_absolute() else Path.cwd() / supplied
-        ).resolve()
+        output = Path(
+            os.path.abspath(
+                supplied if supplied.is_absolute() else Path.cwd() / supplied
+            )
+        )
         if output != ref_candidate:
             raise ValueError(
                 "--output must exactly match final evidence reviewer.evidence_ref"
             )
-    if not _within(output, verify_dir) or output == verify_dir:
-        raise ValueError("review output must be inside .forgewright/verify")
-    if output.exists() and output.is_symlink():
-        raise ValueError("review output must not replace a symlink")
-    if not output.parent.is_dir():
-        raise ValueError("review output parent must already exist")
-    return output
+    return _validated_output_path(verify_dir, output)
 
 
 def _validate_final_evidence(evidence: dict[str, Any], workspace: Path) -> None:
@@ -132,21 +191,64 @@ def _validate_final_evidence(evidence: dict[str, Any], workspace: Path) -> None:
         )
 
 
-def _atomic_write(path: Path, payload: bytes) -> None:
+def _atomic_write(verify_dir: Path, path: Path, payload: bytes) -> None:
+    path = _validated_output_path(verify_dir, path)
+    if os.name == "nt":
+        windows_atomic_write_bytes(verify_dir.parent.parent, path, payload)
+        return
+
+    path = _validated_output_path(verify_dir, path)
+    directory_info = path.parent.lstat()
     fd, temporary = tempfile.mkstemp(
         prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
     )
     temporary_path = Path(temporary)
+    opened: os.stat_result | None = None
     try:
+        opened = os.fstat(fd)
+        if not stat.S_ISREG(opened.st_mode) or _is_link_or_reparse(opened):
+            raise OSError("review temporary file is unsafe")
         os.fchmod(fd, 0o600)
-        with os.fdopen(fd, "wb") as stream:
+        stream = os.fdopen(fd, "wb")
+        fd = -1
+        with stream:
             stream.write(payload)
             stream.flush()
             os.fsync(stream.fileno())
+        path = _validated_output_path(verify_dir, path)
+        current_directory = path.parent.lstat()
+        current_temporary = temporary_path.lstat()
+        if (
+            (current_directory.st_dev, current_directory.st_ino)
+            != (directory_info.st_dev, directory_info.st_ino)
+            or _is_link_or_reparse(current_directory)
+            or not stat.S_ISREG(current_temporary.st_mode)
+            or (current_temporary.st_dev, current_temporary.st_ino)
+            != (opened.st_dev, opened.st_ino)
+            or _is_link_or_reparse(current_temporary)
+        ):
+            raise OSError("review output path changed during write")
         os.replace(temporary_path, path)
     except BaseException:
+        if fd >= 0:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
         try:
-            temporary_path.unlink(missing_ok=True)
+            current_directory = path.parent.lstat()
+            current_temporary = temporary_path.lstat()
+            if (
+                opened is not None
+                and (current_directory.st_dev, current_directory.st_ino)
+                == (directory_info.st_dev, directory_info.st_ino)
+                and not _is_link_or_reparse(current_directory)
+                and stat.S_ISREG(current_temporary.st_mode)
+                and (current_temporary.st_dev, current_temporary.st_ino)
+                == (opened.st_dev, opened.st_ino)
+                and not _is_link_or_reparse(current_temporary)
+            ):
+                temporary_path.unlink()
         except OSError:
             pass
         raise
@@ -212,7 +314,7 @@ def _run_create(args: argparse.Namespace) -> int:
     serialized = _canonical_json(review)
     if len(serialized) > MAX_REVIEW_BYTES:
         raise ValueError("review record exceeds the bounded size limit")
-    _atomic_write(output, serialized + b"\n")
+    _atomic_write(verify_dir, output, serialized + b"\n")
     print(
         json.dumps(
             {

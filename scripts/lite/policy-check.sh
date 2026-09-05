@@ -34,14 +34,24 @@ log_error() { echo -e "${RED}[POLICY] ERROR:${NC} $*" >&2; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 if [[ -n "${FORGEWRIGHT_WORKSPACE:-}" ]]; then
-  if [[ ! -d "$FORGEWRIGHT_WORKSPACE" ]]; then
+  WORKSPACE_PATH="$FORGEWRIGHT_WORKSPACE"
+  if command -v cygpath >/dev/null 2>&1; then
+    NORMALIZED_WORKSPACE="$(cygpath -u "$WORKSPACE_PATH" 2>/dev/null)" || {
+      log_error "FORGEWRIGHT_WORKSPACE cannot be normalized; DENY (fail-closed)."
+      exit 1
+    }
+    WORKSPACE_PATH="$NORMALIZED_WORKSPACE"
+  fi
+  if [[ ! -d "$WORKSPACE_PATH" ]]; then
     log_error "FORGEWRIGHT_WORKSPACE is not a readable directory; DENY (fail-closed)."
     exit 1
   fi
-  PROJECT_ROOT="$(cd "$FORGEWRIGHT_WORKSPACE" 2>/dev/null && pwd -P)" || {
+  PROJECT_ROOT="$(cd "$WORKSPACE_PATH" 2>/dev/null && pwd -P)" || {
     log_error "FORGEWRIGHT_WORKSPACE cannot be resolved; DENY (fail-closed)."
     exit 1
   }
+  FORGEWRIGHT_WORKSPACE="$PROJECT_ROOT"
+  export FORGEWRIGHT_WORKSPACE
 fi
 cd "$PROJECT_ROOT"
 
@@ -68,14 +78,14 @@ _emit() {
 # Values must not contain spaces (documented in the policy file header).
 _scalar() {
   (grep -E "^${1}:" "$POLICY_FILE" 2>/dev/null || true) \
-    | head -1 | cut -d':' -f2- | cut -d'#' -f1 | tr -d ' \t"'
+    | head -1 | cut -d':' -f2- | cut -d'#' -f1 | tr -d ' \t"\r'
 }
 
 # Extract deny_patterns list items: `  - "pattern"` → `pattern`.
 # deny_patterns is the only list in this file, so any `- ` line belongs to it.
 _deny_patterns() {
   (grep -E '^[[:space:]]*- ' "$POLICY_FILE" 2>/dev/null || true) \
-    | tr -d '"' | sed 's/^[[:space:]]*- //'
+    | tr -d '"\r' | sed 's/^[[:space:]]*- //'
 }
 
 _policy_error() {
@@ -88,6 +98,7 @@ _validate_policy() {
 
   local line pattern_count=0
   while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%$'\r'}"
     if [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]]; then
       continue
     fi

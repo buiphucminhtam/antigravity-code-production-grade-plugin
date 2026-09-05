@@ -5,7 +5,10 @@ from __future__ import annotations
 import json
 import hashlib
 import os
+import shutil
 import subprocess
+import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -14,6 +17,27 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 STOP = ROOT / "scripts/lite/stop-gate.sh"
+
+
+def _symlink_or_skip(
+    link: Path, target: Path, *, target_is_directory: bool = False
+) -> None:
+    try:
+        link.symlink_to(target, target_is_directory=target_is_directory)
+    except OSError as error:
+        if os.name == "nt" and getattr(error, "winerror", None) == 1314:
+            pytest.skip("Windows symlink privilege is unavailable")
+        raise
+
+
+def _windows_junction(link: Path, target: Path) -> None:
+    created = subprocess.run(
+        ["cmd.exe", "/d", "/c", "mklink", "/J", str(link), str(target)],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    assert created.returncode == 0, created.stderr or created.stdout
 
 
 def _git_workspace(path: Path) -> None:
@@ -369,7 +393,7 @@ def test_catalog_symlink_source_path_is_never_verified(tmp_path: Path) -> None:
     outside = tmp_path / "outside.md"
     outside.write_text("outside\n", encoding="utf-8")
     linked = tmp_path / "docs/escape.md"
-    linked.symlink_to(outside)
+    _symlink_or_skip(linked, outside)
     catalog = json.loads(
         (tmp_path / ".forgewright/cache/docs-index.json").read_text(encoding="utf-8")
     )
@@ -675,7 +699,7 @@ def test_symlinked_retry_state_fails_open_without_writing_outside(
     outside.mkdir()
     state_link = tmp_path / ".forgewright/runtime/state-link"
     state_link.parent.mkdir(parents=True, exist_ok=True)
-    state_link.symlink_to(outside, target_is_directory=True)
+    _symlink_or_skip(state_link, outside, target_is_directory=True)
     result = _run_stop(
         tmp_path,
         _docs_payload(tmp_path),
@@ -688,3 +712,120 @@ def test_symlinked_retry_state_fails_open_without_writing_outside(
     assert parsed["continue"] is True
     assert parsed["forgewright"]["completion_state"] == "unverified"
     assert list(outside.iterdir()) == []
+
+
+@pytest.mark.skipif(os.name != "nt", reason="native Windows hardlink semantics")
+def test_hardlinked_retry_lock_fails_open_without_writing_outside(
+    tmp_path: Path,
+) -> None:
+    _git_workspace(tmp_path)
+    _docs_contract(tmp_path)
+    subprocess.run(
+        ["git", "add", ".forgewright/docs-manifest.json", "docs"],
+        cwd=tmp_path,
+        check=True,
+    )
+    subprocess.run(["git", "commit", "-qm", "docs contract"], cwd=tmp_path, check=True)
+    marker = tmp_path / ".forgewright/docs-hub/site/.forgewright-docs-hub"
+    os.utime(marker, (1, 1))
+    state_dir = tmp_path / ".forgewright/runtime/docs-continuity-hardlink"
+    state_dir.mkdir(parents=True)
+    outside = Path(tempfile.mkdtemp(prefix="fw_external_continuity_lock_"))
+    try:
+        outside_lock = outside / "external-lock"
+        outside_lock.write_bytes(b"")
+        os.link(outside_lock, state_dir / ".lock")
+
+        result = _run_stop(
+            tmp_path,
+            _docs_payload(tmp_path),
+            mode="enforce",
+            state_dir=state_dir,
+            extra_env={"FORGEWRIGHT_STOP_STATE_DIR": str(tmp_path / "safe-stop-state")},
+        )
+        parsed = json.loads(result.stdout)
+        assert result.returncode == 0
+        assert parsed["continue"] is True, (parsed, result.stderr)
+        assert parsed["forgewright"]["completion_state"] == "unverified"
+        assert outside_lock.read_bytes() == b""
+        assert not list(state_dir.glob("*.json"))
+    finally:
+        shutil.rmtree(outside, ignore_errors=True)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="native Windows junction semantics")
+def test_junction_retry_state_fails_open_without_writing_outside(
+    tmp_path: Path,
+) -> None:
+    _git_workspace(tmp_path)
+    _docs_contract(tmp_path)
+    subprocess.run(
+        ["git", "add", ".forgewright/docs-manifest.json", "docs"],
+        cwd=tmp_path,
+        check=True,
+    )
+    subprocess.run(["git", "commit", "-qm", "docs contract"], cwd=tmp_path, check=True)
+    marker = tmp_path / ".forgewright/docs-hub/site/.forgewright-docs-hub"
+    os.utime(marker, (1, 1))
+    outside = tmp_path / "outside-junction-state"
+    outside.mkdir()
+    state_dir = tmp_path / ".forgewright/runtime/docs-continuity-junction"
+    state_dir.parent.mkdir(parents=True, exist_ok=True)
+    _windows_junction(state_dir, outside)
+    try:
+        result = _run_stop(
+            tmp_path,
+            _docs_payload(tmp_path),
+            mode="enforce",
+            state_dir=state_dir,
+            extra_env={"FORGEWRIGHT_STOP_STATE_DIR": str(tmp_path / "safe-stop-state")},
+        )
+        parsed = json.loads(result.stdout)
+        assert result.returncode == 0
+        assert parsed["continue"] is True
+        assert parsed["forgewright"]["completion_state"] == "unverified"
+        assert list(outside.iterdir()) == []
+    finally:
+        state_dir.rmdir()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="native Windows lock backend")
+def test_concurrent_retry_once_records_exactly_one_attempt(tmp_path: Path) -> None:
+    state_dir = tmp_path / ".forgewright/runtime/docs-continuity-concurrent"
+    environment = {
+        **os.environ,
+        "FORGEWRIGHT_DOCS_CONTINUITY_STATE_DIR": str(state_dir),
+    }
+    code = (
+        "import json,sys; from pathlib import Path; "
+        "sys.path.insert(0,sys.argv[1]); "
+        "from continuity_check import _retry_once; "
+        "print(json.dumps(_retry_once(Path(sys.argv[2]), "
+        "{'session_id':'concurrent-session'}, ['docs/guide.md'])))"
+    )
+    command = [
+        sys.executable,
+        "-c",
+        code,
+        str(ROOT / "scripts/lite"),
+        str(tmp_path),
+    ]
+    processes = [
+        subprocess.Popen(
+            command,
+            cwd=tmp_path,
+            env=environment,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        for _ in range(6)
+    ]
+    results = [process.communicate(timeout=30) for process in processes]
+    assert all(process.returncode == 0 for process in processes), results
+    decisions = [json.loads(stdout) for stdout, _stderr in results]
+    assert decisions.count(True) == 1
+    assert decisions.count(False) == 5
+    records = list(state_dir.glob("*.json"))
+    assert len(records) == 1
+    assert json.loads(records[0].read_text(encoding="utf-8"))["attempts"] == 1
