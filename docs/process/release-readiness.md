@@ -18,6 +18,7 @@ Before any stable release is published, the following criteria must be met and c
 - [ ] An actual installed Stop entrypoint smoke succeeds on every claimed OS/interpreter; configuration-schema checks alone are insufficient. Claimed Windows support requires observed Git Bash plus native Windows Python 3.11+ evidence from the release tree.
 - [ ] Native hooks run from both the repository root and a nested working directory; Unicode transport and immutable baseline digests survive the checkout unchanged.
 - [ ] CI uses each component's lint/format configuration and exposes resolved Git Bash to Windows child verifiers without changing the host's global PATH.
+- [ ] MCP test execution uses at most two isolated fork workers on shared native hosts. Operation-timeout tests wait for actual operation startup, not a single microtask; runtime deadlines and storage-uncertainty checks remain unchanged.
 - [ ] Node-based npm invocations use the native Node executable plus npm's JavaScript entrypoint on Windows, preserving literal argv without batch-shell reinterpretation. Test builds must use this same path.
 - [ ] MCP formatting accepts consistent host LF/CRLF line endings, but still rejects other formatting drift. POSIX executable hooks retain explicit LF through Git attributes; immutable digest-bound inputs remain byte-preserved.
 - [ ] Git maintenance hooks retain LF and an explicit interpreter. Pulling or switching a branch only writes project-local maintenance markers; it never implicitly updates shared MCP runtimes, submodules, or another project.

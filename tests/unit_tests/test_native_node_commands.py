@@ -54,6 +54,23 @@ def test_windows_npm_uses_node_and_preserves_literal_arguments(tmp_path: Path) -
     assert run_node(source, str(fixture), json.dumps(payload))["observed"] == payload
 
 
+def test_mcp_vitest_limits_isolated_forks_for_shared_native_hosts() -> None:
+    source = r"""
+        import assert from 'node:assert/strict';
+        import { loadConfigFromFile } from 'vite';
+        const loaded = await loadConfigFromFile(
+            { command: 'serve', mode: 'test' }, 'mcp/vitest.config.ts',
+        );
+        assert.ok(loaded);
+        assert.equal(loaded.config.test.pool, 'forks');
+        assert.equal(loaded.config.test.isolate, true);
+        assert.equal(loaded.config.test.poolOptions.forks.minForks, 1);
+        assert.equal(loaded.config.test.poolOptions.forks.maxForks, 2);
+        console.log(JSON.stringify({ status: 'PASS' }));
+    """
+    assert run_node(source)["status"] == "PASS"
+
+
 def test_native_npm_validates_argv_before_starting_a_process() -> None:
     source = r"""
         import assert from 'node:assert/strict';

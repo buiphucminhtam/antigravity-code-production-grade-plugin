@@ -415,6 +415,8 @@ describe('LifecycleCoordinator registration and finalization', () => {
   it('times out a noncooperative operation and fences its late result', async () => {
     const { coordinator, ledger } = await fixture();
     let complete!: (value: string) => void;
+    let notifyStarted!: () => void;
+    const started = new Promise<void>((resolve) => (notifyStarted = resolve));
     const operation = coordinator.runOperation(
       {
         operationId: 'operation-stuck',
@@ -422,9 +424,15 @@ describe('LifecycleCoordinator registration and finalization', () => {
         operationType: 'noncooperative',
         inputDigest: 'e'.repeat(64),
       },
-      async () => new Promise<string>((resolve) => (complete = resolve)),
+      async () =>
+        new Promise<string>((resolve) => {
+          complete = resolve;
+          notifyStarted();
+        }),
     );
-    await Promise.resolve();
+    // A microtask yield is not evidence that durable operation startup finished.
+    // Exercise an actually running noncooperative operation, not host disk speed.
+    await started;
 
     const receipt = await coordinator.finalize({ timeoutMs: 100, outcome: 'completed' });
 
