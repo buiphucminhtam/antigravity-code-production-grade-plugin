@@ -1,0 +1,16 @@
+{
+  "name": "forgewright-web-reference",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Opt-in real Chromium local reference; never production evidence.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test --test-concurrency=1 reference.test.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.63.0"
+  }
+}

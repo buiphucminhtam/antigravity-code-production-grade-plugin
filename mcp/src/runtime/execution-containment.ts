@@ -32,6 +32,11 @@ const EFFECTS: Record<string, ToolEffect> = {
   fw_log_token_usage: 'state',
   fw_update_status_and_log_usage: 'state',
   fw_check_pipeline_compliance: 'state',
+  fw_get_product_intent: 'state',
+  fw_initialize_product_intent: 'state',
+  fw_apply_product_delta: 'state',
+  fw_get_product_goal_projection: 'state',
+  fw_evaluate_product_clarification: 'state',
   fw_load_skill_overlay: 'bounded-skill-read',
 };
 const digest = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
@@ -50,7 +55,8 @@ function policySnapshot(workspace: string) {
     throw new Error('EXECUTION_POLICY_INVALID');
   if (typeof process.getuid === 'function' && info.uid !== process.getuid())
     throw new Error('EXECUTION_POLICY_INVALID');
-  if ((info.mode & 0o022) !== 0) throw new Error('EXECUTION_POLICY_INVALID');
+  if (process.platform !== 'win32' && (info.mode & 0o022) !== 0)
+    throw new Error('EXECUTION_POLICY_INVALID');
   return { path, identity: `${info.dev}:${info.ino}`, digest: digest(readFileSync(path)) };
 }
 

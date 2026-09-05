@@ -75,7 +75,12 @@ def _project_file(relative: str) -> Path | None:
 def _command_binds_ref(command: list[str], test_ref: str) -> bool:
     command_text = " ".join(command)
     path = _test_path(test_ref)
-    return path in command_text or path.removeprefix("mcp/") in command_text
+    candidates = {
+        path,
+        path.removeprefix("mcp/"),
+        path.removeprefix("src/cli/"),
+    }
+    return any(candidate in command_text for candidate in candidates)
 
 
 def _test_ref_exists(test_ref: str) -> bool:

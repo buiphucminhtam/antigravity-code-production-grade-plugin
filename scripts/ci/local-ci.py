@@ -63,6 +63,42 @@ def _first_existing(*paths: Path) -> Path | None:
     return next((path for path in paths if path.is_file()), None)
 
 
+def _discover_bash() -> str | None:
+    found = _which("bash")
+    if found or os.name != "nt":
+        return found
+
+    candidates: list[Path] = []
+    for env_name in ("ProgramFiles", "ProgramW6432", "ProgramFiles(x86)"):
+        base = os.environ.get(env_name, "").strip()
+        if base:
+            git_root = Path(base) / "Git"
+            candidates.extend(
+                (git_root / "bin" / "bash.exe", git_root / "usr" / "bin" / "bash.exe")
+            )
+
+    local_app_data = os.environ.get("LOCALAPPDATA", "").strip()
+    if local_app_data:
+        git_root = Path(local_app_data) / "Programs" / "Git"
+        candidates.extend(
+            (git_root / "bin" / "bash.exe", git_root / "usr" / "bin" / "bash.exe")
+        )
+
+    git_binary = _which("git")
+    if git_binary:
+        git_parent = Path(git_binary).resolve().parent
+        if git_parent.name.lower() in {"cmd", "bin"}:
+            git_root = git_parent.parent
+            candidates.extend(
+                (git_root / "bin" / "bash.exe", git_root / "usr" / "bin" / "bash.exe")
+            )
+
+    for candidate in dict.fromkeys(candidates):
+        if candidate.is_file():
+            return str(candidate)
+    return None
+
+
 class LocalCI:
     def __init__(
         self, *, dry_run: bool, keep_going: bool, timeout: int, base_ref: str | None
@@ -265,10 +301,10 @@ class LocalCI:
         configured = os.environ.get("FORGEWRIGHT_BASH", "").strip()
         if configured:
             return configured
-        found = _which("bash")
+        found = _discover_bash()
         if not found:
             raise GateFailure(
-                "bash is required by current Forgewright shell gates. On Windows use Git Bash/WSL "
+                "bash is required by current Forgewright shell gates. On Windows install Git Bash/WSL "
                 "or set FORGEWRIGHT_BASH to a compatible bash executable."
             )
         return found

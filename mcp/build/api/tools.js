@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { ToolExecutionGateway } from '../runtime/tool-execution-gateway.js';
 import { loadSkillOverlay, SkillOverlayError } from '../parsers/skill-parser.js';
+import { createProductIntentToolRuntime, isProductIntentToolName, productIntentToolErrorCode, } from '../product-factory/product-intent-runtime.js';
 import { startPipeline, getState, advancePhase, requestGateApproval, approveGate, updateSubTask, updateSelfHealing, failPipeline, logTokenUsage, checkPipelineCompliance, PIPELINE_PHASES, } from '../state/pipeline-manager.js';
 export function registerTools(server, toolGateway = new ToolExecutionGateway(), context = {}) {
     // stdio serves one MCP client per server process. Keep its cache namespace
@@ -10,6 +11,9 @@ export function registerTools(server, toolGateway = new ToolExecutionGateway(), 
     let turnNumber = 0;
     const deferredSkillNames = new Set(context.deferredSkillNames ?? []);
     const loadedSkills = new Set();
+    let productIntentRuntime;
+    const getProductIntentRuntime = () => (productIntentRuntime ??=
+        context.productIntentRuntimeFactory?.() ?? createProductIntentToolRuntime());
     server.setRequestHandler(ListToolsRequestSchema, async () => {
         return {
             tools: [
@@ -206,6 +210,53 @@ export function registerTools(server, toolGateway = new ToolExecutionGateway(), 
                         },
                     },
                 },
+                {
+                    name: 'fw_get_product_intent',
+                    description: 'Read the canonical product intent for the current workspace.',
+                    inputSchema: {
+                        type: 'object',
+                        properties: {},
+                        additionalProperties: false,
+                    },
+                },
+                {
+                    name: 'fw_initialize_product_intent',
+                    description: 'Initialize canonical product intent exactly once for the current workspace.',
+                    inputSchema: {
+                        type: 'object',
+                        properties: { intent: { type: 'object' } },
+                        required: ['intent'],
+                        additionalProperties: false,
+                    },
+                },
+                {
+                    name: 'fw_apply_product_delta',
+                    description: 'Apply a validated ProductDelta to canonical product intent.',
+                    inputSchema: {
+                        type: 'object',
+                        properties: { delta: { type: 'object' } },
+                        required: ['delta'],
+                        additionalProperties: false,
+                    },
+                },
+                {
+                    name: 'fw_get_product_goal_projection',
+                    description: 'Project canonical product intent into the legacy goal read model.',
+                    inputSchema: {
+                        type: 'object',
+                        properties: {},
+                        additionalProperties: false,
+                    },
+                },
+                {
+                    name: 'fw_evaluate_product_clarification',
+                    description: 'Evaluate whether unresolved product uncertainty requires clarification.',
+                    inputSchema: {
+                        type: 'object',
+                        properties: { userDirective: { type: 'string' } },
+                        additionalProperties: false,
+                    },
+                },
             ],
         };
     });
@@ -216,6 +267,15 @@ export function registerTools(server, toolGateway = new ToolExecutionGateway(), 
         turnNumber: ++turnNumber,
     }, async () => {
         try {
+            if (isProductIntentToolName(request.params.name)) {
+                try {
+                    return await getProductIntentRuntime().execute(request.params.name, (request.params.arguments ?? {}));
+                }
+                catch (error) {
+                    const code = productIntentToolErrorCode(error);
+                    return { isError: true, content: [{ type: 'text', text: code }] };
+                }
+            }
             if (request.params.name === 'fw_load_skill_overlay') {
                 const name = request.params.arguments?.name;
                 if (typeof name !== 'string') {

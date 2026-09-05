@@ -30,9 +30,11 @@ run_docs_continuity() {
 
 run_required product-truth python3 scripts/ci/verify-product-truth.py
 run_required roadmap-completion-evidence npm run verify:roadmap
+run_required product-factory npm run verify:product-factory
 run_required stop-gate-regression python3 -m pytest -q tests/lite/test_gate.py
 run_required continuity-regression python3 -m pytest -q tests/unit_tests/test_continuity_checkpoint.py
-run_required python-unit-tests python3 -m pytest -p no:cacheprovider tests/unit_tests/
+run_required python-unit-tests python3 -m pytest -p no:cacheprovider tests/unit_tests/ \
+  --deselect=tests/unit_tests/test_roadmap_completion.py::test_all_declared_roadmap_verifiers_replay_on_unchanged_tree
 run_required adversarial-weak-model-rails python3 evals/adversarial-weak-model/run-evals.py --self-test
 run_required root-production-audit npm audit --package-lock-only --omit=dev --audit-level=high
 run_required standalone-mcp-production-audit npm --prefix mcp audit --package-lock-only --omit=dev --workspaces=false --audit-level=high

@@ -2,7 +2,7 @@
 
 > **North star:** cost per verified, accepted product outcome.
 > **Scope:** evolve the verified engineering harness into an autonomous product factory that can understand intent, build, exercise, judge, revise, and ship web, app, and game products. Existing domain packs remain workers under one product-level control plane.
-> **Status date:** 2026-09-04.
+> **Status date:** 2026-09-05.
 
 ## Product Goal
 
@@ -69,6 +69,8 @@ Roadmap completion is recorded on five independent axes in `docs/roadmap-complet
 | Production evidence | Is current provider/production evidence verified, missing, or not required for the bounded local claim? | KPI attainment outside the measured evidence |
 | Outcome | Is the intended result measured, met only locally, partial, unmeasured, or not met? | Completion of any other axis |
 
+**Verification environment:** install the version-locked `requirements-ci.txt` into a project-local virtual environment and activate it before replaying local gates. On this Mac Air checkout the prepared environment is `.forgewright/runtime/ci-venv` (`source .forgewright/runtime/ci-venv/bin/activate`). A bare system Python without the declared MCP SDK fails H3/H4 at import time; do not weaken those verifiers or interpret a missing dependency as a containment pass.
+
 There is no aggregate `implemented` status. The P0–P3 tables below inventory the historical foundation and its intended target outcomes; their prose labels cannot override the machine-readable axes. Each local evidence claim declares exact verifier argv, acceptance IDs, concrete test refs, negative paths, and the report producer. `npm run verify:roadmap` replays those commands fail-closed and rejects a verifier that fails, times out, or mutates the worktree.
 
 ## Product Factory Upgrade Program
@@ -117,6 +119,8 @@ PF5 learning may be developed in parallel with PF6 isolation after ForgeBench ex
 
 **Exit:** canonical local CI remains green; the instruction/provenance audits have deterministic tests; no roadmap status is upgraded from artifact presence alone.
 
+**Current local status (2026-09-04):** PF0 is met locally and independently approved. The recursive tracked-source inventory matches runtime discovery, deterministic authority/conflict and bounded heuristic-provenance audits pass adversarial cases, and the privacy-safe baseline receipt binds a tracked canonical pre-change evidence record. `npm run verify:product-factory` is the fail-closed aggregate entry point and includes the PF0 contract. At this PF0 checkpoint, intent, clarification, environment coverage, and false-success metrics were `unavailable` or `not_measured`; subsequent phase status is recorded independently below.
+
 ### PF1 — Product Intent Kernel
 
 **Target outcome:** make user intent a machine-readable first-class state rather than a transient BRD/chat interpretation.
@@ -131,6 +135,8 @@ PF5 learning may be developed in parallel with PF6 isolation after ForgeBench ex
 | Product Goal Graph | `Outcome -> Capability -> Scenario -> Feature/Evidence/Metric` dependencies replace a single flat goal string for product work while remaining compatible with the current goal-driven runtime. |
 
 **Exit:** adversarial tests cover vague prompts, “you decide”, conflicting preferences, changed requirements, irrelevant unknowns, and stale memory. The same intent contract can route web, mobile, and game work without domain-specific forks.
+
+**Current local status (2026-09-04):** PF1 is met locally and independently approved. A strict bounded `product-intent/v1` aggregate now owns authority-ranked provenance, material uncertainty and clarification, immutable base-bound deltas, typed web/mobile/game scenarios, and the validated Product Goal Graph. Workspace persistence uses the existing atomic repository without changing its CRITICAL shared implementation. Five canonical MCP tools expose initialize/read/delta/projection/clarification through `ToolExecutionGateway`; containment recognizes only those exact state effects, mutation event delivery is acknowledged separately from durable commit, and stable errors do not leak underlying paths or secrets. The local aggregate covers the approved core, concurrency, API, gateway, and containment tests; production product-outcome evidence remains downstream.
 
 ### PF2 — Cross-domain Agent-Computer Interface (ACI)
 
@@ -156,6 +162,8 @@ Adapters are capability-driven and may expose richer domain operations without c
 
 **Exit:** each enabled lane can launch or attach, observe, act, reset, execute at least one locked scenario, and return attributable evidence. Missing capabilities return `UNVERIFIED`; they are never filled by model imagination.
 
+**Current local status (2026-09-04):** PF2 is met at the implementation/conformance layer and independently approved. The strict seven-operation `environment-aci/v1` contract binds environment/session/scenario identity, monotonic sequence, deadlines, snapshots, frozen artifact hashes, and derived PASS/FAIL/UNVERIFIED receipts. Shared session quarantine prevents timed-out late operations from overlapping cleanup or later work. Port-backed Web, Android, and Unity adapters enforce domain actions, globally routable web destinations, secret redaction, capability-kind truth, immutable bounded snapshots, and trusted artifact validation. The combined local suite passes without a live target. Production activation and evidence remain missing. The September 5 continuation adds an opt-in actual Chromium driver for an owned offline reference, described under the Web reference checkpoint below; it does not supply deployed-host evidence. Android/device and Unity production evidence remain unavailable on this host.
+
 ### PF3 — Product Outcome Verification
 
 **Target outcome:** extend acceptance from implementation correctness to real product usability/behavior.
@@ -169,6 +177,25 @@ Adapters are capability-driven and may expose richer domain operations without c
 | Game quality boundary | “Fun”, taste, and commercial appeal cannot be self-certified. Agent-verifiable proxies such as discoverability, feedback latency, retry/friction patterns, difficulty/runtime state, HUD occlusion, and progression behavior may be measured and clearly labeled. |
 
 **Exit:** a green build/test suite alone cannot complete a material product acceptance when a critical environment scenario is applicable and runnable.
+
+**Current local status (2026-09-04):** PF3 is met locally and independently approved. `product-outcome-contract/v1` binds canonical Product Intent and Environment ACI identities, actions, assertions, evidence requirements, negatives, applicability, and evidence authority. The critical-journey runner rejects stale or altered ACI receipts, requires trusted production attestation, fences synthetic users as test-only, deduplicates evidence, and routes subjective game claims to human review. The Product Judge revalidates runner output through its authoritative context, requires independently verified specialist receipts, never upgrades test-only or non-PASS results, and cannot substitute build/test evidence for an applicable environment journey. The original checkpoint uses deterministic ports and fixtures. The September 5 Web reference additionally exercises an actual browser through the canonical adapter/runner and exposes two integration defects: semantic Web action payloads did not match the outcome schema, and global first-action-only artifact association lost valid repeated-content evidence. The bounded corrections preserve legacy payloads and global alias counts, add action-scoped association, and retain exact receipt validation. Independent review of these corrections remains pending; no production product outcome is claimed.
+
+### Web reference integration checkpoint — actual browser, local authority only
+
+The maintained executable specimen is `product-factory/web-reference/`: a minimal focus-list product, a narrow Playwright driver, and one sequential integration test. It composes `ProductIntent -> product-outcome-contract -> WebEnvironmentAciAdapter -> CriticalJourneyRunner -> ProductJudge` without substituting handwritten observations or outcome receipts. The driver uses an owned ephemeral Chrome process with the Chromium sandbox enabled, offline page content, blocked external requests, real semantic role/name interaction, actual DOM observations, and immutable PNG/JSON files validated by the existing ACI artifact boundary. Remote navigation is deliberately unavailable; no localhost exception or fabricated DNS result is introduced.
+
+The observed exercise is baseline desktop PASS -> controlled faulty product FAIL -> restored desktop PASS -> restored mobile-viewport PASS (1280 x 800 and 390 x 844). ACI actions succeed in the deliberately faulty product while outcome assertions fail, demonstrating the distinction between successful tool execution and successful user outcome. Intent and the assertion oracle stay unchanged; restored source bytes match the baseline. Snapshot/restore, snapshot replay rejection, empty/duplicate input handling, horizontal overflow and owned-page/process cleanup are checked. The mutation is injected by the deterministic verifier and restored from the maintained source; this does **not** demonstrate an autonomous model finding or implementing the repair, Android/iOS execution, or commercial product quality.
+
+The outcome runner can report PASS for the local task while the Product Judge remains UNVERIFIED because authority is `test-only`; the deliberately faulty product yields FAIL. PF7 remains blocked. No production attestation, specialist review, benchmark threshold, token-cost observation or deployment is fabricated.
+
+Run the optional browser gate from the main repository after root dependencies are installed and the Chrome channel is available:
+
+```bash
+npm --prefix product-factory/web-reference ci --ignore-scripts --no-audit --no-fund --workspaces=false
+npm run verify:web-reference
+```
+
+Missing Chrome or optional dependencies fail this command explicitly. The required Product Factory aggregate includes the semantic-action and per-action-evidence regressions but does not silently install a browser or make this optional package a core runtime dependency. Each browser execution writes an owned run folder under `.forgewright/reports/web-reference/` with a summary, full canonical receipts, PNG/JSON artifacts and process/page leases. These are bounded test-run artifacts, not canonical source documentation; remove only positively owned completed runs under the project's cleanup policy.
 
 ### PF4 — ForgeBench
 
@@ -184,6 +211,8 @@ Initial lanes:
 Canonical metrics include product-outcome success, false-success rate, user-intervention count, clarification burden, retries, wall time, tokens/cost when available, and per-lane limitations. Benchmark thresholds are frozen only after PF0 baseline evidence; they are not invented in advance.
 
 **Exit:** baseline/candidate comparison is reproducible and privacy-safe; `npm run verify:product-factory` includes the required product-factory contract tests and refuses incomplete/mismatched lane evidence.
+
+**Current local status (2026-09-04):** PF4 is met locally and independently approved. ForgeBench now has strict four-lane intent/Web/Android/game task, receipt, report, metric, threshold, and paired-comparison contracts. Lane receipts remain untrusted until an injected verifier confirms PF3 outcome, judgment, environment, authority, and production evidence; missing verification normalizes to `UNVERIFIED`. Reports require exact task/attempt coverage and keep incomplete usage null. Experiment role, chronology, baseline hash, environment capability sets, and provider/settings topology are pair-bound. Thresholds remain `unfrozen` because the PF0 outcome baseline was not measured; promotion requires a separately verified frozen-threshold record. The canonical CLI can ingest structural product receipts safely, but deliberately writes an `UNVERIFIED` report and exits nonzero because the standalone CLI has no trusted host verifier.
 
 ### PF5 — Evidence-gated Learning Foundry
 
@@ -208,6 +237,8 @@ Rules:
 
 **Exit:** intentionally harmful/stale candidate lessons are rejected; promoted lessons improve at least one frozen benchmark outcome without violating protected acceptance/safety metrics.
 
+**Current local status (2026-09-05):** PF5 is met at the local implementation/conformance layer and independently approved. The Learning Foundry consumes concrete terminal trajectory ledgers, enforces freshness and lifecycle completeness, clusters sanitized evidence, derives stable semantic lesson identities independently of changing evidence membership, and gates versioned promotion/rollback through exact benchmark and independent-review projections. Promotion is maintenance-only, registry-bound, replay-safe across rollback/rebase, and serialized through repository CAS; the bundled in-memory repository provides same-process serialization only. Public capability issuance is deliberately restricted to local test authority. Production/shared promotion remains unavailable and unverified, and PF4 thresholds remain unfrozen, so no production learning-outcome claim is made.
+
 ### PF6 — Secure Autonomous Runtime
 
 **Target outcome:** close the gap between application-level containment and the process isolation needed for high-autonomy product building.
@@ -223,6 +254,8 @@ Deliverables:
 
 **Exit:** escape, secret-access, resource-exhaustion, stale-snapshot, process-orphan, and unauthorized-network negative paths fail closed. Arbitrary child-process autonomy remains disabled on hosts without a verified backend.
 
+**Current local status (2026-09-05):** PF6 is met at the local implementation/conformance layer and independently approved after adversarial HARD review. The disposable-runtime contract uses shared cross-instance sequencing and replay state, fixed local-test-only authority, strict attestation/projection binding, a frozen IANA allocated-prefix IPv6 allowlist with special/transition ranges denied, bounded filesystem/artifact identities, a total artifact-disposition matrix, timeout quarantine, and independent teardown reconciliation. The current `npm run verify:product-factory` checkpoint passes PF0-PF7 local checks, including the PF7 semantic contract and release-truthfulness guard; required local CI invokes that verifier. This restores local regression coverage but does not supply independent final-tree PF7 approval or production evidence. Production trust issuance, a verified container/sandbox backend, and OS-isolation evidence remain unavailable, so every simulated success stays `UNVERIFIED` and production-ineligible.
+
 ### PF7 — End-to-end Autonomous Product Factory release
 
 **Target outcome:** demonstrate the same product control plane across web, app, and game.
@@ -236,6 +269,14 @@ Release candidates must include at least one maintained reference product per la
 For each reference run the system must preserve the user's locked intent, produce the product, exercise critical journeys, revise on observed failures, pass applicable engineering/security/visual/runtime gates, produce rollback/release evidence, and keep unresolved subjective/user-research questions explicit rather than self-approving them.
 
 **Program completion:** PF0-PF7 are complete on their independent implementation/integration/activation/production-evidence/outcome axes as applicable, the final tree passes `npm run verify:product-factory`, and no domain lane is presented as production-capable without its own current environment evidence.
+
+**Current local status (2026-09-05):** the bounded `product-factory-release/v2` semantic suite passes 20 tests after repairing outdated candidate fixtures, canonical local-test attestation identities, and same-intent failure/retry evidence. MCP and CLI typechecks and the Product Factory aggregate pass. The evaluator consumes canonical PF3/PF5/PF6 evidence, preserves negative evidence precedence, requires all three reference lanes and five local security probes, and rejects malformed/replayed/forged inputs. It has no production activation path: every decision has `activationEligible: false`. Independent exact-tree review remains pending; PF4/gate references are still opaque, security-probe receipts are local simulations, and replay reservations are process-local rather than durable across restarts. PF7 remains **blocked** with partial implementation/integration, activation disabled, production evidence missing, and outcome not measured. The semantic suite is now the PF7 roadmap verifier; the separate documentation-status guard remains in the aggregate.
+
+### Delivery audit and execution policy
+
+The main delivery gap is no longer the number of contracts or skills: it is the absence of an authority-bound run against a maintained product. Preserve the existing contracts rather than adding another orchestration layer. An actual-browser offline Web scenario now exercises the integration. Next bind a maintained deployed Web target to trusted production authority, then repeat the proven path on supported Mobile and Game hosts. A Web-only success never completes the three-lane PF7 release.
+
+Report local conformance, independent review, live host activation, production evidence, and product outcomes separately. Until live runs exist, accepted-outcome cost, clarification burden, false-success rate, and revision effectiveness remain **not measured**. Record a baseline and preregister acceptance criteria before comparing a candidate; do not invent thresholds from fixtures or tune them to a candidate result. The June improvement plan under `.forgewright/planning/` is historical and no longer an execution source.
 
 ### External design references — mindset only
 
@@ -355,16 +396,23 @@ review gates; reviewer identity is not cryptographically authenticated.
 
 | Blocker | Impact | Required action |
 |---|---|---|
+| PF7 local semantic checks pass, but independent exact-tree review is missing | Local conformance cannot be represented as an approved release | Review canonical evidence linkage, security-probe scope, learning history, replay/expiry behavior, and negative evidence precedence; rerun full release gates before committing the existing multi-phase worktree |
+| The actual-browser Web reference has local test authority only; deployed Web, Mobile and Game evidence is still missing | Local interaction conformance does not establish production outcomes or comparative cost | Independently review the new integration, then bind a maintained deployed Web target and trusted evidence authority; preserve separate status per lane |
+| PF6 has no verified production sandbox backend and PF5 has no production promotion authority | Arbitrary child-process autonomy and shared learning promotion must stay disabled | Capability-probe the host, add and adversarially verify a supported backend, and prove trusted issuance, teardown, rollback, and recovery before enablement |
+| PF4 thresholds and release gate references lack trusted measured evidence | Local contract PASS cannot certify production or competitive product quality | Capture live baseline and candidate runs under preregistered criteria; replace opaque references only through an independently reviewed authority integration |
 | The configured live provider client rejects authentication as an unsupported client and requires migration | Paired live routing, usage, canary, and rollback receipts cannot be certified | Migrate to a supported provider runtime/account under explicit authorization; do not add another key-check workflow or upgrade fixture evidence |
 | An existing canonical MCP runtime without a valid ownership marker cannot be adopted when its dependency-lock digest differs from the repository | Automated migration must preserve the foreign runtime rather than manufacture ownership proof | Perform a user-authorized clean reinstall or supply independently verified ownership evidence |
 
 ## Next Execution Slice
 
-1. **PF0:** inventory kernel/shared/LITE/SKILL contradictions and unsupported domain heuristics; freeze current local baselines before changing behavior.
-2. **PF1:** implement and schema-test `product-intent/v1`, uncertainty/authority resolution, product-delta state, and the Product Goal Graph compatibility layer.
-3. **PF2:** define the provider-neutral Environment ACI contract, then implement Web, Android/mobile, and Unity/game adapters in that order of deterministic observability available on the host.
-4. **PF3:** bind critical user journeys to environment evidence through `product-outcome-contract/v1`; keep subjective “fun/taste” outside automatic completion authority.
-5. **PF4:** establish ForgeBench lanes and the final `npm run verify:product-factory` aggregator before enabling framework self-promotion.
-6. **PF5 + PF6:** build trajectory-learning promotion and disposable isolation in parallel; neither may silently weaken existing evidence, test-oracle, or security contracts.
-7. **PF7:** run maintained web/mobile/game reference products end-to-end and promote only the lanes with current production evidence.
-8. Existing H5/H6 provider evidence remains an important supporting lane, but it no longer blocks local PF0-PF4 product-control-plane work; missing provider evidence remains explicitly missing rather than being inferred from fixtures.
+Preserve PF0-PF6 local conformance and their existing authority boundaries throughout these slices. Order work by executable exit evidence, not assumed dates or percentage-complete estimates.
+
+| Order / action | Owner | Exit evidence | Boundary |
+|---|---|---|---|
+| 1. `pf7-release-readiness` — finish independent exact-tree review of the recovered PF7 contract | Release maintainers / independent reviewer | The semantic suite, aggregate, roadmap replay, Docs gates, adversarial backcheck, and exact-tree independent review all pass; existing dirty phase changes are reviewed before commit | Local checks are passing; independent approval and the full release gate are not implied |
+| 2. `pf-web-live-integration` — extend the passing offline Chromium reference to a maintained deployed Web target | Product + runtime maintainers | Independent review of additive action compatibility and per-action evidence binding; then capability probe, immutable target identity, actual browser scenarios, attributable artifacts, cleanup and trusted live authority | Local reference passes; no production attestation, model repair, private-network exception or deployed-host evidence is implied |
+| 3. `pf-runtime-isolation` — implement a capability-supported disposable backend | Runtime + security maintainers | Escape/secret/private-egress/quota/stale-snapshot/orphan probes run on the real backend; narrow artifact export, independent reconciliation, teardown and recovery are verified | May be prepared alongside Web integration; high-autonomy execution remains disabled until this gate passes |
+| 4. `pf-live-outcome-baseline` — demonstrate a Web outcome and failure/revision loop, then repeat on supported Android and Unity hosts | Product + QA maintainers | Same locked intent survives failure and correction; observed outcome and false-success evidence, usage/cost availability, preregistered baseline/candidate comparison, and per-lane maintenance ownership | A partial or Web-only run does not certify Mobile/Game or freeze unsupported benchmark thresholds |
+| 5. `pf-production-authority` — review trusted production learning/release authority and bounded rollout | Release + learning maintainers | Trusted PF4/gate evidence, durable replay/recovery rules, review-bound learning promotion/rollback, canary and rollback receipts, and explicit authority approval | No production activation, shared promotion, or release mutations are performed by the current PF7 contract |
+
+H5/H6 provider evidence remains supporting work. An unsupported client or missing provider receipt stays an explicit blocker; local fixture success must never be used as its substitute.

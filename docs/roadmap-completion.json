@@ -190,6 +190,102 @@
       "rollback": "Disable paid review routing when avoided-defect evidence does not exceed cost."
     },
     {
+      "id": "PF0", "implementation": "done", "integration": "canonical", "activation": "local", "production_evidence": "not-required", "outcome": "met-locally",
+      "evidence": ["product-factory/instruction-inventory.v1.json", "product-factory/baseline-receipt.v1.json", "tests/unit_tests/test_product_factory_audit.py"],
+      "verification": {
+        "command": ["python3", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/unit_tests/test_product_factory_audit.py"], "timeout_seconds": 120,
+        "acceptance_ids": ["PF0-instruction-provenance-baseline"],
+        "test_refs": ["tests/unit_tests/test_product_factory_audit.py", "tests/unit_tests/test_product_factory_audit.py::test_canonical_product_factory_verifier_covers_implemented_phases_and_pf7_truth_guard", "tests/unit_tests/test_product_factory_audit.py::test_audit_rejects_same_authority_conflicts_and_out_of_inventory_rules"],
+        "negative_paths": [{"id": "PF0-contract-omission", "claim": "missing Product Factory phase coverage or provenance evidence is rejected by the local contract", "test_refs": ["tests/unit_tests/test_product_factory_audit.py::test_canonical_product_factory_verifier_covers_implemented_phases_and_pf7_truth_guard", "tests/unit_tests/test_product_factory_audit.py::test_audit_rejects_same_authority_conflicts_and_out_of_inventory_rules"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Restore the last accepted instruction inventory and baseline receipt, then rerun the Product Factory verifier."
+    },
+    {
+      "id": "PF1", "implementation": "done", "integration": "canonical", "activation": "canonical-mcp", "production_evidence": "missing", "outcome": "met-locally",
+      "evidence": ["mcp/src/product-factory/product-intent.ts", "mcp/src/product-factory/product-intent-service.ts", "mcp/src/api/product-intent-tools.test.ts"],
+      "verification": {
+        "command": ["npm", "--prefix", "mcp", "test", "--", "--reporter=basic", "--no-cache", "src/product-factory/product-intent.test.ts", "src/product-factory/product-intent-service.test.ts", "src/api/product-intent-tools.test.ts", "src/runtime/execution-containment.test.ts", "src/api/tools.gateway.test.ts"], "timeout_seconds": 180,
+        "acceptance_ids": ["PF1-locked-product-intent-control-plane"],
+        "test_refs": ["mcp/src/product-factory/product-intent.test.ts", "mcp/src/product-factory/product-intent-service.test.ts", "mcp/src/api/product-intent-tools.test.ts", "mcp/src/product-factory/product-intent.test.ts#applies a deterministic delta without rebuilding unrelated current truth and rejects stale/history rewriting input"],
+        "negative_paths": [{"id": "PF1-unauthorized-intent-delta", "claim": "invalid or unauthorized product-intent mutation fails closed", "test_refs": ["mcp/src/product-factory/product-intent.test.ts#applies a deterministic delta without rebuilding unrelated current truth and rejects stale/history rewriting input"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Disable the Product Intent MCP bridge and restore the last accepted intent contract without weakening containment."
+    },
+    {
+      "id": "PF2", "implementation": "done", "integration": "partial", "activation": "library-only", "production_evidence": "missing", "outcome": "met-locally",
+      "evidence": ["mcp/src/product-factory/environment-aci.ts", "mcp/src/product-factory/adapters/web-environment-aci.ts", "mcp/src/product-factory/adapters/android-environment-aci.ts", "mcp/src/product-factory/adapters/unity-environment-aci.ts"],
+      "verification": {
+        "command": ["npm", "--prefix", "mcp", "test", "--", "--reporter=basic", "--no-cache", "src/product-factory/environment-aci.test.ts", "src/product-factory/adapters/web-environment-aci.test.ts", "src/product-factory/adapters/android-environment-aci.test.ts", "src/product-factory/adapters/unity-environment-aci.test.ts"], "timeout_seconds": 180,
+        "acceptance_ids": ["PF2-provider-neutral-environment-aci"],
+        "test_refs": ["mcp/src/product-factory/environment-aci.test.ts", "mcp/src/product-factory/adapters/web-environment-aci.test.ts", "mcp/src/product-factory/adapters/android-environment-aci.test.ts", "mcp/src/product-factory/adapters/unity-environment-aci.test.ts", "mcp/src/product-factory/environment-aci.test.ts#returns explicit UNVERIFIED negotiation for missing, disabled, or unimplemented capability", "mcp/src/product-factory/environment-aci.test.ts#rejects cross-talk, late evidence, and action-result mismatch with stable reasons"],
+        "negative_paths": [{"id": "PF2-target-capability-mismatch", "claim": "unsupported or mismatched environment capability requests are rejected", "test_refs": ["mcp/src/product-factory/environment-aci.test.ts#returns explicit UNVERIFIED negotiation for missing, disabled, or unimplemented capability", "mcp/src/product-factory/environment-aci.test.ts#rejects cross-talk, late evidence, and action-result mismatch with stable reasons"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Disable the affected domain adapter and retain the common ACI contract until current host evidence exists."
+    },
+    {
+      "id": "PF3", "implementation": "done", "integration": "partial", "activation": "library-only", "production_evidence": "missing", "outcome": "met-locally",
+      "evidence": ["mcp/src/product-factory/product-outcome-contract.ts", "mcp/src/product-factory/product-outcome-runner.ts", "mcp/src/product-factory/product-outcome-judge.ts"],
+      "verification": {
+        "command": ["npm", "--prefix", "mcp", "test", "--", "--reporter=basic", "--no-cache", "src/product-factory/product-outcome-contract.test.ts", "src/product-factory/web-outcome-compatibility.test.ts", "src/product-factory/product-outcome-runner.test.ts", "src/product-factory/product-outcome-judge.test.ts"], "timeout_seconds": 180,
+        "acceptance_ids": ["PF3-critical-journey-outcome-judge"],
+        "test_refs": ["mcp/src/product-factory/product-outcome-contract.test.ts", "mcp/src/product-factory/web-outcome-compatibility.test.ts", "mcp/src/product-factory/product-outcome-runner.test.ts", "mcp/src/product-factory/product-outcome-judge.test.ts", "mcp/src/product-factory/product-outcome-judge.test.ts#rejects a rehashed forged runner PASS with erased assertions, artifacts, and scenario receipt", "mcp/src/product-factory/web-outcome-compatibility.test.ts#rejects selector injection extra fields and malformed semantic actions", "mcp/src/product-factory/product-outcome-runner.test.ts#observed failure is not hidden by cross-action deduplication", "mcp/src/product-factory/product-outcome-runner.test.ts#a later action cannot borrow an earlier image"],
+        "negative_paths": [{"id": "PF3-false-success-judgment", "claim": "incomplete or forged product-outcome evidence cannot self-authorize success", "test_refs": ["mcp/src/product-factory/product-outcome-judge.test.ts#rejects a rehashed forged runner PASS with erased assertions, artifacts, and scenario receipt"]}, {"id": "PF3-web-wire-and-evidence-binding", "claim": "malformed semantic targets and borrowed earlier-action evidence are rejected while repeated-content observations retain their own action binding", "test_refs": ["mcp/src/product-factory/web-outcome-compatibility.test.ts#rejects selector injection extra fields and malformed semantic actions", "mcp/src/product-factory/product-outcome-runner.test.ts#observed failure is not hidden by cross-action deduplication", "mcp/src/product-factory/product-outcome-runner.test.ts#a later action cannot borrow an earlier image"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Remove outcome-runner activation and retain locked intent plus raw evidence until the judge contract is restored."
+    },
+    {
+      "id": "PF4", "implementation": "done", "integration": "canonical", "activation": "local", "production_evidence": "missing", "outcome": "met-locally",
+      "evidence": ["src/cli/src/bench/product-factory.ts", "src/cli/src/bench/product-factory-cli.ts", "src/cli/tests/bench-product-factory.test.ts", "src/cli/tests/bench-product-command.test.ts"],
+      "verification": {
+        "command": ["npm", "--prefix", "src/cli", "test", "--", "tests/bench-product-factory.test.ts", "tests/bench-product-command.test.ts", "tests/bench-comparable.test.ts", "tests/bench-runner.test.ts", "tests/bench-metrics.test.ts"], "timeout_seconds": 180,
+        "acceptance_ids": ["PF4-forgebench-product-lanes"],
+        "test_refs": ["src/cli/tests/bench-product-factory.test.ts", "src/cli/tests/bench-product-command.test.ts", "src/cli/tests/bench-product-command.test.ts#writes a four-lane structural report that is always unverified"],
+        "negative_paths": [{"id": "PF4-structural-receipt-promotion", "claim": "structural-only benchmark ingestion cannot authorize promotion or production", "test_refs": ["src/cli/tests/bench-product-command.test.ts#writes a four-lane structural report that is always unverified"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Disable Product Factory bench ingestion while retaining historical benchmark receipts; never infer frozen thresholds from fixtures."
+    },
+    {
+      "id": "PF5", "implementation": "done", "integration": "partial", "activation": "library-only", "production_evidence": "missing", "outcome": "met-locally",
+      "evidence": ["mcp/src/product-factory/learning-foundry.ts", "mcp/src/product-factory/learning-foundry.test.ts"],
+      "verification": {
+        "command": ["npm", "--prefix", "mcp", "test", "--", "--reporter=basic", "--no-cache", "src/product-factory/learning-foundry.test.ts"], "timeout_seconds": 180,
+        "acceptance_ids": ["PF5-evidence-gated-learning-foundry"],
+        "test_refs": ["mcp/src/product-factory/learning-foundry.test.ts", "mcp/src/product-factory/learning-foundry.test.ts#rejects unfrozen, protected regression, no gain, harm, hot patch, and self review", "mcp/src/product-factory/learning-foundry.test.ts#does not allow an exported caller callback to mint production/shared authority"],
+        "negative_paths": [{"id": "PF5-stale-or-harmful-promotion", "claim": "stale harmful or unauthorized candidate lessons cannot be promoted", "test_refs": ["mcp/src/product-factory/learning-foundry.test.ts#rejects unfrozen, protected regression, no gain, harm, hot patch, and self review", "mcp/src/product-factory/learning-foundry.test.ts#does not allow an exported caller callback to mint production/shared authority"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Rollback to the prior versioned lesson registry and keep production/shared promotion disabled."
+    },
+    {
+      "id": "PF6", "implementation": "done", "integration": "partial", "activation": "not-enabled", "production_evidence": "missing", "outcome": "partially-met",
+      "evidence": ["mcp/src/product-factory/disposable-environment.ts", "mcp/src/product-factory/disposable-environment.test.ts", "scripts/ci/verify-product-factory.py"],
+      "verification": {
+        "command": ["npm", "--prefix", "mcp", "test", "--", "--reporter=basic", "--no-cache", "src/product-factory/disposable-environment.test.ts", "src/runtime/execution-containment.test.ts", "src/runtime/lifecycle-lease.test.ts", "src/runtime/lifecycle-coordinator.test.ts", "src/runtime/mcp-runtime-lifecycle.test.ts"], "timeout_seconds": 180,
+        "acceptance_ids": ["PF6-disposable-secure-runtime-conformance"],
+        "test_refs": ["mcp/src/product-factory/disposable-environment.test.ts", "mcp/src/runtime/execution-containment.test.ts", "mcp/src/runtime/lifecycle-lease.test.ts", "mcp/src/runtime/lifecycle-coordinator.test.ts", "mcp/src/runtime/mcp-runtime-lifecycle.test.ts", "mcp/src/product-factory/disposable-environment.test.ts#requires a strict filesystem identity projection and backend consume token", "mcp/src/product-factory/disposable-environment.test.ts#rejects unauthorized/private destinations, rebinding, multiple answers, and special IPv6 ranges", "mcp/src/product-factory/disposable-environment.test.ts#uses own-property environment lookup and rejects prototype, control, raw-secret, and invalid handles", "mcp/src/product-factory/disposable-environment.test.ts#shares bounded snapshots and consumes them before a failed restore verification", "mcp/src/product-factory/disposable-environment.test.ts#requires independent reconciliation and rejects both backend and reconciler lies", "mcp/src/product-factory/disposable-environment.test.ts#enforces a total mutually-exclusive artifact disposition matrix", "mcp/src/product-factory/disposable-environment.test.ts#rejects every local-test receipt that claims PASS verification status"],
+        "negative_paths": [{"id": "PF6-fail-closed-boundaries", "claim": "escape secret reserved-egress stale-snapshot orphan malformed-artifact and forged-receipt paths fail closed", "test_refs": ["mcp/src/product-factory/disposable-environment.test.ts#requires a strict filesystem identity projection and backend consume token", "mcp/src/product-factory/disposable-environment.test.ts#rejects unauthorized/private destinations, rebinding, multiple answers, and special IPv6 ranges", "mcp/src/product-factory/disposable-environment.test.ts#uses own-property environment lookup and rejects prototype, control, raw-secret, and invalid handles", "mcp/src/product-factory/disposable-environment.test.ts#shares bounded snapshots and consumes them before a failed restore verification", "mcp/src/product-factory/disposable-environment.test.ts#requires independent reconciliation and rejects both backend and reconciler lies", "mcp/src/product-factory/disposable-environment.test.ts#enforces a total mutually-exclusive artifact disposition matrix", "mcp/src/product-factory/disposable-environment.test.ts#rejects every local-test receipt that claims PASS verification status"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Keep disposable high-autonomy execution disabled and fall back to the existing application containment boundary until fresh independent review and verified backend authority exist."
+    },
+    {
+      "id": "PF7", "implementation": "partial", "integration": "partial", "activation": "not-enabled", "production_evidence": "missing", "outcome": "not-measured",
+      "evidence": ["docs/active-roadmap.md", "docs/project-state.json", "mcp/src/product-factory/product-factory-release.ts", "mcp/src/product-factory/product-factory-release.test.ts", "scripts/ci/verify-product-factory.py", "scripts/ci/run-required-checks.sh", "tests/unit_tests/test_product_factory_release_status.py"],
+      "verification": {
+        "command": ["npm", "--prefix", "mcp", "test", "--", "--reporter=basic", "--no-cache", "src/product-factory/product-factory-release.test.ts"], "timeout_seconds": 120,
+        "acceptance_ids": ["PF7-local-release-readiness-conformance"],
+        "test_refs": ["mcp/src/product-factory/product-factory-release.test.ts", "mcp/src/product-factory/product-factory-release.test.ts#keeps canonical local evidence UNVERIFIED with no production activation path", "mcp/src/product-factory/product-factory-release.test.ts#preserves the exact three maintained canonical ACI descriptor lanes", "mcp/src/product-factory/product-factory-release.test.ts#rejects legacy candidates missing evaluation identity, learning arrays, or security probes", "mcp/src/product-factory/product-factory-release.test.ts#rejects previously consumed canonical evidence under a new evaluation and nonce", "mcp/src/product-factory/product-factory-release.test.ts#rejects PF3 negative deletion and rehash against canonical result dependencies", "mcp/src/product-factory/product-factory-release.test.ts#rejects PF6 negative deletion and rehash through its canonical receipt parser"],
+        "negative_paths": [{"id": "PF7-local-evidence-not-production", "claim": "canonical local evidence cannot activate production or synthesize missing reference lanes", "test_refs": ["mcp/src/product-factory/product-factory-release.test.ts#keeps canonical local evidence UNVERIFIED with no production activation path", "mcp/src/product-factory/product-factory-release.test.ts#preserves the exact three maintained canonical ACI descriptor lanes"]}, {"id": "PF7-malformed-or-replayed-evidence", "claim": "obsolete incomplete candidates and evidence replay under a new evaluation are rejected", "test_refs": ["mcp/src/product-factory/product-factory-release.test.ts#rejects legacy candidates missing evaluation identity, learning arrays, or security probes", "mcp/src/product-factory/product-factory-release.test.ts#rejects previously consumed canonical evidence under a new evaluation and nonce"]}, {"id": "PF7-canonical-negative-preservation", "claim": "deleting and rehashing canonical negative outcome or isolation evidence cannot forge readiness", "test_refs": ["mcp/src/product-factory/product-factory-release.test.ts#rejects PF3 negative deletion and rehash against canonical result dependencies", "mcp/src/product-factory/product-factory-release.test.ts#rejects PF6 negative deletion and rehash through its canonical receipt parser"]}],
+        "evidence_report": {"schema": "forgewright-roadmap-verification/v1", "producer": "scripts/ci/verify-roadmap-completion.py"}
+      },
+      "rollback": "Keep PF7 blocked and activation disabled. Withdraw the local contract claim on any semantic regression; retain the separate release-status truth guard in the aggregate and require independent final-tree review plus trusted live evidence before any production authority integration."
+    },
+    {
       "id": "H0", "implementation": "done", "integration": "canonical", "activation": "local", "production_evidence": "not-required", "outcome": "met-locally",
       "evidence": ["docs/roadmap-completion.json", "scripts/ci/verify-roadmap-completion.py", "tests/unit_tests/test_roadmap_completion.py"],
       "verification": {

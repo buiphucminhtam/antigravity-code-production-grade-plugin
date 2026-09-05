@@ -12,7 +12,11 @@ EXPECTED_IDS = {
     *(f"P{phase}.{item}" for phase in range(3) for item in range(1, 6)),
     *(f"P3.{item}" for item in range(1, 5)),
 }
-EXPECTED_MANIFEST_IDS = EXPECTED_IDS | {"H0", "H1", "H2", "H3", "H4", "H5"}
+EXPECTED_MANIFEST_IDS = (
+    EXPECTED_IDS
+    | {"H0", "H1", "H2", "H3", "H4", "H5"}
+    | {f"PF{phase}" for phase in range(8)}
+)
 COMPLETION_AXES = {
     "implementation": {"done", "partial", "missing"},
     "integration": {"canonical", "partial", "isolated", "not-applicable"},
@@ -30,6 +34,23 @@ REPORT_CONTRACT = {
     "schema": "forgewright-roadmap-verification/v1",
     "producer": "scripts/ci/verify-roadmap-completion.py",
 }
+EXPECTED_PRODUCT_FACTORY_AXES = {
+    "PF0": ("done", "canonical", "local", "not-required", "met-locally"),
+    "PF1": ("done", "canonical", "canonical-mcp", "missing", "met-locally"),
+    "PF2": ("done", "partial", "library-only", "missing", "met-locally"),
+    "PF3": ("done", "partial", "library-only", "missing", "met-locally"),
+    "PF4": ("done", "canonical", "local", "missing", "met-locally"),
+    "PF5": ("done", "partial", "library-only", "missing", "met-locally"),
+    "PF6": ("done", "partial", "not-enabled", "missing", "partially-met"),
+    "PF7": ("partial", "partial", "not-enabled", "missing", "not-measured"),
+}
+PRODUCT_FACTORY_AXIS_NAMES = (
+    "implementation",
+    "integration",
+    "activation",
+    "production_evidence",
+    "outcome",
+)
 
 
 def _manifest() -> dict:
@@ -79,6 +100,30 @@ def test_completion_manifest_covers_every_declared_local_deliverable_once() -> N
     h1 = next(item for item in _manifest()["deliverables"] if item["id"] == "H1")
     assert h1["integration"] == "isolated"
     assert h1["activation"] == "library-only"
+
+    deliverables = {item["id"]: item for item in _manifest()["deliverables"]}
+    for deliverable_id, expected in EXPECTED_PRODUCT_FACTORY_AXES.items():
+        actual = tuple(
+            deliverables[deliverable_id][axis] for axis in PRODUCT_FACTORY_AXIS_NAMES
+        )
+        assert actual == expected, deliverable_id
+
+    state = json.loads(PROJECT_STATE.read_text(encoding="utf-8"))
+    roadmap_status = {
+        item["id"]: item["status"]
+        for item in state["roadmap"]
+        if item["id"].startswith("product-factory-pf")
+    }
+    assert roadmap_status == {
+        "product-factory-pf0": "done",
+        "product-factory-pf1": "done",
+        "product-factory-pf2": "done",
+        "product-factory-pf3": "done",
+        "product-factory-pf4": "done",
+        "product-factory-pf5": "done",
+        "product-factory-pf6": "in_progress",
+        "product-factory-pf7": "blocked",
+    }
 
 
 def test_harness_upgrade_dependencies_precede_live_provider_routing() -> None:
@@ -147,8 +192,12 @@ def test_every_deliverable_separates_completion_axes_and_executable_evidence() -
         for test_ref in verification["test_refs"]:
             relative_path = re.split(r"::|#", test_ref, maxsplit=1)[0]
             assert (ROOT / relative_path).is_file(), f"{item['id']}: {test_ref}"
-            prefix_relative = relative_path.removeprefix("mcp/")
-            assert relative_path in command_text or prefix_relative in command_text, (
+            command_candidates = {
+                relative_path,
+                relative_path.removeprefix("mcp/"),
+                relative_path.removeprefix("src/cli/"),
+            }
+            assert any(candidate in command_text for candidate in command_candidates), (
                 f"{item['id']}: test ref is not bound to command: {test_ref}"
             )
 

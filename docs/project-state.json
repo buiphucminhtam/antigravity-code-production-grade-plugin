@@ -302,7 +302,7 @@
     {
       "id": "product-factory-pf0",
       "title": "PF0 — Reset product truth and remove instruction/heuristic entropy",
-      "status": "in_progress",
+      "status": "done",
       "priority": "critical",
       "owner": "Forgewright maintainers",
       "target_date": null,
@@ -312,7 +312,7 @@
     {
       "id": "product-factory-pf1",
       "title": "PF1 — Add the Product Intent Kernel and hierarchical Product Goal Graph",
-      "status": "planned",
+      "status": "done",
       "priority": "critical",
       "owner": "Forgewright maintainers",
       "target_date": null,
@@ -322,7 +322,7 @@
     {
       "id": "product-factory-pf2",
       "title": "PF2 — Add provider-neutral Environment ACI with Web, Mobile, and Game adapters",
-      "status": "planned",
+      "status": "done",
       "priority": "critical",
       "owner": "Forgewright maintainers",
       "target_date": null,
@@ -332,7 +332,7 @@
     {
       "id": "product-factory-pf3",
       "title": "PF3 — Verify critical product outcomes in target environments",
-      "status": "planned",
+      "status": "done",
       "priority": "critical",
       "owner": "Forgewright maintainers",
       "target_date": null,
@@ -342,7 +342,7 @@
     {
       "id": "product-factory-pf4",
       "title": "PF4 — Build ForgeBench for intent, web, mobile, and game product tasks",
-      "status": "planned",
+      "status": "done",
       "priority": "critical",
       "owner": "Forgewright maintainers",
       "target_date": null,
@@ -352,7 +352,7 @@
     {
       "id": "product-factory-pf5",
       "title": "PF5 — Add evidence-gated trajectory learning and promotion",
-      "status": "planned",
+      "status": "done",
       "priority": "high",
       "owner": "Forgewright maintainers",
       "target_date": null,
@@ -362,7 +362,7 @@
     {
       "id": "product-factory-pf6",
       "title": "PF6 — Add disposable secure runtime isolation for high-autonomy execution",
-      "status": "planned",
+      "status": "in_progress",
       "priority": "critical",
       "owner": "Forgewright maintainers",
       "target_date": null,
@@ -372,7 +372,7 @@
     {
       "id": "product-factory-pf7",
       "title": "PF7 — Release the end-to-end autonomous product factory across maintained web/app/game reference lanes",
-      "status": "planned",
+      "status": "blocked",
       "priority": "critical",
       "owner": "Forgewright maintainers",
       "target_date": null,
@@ -1072,11 +1072,21 @@
   ],
   "status": {
     "lifecycle": "active",
-    "health": "on_track",
-    "phase": "DEFINE",
-    "summary": "The Product Factory upgrade is now the primary active program. PF0 is in progress: reset the north star from verified engineering task to verified product outcome, audit conflicting/unsupported instructions, then build Product Intent Graph, cross-domain Environment ACI, Product Outcome Verification, ForgeBench, evidence-gated learning, secure disposable execution, and end-to-end web/app/game reference lanes. Existing engineering evidence-v2, requirement-locked tests, visual grounding, GitNexus, runtime lifecycle, and provider-neutral routing remain mandatory substrate and must not be weakened.",
-    "updated_at": "2026-09-04T07:43:16+07:00",
+    "health": "at_risk",
+    "phase": "BUILD",
+    "summary": "An opt-in maintained offline Web reference now runs in actual Chromium through Product Intent, Web ACI, the outcome runner and Product Judge. Desktop baseline and restored desktop/mobile viewport journeys pass; a controlled product defect is rejected with the same locked intent and assertions. Additive semantic-action compatibility and action-scoped artifact association repair two observed integration defects while preserving legacy payloads, global alias counts and production gates. PF6 remains in progress without a verified production backend. PF7 is blocked: maintained web/mobile/game production evidence, frozen thresholds and trusted learning/isolation authority remain missing. Independent exact-tree review of PF7 and the new Web integration is pending; the test-only browser exercise does not demonstrate deployed production or autonomous model repair.",
+    "updated_at": "2026-09-05T10:55:48+07:00",
     "blockers": [
+      {
+        "id": "pf7-independent-final-tree-review",
+        "title": "Independent exact-tree approval is missing for PF7 and the new Web action/evidence integration; passing local and actual-browser tests do not approve the existing multi-phase dirty worktree for release.",
+        "owner": "Release maintainers / independent reviewer"
+      },
+      {
+        "id": "product-factory-production-evidence",
+        "title": "PF2-PF7 local contracts cannot complete their production axes without maintained Web, Android, and Unity targets, frozen ForgeBench thresholds, production learning authority, and a verified disposable OS-isolation backend.",
+        "owner": "Product and runtime maintainers"
+      },
       {
         "id": "live-provider-client-migration",
         "title": "The configured provider rejects the current client as unsupported; H5 live paired evidence requires migration to a supported runtime/account, not another key-check workflow.",
@@ -1089,6 +1099,12 @@
       }
     ],
     "risks": [
+      {
+        "id": "pf7-replay-and-authority-boundaries",
+        "title": "PF7 replay reservations are process-local; PF4/gate references are opaque and security-probe receipts are simulated local evidence rather than target-host certification.",
+        "owner": "Release and security maintainers",
+        "mitigation": "Keep activation disabled; independently review evidence scope and expiry, then design trusted host/gate issuance and durable recovery before any production activation path is added. Run local gates in the version-locked requirements-ci.txt environment; the prepared Mac Air environment is .forgewright/runtime/ci-venv."
+      },
       {
         "id": "lifecycle-live-host-coverage",
         "title": "Cursor CLI is unavailable locally and Antigravity lacks a live first-party hook validator; these adapters currently rely on native-schema review plus deterministic shell and payload canaries.",
@@ -1122,21 +1138,33 @@
     ],
     "next_actions": [
       {
-        "id": "pf0-instruction-provenance-audit",
-        "title": "Inventory and test contradictions/unsupported heuristics across kernel, shared protocols, and routed skill overlays; freeze the current baseline before behavior changes.",
-        "owner": "Forgewright maintainers",
+        "id": "pf7-release-readiness",
+        "title": "Independently review the recovered PF7 exact tree and rerun full release gates before committing the existing multi-phase worktree; preserve all local-only authority restrictions.",
+        "owner": "Release maintainers / independent reviewer",
         "due_date": null
       },
       {
-        "id": "pf1-product-intent-contract",
-        "title": "Design and implement product-intent/v1 plus authority, uncertainty, product-delta, and Product Goal Graph contracts with adversarial tests.",
-        "owner": "Orchestration maintainers",
+        "id": "pf-web-live-integration",
+        "title": "Independently review the passing offline Chromium reference and action/evidence fixes, then extend to a maintained deployed Web target with trusted production evidence authority; do not treat the controlled mutation test as autonomous model repair.",
+        "owner": "Product and runtime maintainers",
         "due_date": null
       },
       {
-        "id": "pf2-environment-aci-contract",
-        "title": "Define the common Environment ACI contract and acceptance tests before adding Web, Android/mobile, and Unity/game adapters.",
-        "owner": "Runtime maintainers",
+        "id": "pf-runtime-isolation",
+        "title": "Capability-probe a supported real disposable backend and verify escape, secret, egress, quota, snapshot, export, teardown and recovery before enabling arbitrary child-process autonomy.",
+        "owner": "Runtime and security maintainers",
+        "due_date": null
+      },
+      {
+        "id": "pf-live-outcome-baseline",
+        "title": "Measure a locked-intent Web failure/revision/outcome loop and preregister baseline/candidate criteria, then repeat on supported Android and Unity hosts without upgrading missing lanes.",
+        "owner": "Product and QA maintainers",
+        "due_date": null
+      },
+      {
+        "id": "pf-production-authority",
+        "title": "Review trusted benchmark/gate and learning authority, durable replay/recovery, canary and rollback evidence before allowing production activation or shared learning promotion.",
+        "owner": "Release and learning maintainers",
         "due_date": null
       }
     ],

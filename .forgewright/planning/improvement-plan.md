@@ -3,7 +3,8 @@
 **Date:** 2026-06-02
 **Source:** ECC vs Forgewright Comparative Review
 **Plan Quality Score:** 7.4/10 (v1) → Target: ≥ 9.0/10
-**Status:** IN PROGRESS — awaiting HIGH priority fixes
+**Status:** SUPERSEDED — historical June proposal, not the active execution plan.
+**Current authority:** `docs/active-roadmap.md` and `docs/project-state.json` (Product Factory PF0-PF7, reviewed 2026-09-05). Do not execute the old sprint backlog or automatic-promotion proposals below without a new scoped decision; current learning promotion follows PF5 evidence and authority gates.
 **Owner:** Forgewright Core Team
 
 ---

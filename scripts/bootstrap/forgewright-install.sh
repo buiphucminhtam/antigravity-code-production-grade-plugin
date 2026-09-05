@@ -27,6 +27,7 @@ BOLD='\033[1m'
 FORGEWRIGHT_DIR="${FORGEWRIGHT_DIR:-$HOME/.forgewright}"
 SKILLS_DIR="$FORGEWRIGHT_DIR/skills"
 CONFIG_DIR="$FORGEWRIGHT_DIR/config"
+PYTHON_CMD=()
 
 # Profile definitions (using colon-separated string for bash 3 compatibility)
 PROFILE_MINIMAL_DESC="Core pipeline only - orchestrator, memory, basic engineering"
@@ -355,10 +356,26 @@ install_config() {
     echo ""
 }
 
+host_path() {
+    local value="$1"
+    case "$(uname -s 2>/dev/null || true)" in
+        MINGW*|MSYS*|CYGWIN*)
+            command -v cygpath >/dev/null 2>&1 || return 1
+            cygpath -am "$value"
+            ;;
+        *)
+            printf '%s\n' "$value"
+            ;;
+    esac
+}
+
 atomic_copy_file() {
     local source="$1"
     local target="$2"
-    python3 - "$source" "$target" <<'PYEOF'
+    local source_host target_host
+    source_host="$(host_path "$source")" || return 1
+    target_host="$(host_path "$target")" || return 1
+    "${PYTHON_CMD[@]}" - "$source_host" "$target_host" <<'PYEOF'
 import os
 import shutil
 import sys
@@ -377,11 +394,14 @@ try:
         handle.flush()
         os.fsync(handle.fileno())
     os.replace(temporary, target)
-    directory_fd = os.open(target.parent, os.O_RDONLY)
-    try:
-        os.fsync(directory_fd)
-    finally:
-        os.close(directory_fd)
+    # Native Windows does not support opening/fsyncing a directory handle.
+    # The file itself is still flushed before the atomic replacement.
+    if os.name != "nt":
+        directory_fd = os.open(target.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
 except BaseException:
     if fd is not None:
         try:
@@ -399,8 +419,10 @@ PYEOF
 atomic_write_text() {
     local target="$1"
     local content
+    local target_host
+    target_host="$(host_path "$target")" || return 1
     content="$(cat)"
-    ATOMIC_CONTENT="$content" python3 - "$target" <<'PYEOF'
+    ATOMIC_CONTENT="$content" "${PYTHON_CMD[@]}" - "$target_host" <<'PYEOF'
 import os
 import sys
 import tempfile
@@ -419,11 +441,14 @@ try:
         handle.flush()
         os.fsync(handle.fileno())
     os.replace(temporary, target)
-    directory_fd = os.open(target.parent, os.O_RDONLY)
-    try:
-        os.fsync(directory_fd)
-    finally:
-        os.close(directory_fd)
+    # Native Windows does not support opening/fsyncing a directory handle.
+    # The file itself is still flushed before the atomic replacement.
+    if os.name != "nt":
+        directory_fd = os.open(target.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
 except BaseException:
     if fd is not None:
         try:
@@ -442,20 +467,26 @@ install_rule_context_runtime() {
     local source_dir="$1"
     local runtime_dir="$FORGEWRIGHT_DIR/scripts/lite"
     local source_hook="$source_dir/scripts/lite/rule-context-hook.py"
+    local source_windows_hook="$source_dir/scripts/lite/codex-hook-windows.ps1"
     local source_manifest="$source_dir/kernel/rule-manifest.json"
     local target_kernel="$FORGEWRIGHT_DIR/kernel"
 
-    if [[ ! -f "$source_hook" || ! -f "$source_manifest" ]]; then
+    if [[ ! -f "$source_hook" || ! -f "$source_windows_hook" || ! -f "$source_manifest" ]]; then
         log_warn "Rule context runtime unavailable; lifecycle hooks remain unchanged"
         return 0
     fi
 
     mkdir -p "$runtime_dir" "$target_kernel"
     cp "$source_hook" "$runtime_dir/rule-context-hook.py"
+    cp "$source_windows_hook" "$runtime_dir/codex-hook-windows.ps1"
     cp "$source_manifest" "$target_kernel/rule-manifest.json"
     chmod +x "$runtime_dir/rule-context-hook.py"
 
-    if ! python3 - "$source_manifest" "$source_dir" "$FORGEWRIGHT_DIR" <<'PYEOF'
+    local source_manifest_host source_dir_host target_root_host
+    source_manifest_host="$(host_path "$source_manifest")" || return 1
+    source_dir_host="$(host_path "$source_dir")" || return 1
+    target_root_host="$(host_path "$FORGEWRIGHT_DIR")" || return 1
+    if ! "${PYTHON_CMD[@]}" - "$source_manifest_host" "$source_dir_host" "$target_root_host" <<'PYEOF'
 import json
 import shutil
 import sys
@@ -497,17 +528,136 @@ shell_quote() {
     printf "'%s'" "$value"
 }
 
+require_python311() {
+    local candidate resolved selector
+    if [[ -n "${FORGEWRIGHT_PYTHON_BIN:-}" && -x "${FORGEWRIGHT_PYTHON_BIN}" ]] && \
+       "${FORGEWRIGHT_PYTHON_BIN}" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' >/dev/null 2>&1; then
+        PYTHON_CMD=("${FORGEWRIGHT_PYTHON_BIN}")
+        return 0
+    fi
+    for candidate in python3.13 python3.12 python3.11 python3 python; do
+        resolved="$(command -v "$candidate" 2>/dev/null || true)"
+        [[ -n "$resolved" ]] || continue
+        if "$resolved" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' >/dev/null 2>&1; then
+            PYTHON_CMD=("$resolved")
+            return 0
+        fi
+    done
+    resolved="$(command -v py.exe 2>/dev/null || command -v py 2>/dev/null || true)"
+    if [[ -n "$resolved" ]]; then
+        for selector in -3.13 -3.12 -3.11 -3; do
+            if "$resolved" "$selector" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' >/dev/null 2>&1; then
+                PYTHON_CMD=("$resolved" "$selector")
+                return 0
+            fi
+        done
+    fi
+    log_error "Python 3.11 or newer is required before Forgewright can modify installation state" >&2
+    return 1
+}
+
+codex_stop_command() {
+    local gate_script="$1"
+    local kernel_name
+    kernel_name="$(uname -s 2>/dev/null || true)"
+    case "$kernel_name" in
+        MINGW*|MSYS*|CYGWIN*)
+            local bash_executable gate_native
+            bash_executable="${EXEPATH:-}/bash.exe"
+            if [[ -z "${EXEPATH:-}" || ! -x "$bash_executable" ]] || ! command -v cygpath >/dev/null 2>&1; then
+                log_error "Git Bash path resolution is unavailable; cannot configure the native-Windows Codex Stop hook" >&2
+                return 1
+            fi
+            bash_executable="$(cygpath -am "$bash_executable")"
+            gate_native="$(cygpath -am "$gate_script")"
+            if [[ "$bash_executable" == *\"* || "$gate_native" == *\"* || "$bash_executable" == *%* || "$gate_native" == *%* ]]; then
+                log_error "Git Bash or Stop gate path contains a character that cmd.exe would expand" >&2
+                return 1
+            fi
+            printf 'cmd /d /s /c ""%s" "%s" --platform CODEX"' "$bash_executable" "$gate_native"
+            ;;
+        *)
+            printf 'bash %s --platform CODEX' "$(shell_quote "$gate_script")"
+            ;;
+    esac
+}
+
+codex_lifecycle_windows_command() {
+    local adapter_script="$1"
+    local event_name="$2"
+    case "$(uname -s 2>/dev/null || true)" in
+        MINGW*|MSYS*|CYGWIN*)
+            local adapter_native
+            command -v cygpath >/dev/null 2>&1 || return 1
+            adapter_native="$(cygpath -am "$adapter_script")"
+            CODEX_WINDOWS_ADAPTER="$adapter_native" CODEX_EVENT_NAME="$event_name" "${PYTHON_CMD[@]}" - <<'PYEOF'
+import os
+
+adapter = "'" + os.environ["CODEX_WINDOWS_ADAPTER"].replace("'", "''") + "'"
+event = os.environ["CODEX_EVENT_NAME"]
+print(
+    "powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass "
+    '-Command "$root = (& git rev-parse --show-toplevel 2>$null | Select-Object -First 1); '
+    "$manifest = if ($root) { Join-Path $root 'kernel/rule-manifest.json' } else { $null }; "
+    f"if (-not $root -or -not (Test-Path -LiteralPath $manifest -PathType Leaf)) {{ & {adapter} -EventName {event}; exit $LASTEXITCODE }}; "
+    f"& {adapter} -EventName {event} -ProjectRoot $root; exit $LASTEXITCODE\""
+)
+PYEOF
+            ;;
+        *)
+            printf ''
+            ;;
+    esac
+}
+
+codex_stop_command_present() {
+    local config_file="$1"
+    local expected_command="$2"
+    config_file="$(host_path "$config_file")" || return 1
+    CODEX_STOP_COMMAND="$expected_command" "${PYTHON_CMD[@]}" - "$config_file" <<'PYEOF'
+import os
+import sys
+
+try:
+    import tomllib
+except ImportError:
+    raise SystemExit(1)
+
+try:
+    with open(sys.argv[1], "rb") as handle:
+        config = tomllib.load(handle)
+    groups = config.get("hooks", {}).get("Stop", [])
+    present = isinstance(groups, list) and sum(
+        1
+        for group in groups
+        if isinstance(group, dict)
+        and group.get("matcher") == "*"
+        for hook in group.get("hooks", [])
+        if isinstance(hook, dict)
+        and hook.get("type") == "command"
+        and hook.get("command") == os.environ["CODEX_STOP_COMMAND"]
+        and hook.get("command_windows") in (None, os.environ["CODEX_STOP_COMMAND"])
+    ) == 1
+except (OSError, TypeError, tomllib.TOMLDecodeError):
+    present = False
+raise SystemExit(0 if present else 1)
+PYEOF
+}
+
 rule_context_command() {
     local hook_path="$1"
     local fallback_workspace="$2"
     local platform="$3"
     local event="$4"
+    local python_executable="${PYTHON_CMD[0]}"
+    local python_selector="${PYTHON_CMD[1]:-}"
     # Global lifecycle configs are invoked from arbitrary project directories.
     # Resolve the project at invocation time, and only select its manifest after
     # the installed runtime has validated it.  The framework install remains a
     # safe fallback for non-project directories and malformed project state.
     local resolver=''
-    resolver+='hook_path="$1"; fallback_workspace="$2"; platform="$3"; event="$4"; '
+    resolver+='hook_path="$1"; fallback_workspace="$2"; platform="$3"; event="$4"; python_executable="$5"; python_selector="$6"; '
+    resolver+='run_python() { if [ -n "$python_selector" ]; then "$python_executable" "$python_selector" "$@"; else "$python_executable" "$@"; fi; }; '
     resolver+='if [ "${FORGEWRIGHT_RULE_HOOK_MODE:-observe}" = "off" ]; then printf "%s\\n" "{\"continue\":true}"; exit 0; fi; '
     resolver+='hint="${FORGEWRIGHT_PROJECT_ROOT:-${FORGEWRIGHT_WORKSPACE:-}}"; '
     resolver+='host_hint=""; if [ -z "$hint" ]; then case "$platform" in '
@@ -520,7 +670,7 @@ rule_context_command() {
     resolver+='git_root="$(git -C "${candidate:-${PWD:-.}}" rev-parse --show-toplevel 2>/dev/null || true)"; '
     resolver+='case "$git_root" in /*) candidate="$git_root";; esac; fi; '
     resolver+='runtime="$hook_path"; workspace="$fallback_workspace"; '
-    resolver+='if [ -f "$hook_path" ] && [ -n "$candidate" ] && [ -f "$candidate/kernel/rule-manifest.json" ] && python3 - "$hook_path" "$candidate" <<'"'"'PYEOF'"'"'
+    resolver+='if [ -f "$hook_path" ] && [ -n "$candidate" ] && [ -f "$candidate/kernel/rule-manifest.json" ] && run_python - "$hook_path" "$candidate" <<'"'"'PYEOF'"'"'
 import importlib.util
 import sys
 from pathlib import Path
@@ -536,9 +686,10 @@ except Exception:
 PYEOF
     then workspace="$candidate"; fi; '
     resolver+='if [ ! -f "$runtime" ]; then printf "%s\\n" "{\"continue\":true}"; exit 0; fi; '
-    resolver+='python3 "$runtime" --platform "$platform" --event "$event" --workspace "$workspace" || printf "%s\\n" "{\"continue\":true}"'
-    printf 'FORGEWRIGHT_RULE_HOOK_MODE="${FORGEWRIGHT_RULE_HOOK_MODE:-observe}" sh -c %s -- %s %s %s %s || true' \
-        "$(shell_quote "$resolver")" "$(shell_quote "$hook_path")" "$(shell_quote "$fallback_workspace")" "$platform" "$event"
+    resolver+='run_python "$runtime" --platform "$platform" --event "$event" --workspace "$workspace" || printf "%s\\n" "{\"continue\":true}"'
+    printf 'FORGEWRIGHT_RULE_HOOK_MODE="${FORGEWRIGHT_RULE_HOOK_MODE:-observe}" sh -c %s -- %s %s %s %s %s %s || true' \
+        "$(shell_quote "$resolver")" "$(shell_quote "$hook_path")" "$(shell_quote "$fallback_workspace")" "$platform" "$event" \
+        "$(shell_quote "$python_executable")" "$(shell_quote "$python_selector")"
 }
 
 install_hooks() {
@@ -560,9 +711,10 @@ install_hooks() {
     local context_hook="${FORGEWRIGHT_DIR}/scripts/lite/rule-context-hook.py"
     local context_workspace="${FORGEWRIGHT_DIR}"
     local gate_runtime_file
-    for gate_runtime_file in stop-gate.sh gemini-before-tool-gate.sh antigravity-pre-tool-gate.sh verify-gate.sh verify_gate.py \
+    for gate_runtime_file in stop-gate.sh stop_gate.py continuity_check.py evidence_common.py windows_secure_io.py \
+        gemini-before-tool-gate.sh antigravity-pre-tool-gate.sh verify-gate.sh verify_gate.py \
         run-check.sh run_check.py rule-validator.py rule-ledger.sh policy-check.sh telemetry.sh; do
-        cp "${source_dir}/scripts/lite/${gate_runtime_file}" "${gate_runtime_dir}/${gate_runtime_file}"
+        atomic_copy_file "${source_dir}/scripts/lite/${gate_runtime_file}" "${gate_runtime_dir}/${gate_runtime_file}"
     done
     chmod +x "$gate_runtime_dir/stop-gate.sh" "$gate_runtime_dir/gemini-before-tool-gate.sh" \
         "$gate_runtime_dir/antigravity-pre-tool-gate.sh" \
@@ -571,21 +723,28 @@ install_hooks() {
         "$gate_runtime_dir/rule-ledger.sh" "$gate_runtime_dir/policy-check.sh" \
         "$gate_runtime_dir/telemetry.sh"
 
-    local claude_session_cmd claude_subagent_cmd gemini_before_agent_cmd antigravity_pre_invocation_cmd cursor_session_cmd codex_session_cmd codex_subagent_cmd
+    local claude_stop_cmd claude_session_cmd claude_subagent_cmd gemini_stop_cmd gemini_policy_cmd gemini_before_agent_cmd antigravity_pre_invocation_cmd antigravity_policy_cmd cursor_stop_cmd cursor_session_cmd codex_session_cmd codex_subagent_cmd codex_session_windows_cmd codex_subagent_windows_cmd
+    claude_stop_cmd="bash $(shell_quote "$gate_script") --platform CLAUDE"
     claude_session_cmd="$(rule_context_command "$context_hook" "$context_workspace" CLAUDE SessionStart)"
     claude_subagent_cmd="$(rule_context_command "$context_hook" "$context_workspace" CLAUDE SubagentStart)"
+    gemini_stop_cmd="bash $(shell_quote "$gate_script") --platform GEMINI"
+    gemini_policy_cmd="bash $(shell_quote "$gate_runtime_dir/gemini-before-tool-gate.sh")"
     gemini_before_agent_cmd="$(rule_context_command "$context_hook" "$context_workspace" GEMINI BeforeAgent)"
     antigravity_pre_invocation_cmd="$(rule_context_command "$context_hook" "$context_workspace" ANTIGRAVITY PreInvocation)"
+    antigravity_policy_cmd="bash $(shell_quote "$gate_runtime_dir/antigravity-pre-tool-gate.sh")"
+    cursor_stop_cmd="bash $(shell_quote "$gate_script") --platform CURSOR"
     cursor_session_cmd="$(rule_context_command "$context_hook" "$context_workspace" CURSOR sessionStart)"
     codex_session_cmd="$(rule_context_command "$context_hook" "$context_workspace" CODEX SessionStart)"
     codex_subagent_cmd="$(rule_context_command "$context_hook" "$context_workspace" CODEX SubagentStart)"
+    codex_session_windows_cmd="$(codex_lifecycle_windows_command "$gate_runtime_dir/codex-hook-windows.ps1" SessionStart)"
+    codex_subagent_windows_cmd="$(codex_lifecycle_windows_command "$gate_runtime_dir/codex-hook-windows.ps1" SubagentStart)"
 
     # ── Claude Code Settings ──────────────────────────────────────────────────
     # Real schema: hooks.Stop is an array of matcher-group objects, each with a
     # nested hooks array of {type, command} objects.  hooks.stop (lowercase) is
     # NOT a valid key and is silently ignored by Claude Code.
     mkdir -p "$HOME/.claude"
-    CLAUDE_SESSION_CMD="$claude_session_cmd" CLAUDE_SUBAGENT_CMD="$claude_subagent_cmd" GATE_SCRIPT="$gate_script" FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR" node - "${HOME}/.claude/settings.json" <<'NODE'
+    CLAUDE_STOP_CMD="$claude_stop_cmd" CLAUDE_SESSION_CMD="$claude_session_cmd" CLAUDE_SUBAGENT_CMD="$claude_subagent_cmd" GATE_SCRIPT="$gate_script" FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR" node - "$(host_path "${HOME}/.claude/settings.json")" <<'NODE'
 var fs = require('fs');
 var path = require('path');
 var file = process.argv[2];
@@ -616,7 +775,9 @@ function gateCommand(command, platform) {
   return match[1] || match[2] || match[3];
 }
 function currentGate(command, platform) {
-  return gateCommand(command, platform) === path.resolve(process.env.GATE_SCRIPT);
+  if (command === process.env.CLAUDE_STOP_CMD) return true;
+  var candidate = gateCommand(command, platform);
+  return candidate !== null && path.resolve(candidate) === path.resolve(process.env.GATE_SCRIPT);
 }
 function legacyVerifyGate(command, platform) {
   var script = gateCommand(command, platform);
@@ -644,7 +805,7 @@ var already = Stop.some(function(g){
   return Array.isArray(g.hooks) && g.hooks.some(function(h){ return currentGate(h && h.command, 'CLAUDE'); });
 });
 if (!already) {
-  Stop.push({ hooks: [{ type: 'command', command: 'bash ' + process.env.GATE_SCRIPT + ' --platform CLAUDE' }] });
+  Stop.push({ hooks: [{ type: 'command', command: process.env.CLAUDE_STOP_CMD }] });
 }
 cfg.hooks.Stop = Stop;
 [
@@ -657,7 +818,7 @@ cfg.hooks.Stop = Stop;
   function ownedContext(commandValue) {
     if (commandValue === command) return true;
     if (typeof commandValue !== 'string' || commandValue.indexOf('FORGEWRIGHT_RULE_HOOK_MODE=') !== 0 || commandValue.indexOf('hook_path="$1"; fallback_workspace="$2"; platform="$3"; event="$4";') === -1) return false;
-    var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+\s+\|\|\s*true\s*$/);
+    var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+(?:\s+'[^']*'){2}\s+\|\|\s*true\s*$/);
     if (!match) return false;
     var normalized = path.posix.normalize(match[1].replace(/\\/g, '/'));
     var framework = path.resolve(process.env.FORGEWRIGHT_DIR);
@@ -687,7 +848,7 @@ NODE
     # of the form { matcher?: string, hooks: [{ type, command, ... }] }.
     # An array of bare strings causes: "Expected object, received string".
     mkdir -p "$HOME/.gemini"
-    GEMINI_BEFORE_AGENT_CMD="$gemini_before_agent_cmd" GATE_SCRIPT="$gate_script" FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR" node - "${HOME}/.gemini/settings.json" <<'NODE'
+    GEMINI_STOP_CMD="$gemini_stop_cmd" GEMINI_POLICY_CMD="$gemini_policy_cmd" GEMINI_BEFORE_AGENT_CMD="$gemini_before_agent_cmd" GATE_SCRIPT="$gate_script" FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR" node - "$(host_path "${HOME}/.gemini/settings.json")" <<'NODE'
 var fs = require('fs');
 var path = require('path');
 var file = process.argv[2];
@@ -718,7 +879,9 @@ function gateCommand(command, platform) {
   return match[1] || match[2] || match[3];
 }
 function currentGate(command, platform) {
-  return gateCommand(command, platform) === path.resolve(process.env.GATE_SCRIPT);
+  if (command === process.env.GEMINI_STOP_CMD) return true;
+  var candidate = gateCommand(command, platform);
+  return candidate !== null && path.resolve(candidate) === path.resolve(process.env.GATE_SCRIPT);
 }
 function legacyVerifyGate(command, platform) {
   var script = gateCommand(command, platform);
@@ -747,17 +910,18 @@ var already = AA.some(function(g){
   return Array.isArray(g.hooks) && g.hooks.some(function(h){ return currentGate(h && h.command, 'GEMINI'); });
 });
 if (!already) {
-  AA.push({ matcher: '*', hooks: [{ type: 'command', command: 'bash ' + process.env.GATE_SCRIPT + ' --platform GEMINI' }] });
+  AA.push({ matcher: '*', hooks: [{ type: 'command', command: process.env.GEMINI_STOP_CMD }] });
 }
 cfg.hooks.AfterAgent = AA;
 var beforeGate = process.env.FORGEWRIGHT_DIR + '/scripts/lite/gemini-before-tool-gate.sh';
+var desiredBeforeGate = process.env.GEMINI_POLICY_CMD;
 var BT = Array.isArray(cfg.hooks.BeforeTool) ? cfg.hooks.BeforeTool : [];
 BT = BT.map(function(g){
   if (!Array.isArray(g.hooks)) return g;
-  return Object.assign({}, g, { hooks: g.hooks.filter(function(h){ return !h || typeof h.command !== 'string' || h.command !== 'bash ' + beforeGate; }) });
+  return Object.assign({}, g, { hooks: g.hooks.filter(function(h){ return !h || typeof h.command !== 'string' || (h.command !== desiredBeforeGate && h.command !== 'bash ' + beforeGate); }) });
 }).filter(function(g){ return !Array.isArray(g.hooks) || g.hooks.length > 0; });
-if (!BT.some(function(g){ return Array.isArray(g.hooks) && g.hooks.some(function(h){ return h && h.command === 'bash ' + beforeGate; }); })) {
-  BT.push({ matcher: '*', hooks: [{ name: 'forgewright-policy', type: 'command', command: 'bash ' + beforeGate, timeout: 5000 }] });
+if (!BT.some(function(g){ return Array.isArray(g.hooks) && g.hooks.some(function(h){ return h && h.command === desiredBeforeGate; }); })) {
+  BT.push({ matcher: '*', hooks: [{ name: 'forgewright-policy', type: 'command', command: desiredBeforeGate, timeout: 5000 }] });
 }
 cfg.hooks.BeforeTool = BT;
 var groups = Array.isArray(cfg.hooks.BeforeAgent) ? cfg.hooks.BeforeAgent : [];
@@ -765,7 +929,7 @@ var found = false;
 function ownedContext(commandValue) {
   if (commandValue === process.env.GEMINI_BEFORE_AGENT_CMD) return true;
   if (typeof commandValue !== 'string' || commandValue.indexOf('FORGEWRIGHT_RULE_HOOK_MODE=') !== 0 || commandValue.indexOf('hook_path="$1"; fallback_workspace="$2"; platform="$3"; event="$4";') === -1) return false;
-  var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+\s+\|\|\s*true\s*$/);
+  var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+(?:\s+'[^']*'){2}\s+\|\|\s*true\s*$/);
   if (!match) return false;
   var normalized = path.posix.normalize(match[1].replace(/\\/g, '/'));
   var framework = path.resolve(process.env.FORGEWRIGHT_DIR);
@@ -793,7 +957,7 @@ NODE
     # Antigravity's native hook registry is ~/.gemini/config/hooks.json. It is
     # a map of named hooks, not the Gemini CLI settings.json hooks object.
     mkdir -p "$HOME/.gemini/config"
-    ANTIGRAVITY_PRE_INVOCATION_CMD="$antigravity_pre_invocation_cmd" FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR" node - "${HOME}/.gemini/config/hooks.json" <<'NODE'
+    ANTIGRAVITY_PRE_INVOCATION_CMD="$antigravity_pre_invocation_cmd" ANTIGRAVITY_POLICY_CMD="$antigravity_policy_cmd" FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR" node - "$(host_path "${HOME}/.gemini/config/hooks.json")" <<'NODE'
 var fs = require('fs');
 var path = require('path');
 var file = process.argv[2];
@@ -820,7 +984,7 @@ if (!cfg || Array.isArray(cfg) || typeof cfg !== 'object') throw new Error('Anti
 function ownedContext(commandValue) {
   if (commandValue === process.env.ANTIGRAVITY_PRE_INVOCATION_CMD) return true;
   if (typeof commandValue !== 'string' || commandValue.indexOf('FORGEWRIGHT_RULE_HOOK_MODE=') !== 0 || commandValue.indexOf('hook_path="$1"; fallback_workspace="$2"; platform="$3"; event="$4";') === -1) return false;
-  var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+\s+\|\|\s*true\s*$/);
+  var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+(?:\s+'[^']*'){2}\s+\|\|\s*true\s*$/);
   if (!match) return false;
   var normalized = path.posix.normalize(match[1].replace(/\\/g, '/'));
   var framework = path.resolve(process.env.FORGEWRIGHT_DIR);
@@ -829,9 +993,15 @@ function ownedContext(commandValue) {
 }
 var policy = cfg['forgewright-policy'];
 if (!policy || Array.isArray(policy) || typeof policy !== 'object') policy = {};
-if (!Object.prototype.hasOwnProperty.call(policy, 'PreToolUse')) {
-  policy.PreToolUse = [{ matcher: '*', hooks: [{ type: 'command', command: 'bash ' + process.env.FORGEWRIGHT_DIR + '/scripts/lite/antigravity-pre-tool-gate.sh', timeout: 5 }] }];
-}
+policy.enabled = true;
+var policyGroups = Array.isArray(policy.PreToolUse) ? policy.PreToolUse : [];
+var hasPolicyGate = policyGroups.some(function(group) {
+  return group && group.matcher === '*' && Array.isArray(group.hooks) && group.hooks.some(function(hook) {
+    return hook && hook.type === 'command' && hook.command === process.env.ANTIGRAVITY_POLICY_CMD && hook.timeout === 5;
+  });
+});
+if (!hasPolicyGate) policyGroups.push({ matcher: '*', hooks: [{ type: 'command', command: process.env.ANTIGRAVITY_POLICY_CMD, timeout: 5 }] });
+policy.PreToolUse = policyGroups;
 var groups = Array.isArray(policy.PreInvocation) ? policy.PreInvocation : [];
 var found = false;
 groups = groups.filter(function(h) {
@@ -850,7 +1020,7 @@ NODE
     # Real schema (version 1): hooks.stop must be an array of {command} objects,
     # not a bare string.  version field is required.
     mkdir -p "$HOME/.cursor"
-    CURSOR_SESSION_CMD="$cursor_session_cmd" GATE_SCRIPT="$gate_script" FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR" node - "${HOME}/.cursor/hooks.json" <<'NODE'
+    CURSOR_STOP_CMD="$cursor_stop_cmd" CURSOR_SESSION_CMD="$cursor_session_cmd" GATE_SCRIPT="$gate_script" FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR" node - "$(host_path "${HOME}/.cursor/hooks.json")" <<'NODE'
 var fs = require('fs');
 var path = require('path');
 var file = process.argv[2];
@@ -882,7 +1052,9 @@ function gateCommand(command, platform) {
   return match[1] || match[2] || match[3];
 }
 function currentGate(command, platform) {
-  return gateCommand(command, platform) === path.resolve(process.env.GATE_SCRIPT);
+  if (command === process.env.CURSOR_STOP_CMD) return true;
+  var candidate = gateCommand(command, platform);
+  return candidate !== null && path.resolve(candidate) === path.resolve(process.env.GATE_SCRIPT);
 }
 function legacyVerifyGate(command, platform) {
   var script = gateCommand(command, platform);
@@ -904,7 +1076,7 @@ var stop = Array.isArray(cfg.hooks.stop) ? cfg.hooks.stop : [];
 stop = stop.filter(function(h){ return !legacyVerifyGate(h && h.command, 'CURSOR'); });
 var already = stop.some(function(h){ return currentGate(h && h.command, 'CURSOR'); });
 if (!already) {
-  stop.push({ command: 'bash ' + process.env.GATE_SCRIPT + ' --platform CURSOR' });
+  stop.push({ command: process.env.CURSOR_STOP_CMD });
 }
 cfg.hooks.stop = stop;
 var sessions = Array.isArray(cfg.hooks.sessionStart) ? cfg.hooks.sessionStart : [];
@@ -912,7 +1084,7 @@ var foundSession = false;
 function ownedContext(commandValue) {
   if (commandValue === process.env.CURSOR_SESSION_CMD) return true;
   if (typeof commandValue !== 'string' || commandValue.indexOf('FORGEWRIGHT_RULE_HOOK_MODE=') !== 0 || commandValue.indexOf('hook_path="$1"; fallback_workspace="$2"; platform="$3"; event="$4";') === -1) return false;
-  var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+\s+\|\|\s*true\s*$/);
+  var match = commandValue.match(/\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+(?:\s+'[^']*'){2}\s+\|\|\s*true\s*$/);
   if (!match) return false;
   var normalized = path.posix.normalize(match[1].replace(/\\/g, '/'));
   var framework = path.resolve(process.env.FORGEWRIGHT_DIR);
@@ -935,8 +1107,14 @@ NODE
     # Also guard against duplicating [features] and [hooks] section headers.
     mkdir -p "$HOME/.codex"
     local codex_file="${HOME}/.codex/config.toml"
+    local codex_file_host
+    codex_file_host="$(host_path "$codex_file")" || return 1
+    local codex_stop_cmd codex_stop_toml
+    codex_stop_cmd="$(codex_stop_command "$gate_script")"
+    codex_stop_toml="$(CODEX_STOP_COMMAND="$codex_stop_cmd" "${PYTHON_CMD[@]}" -c 'import json, os; print(json.dumps(os.environ["CODEX_STOP_COMMAND"]))')"
     if [[ -f "$codex_file" ]]; then
-        FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR" python3 - "$codex_file" <<'PYEOF'
+        CODEX_STOP_COMMAND="$codex_stop_cmd" FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR" FORGEWRIGHT_SOURCE_DIR="$source_dir" "${PYTHON_CMD[@]}" - "$codex_file_host" <<'PYEOF'
+import json
 import os
 import re
 import shlex
@@ -977,6 +1155,84 @@ legacy = re.compile(
     r'(?:timeout\s*=\s*\d+\s*\n)?'
 )
 updated = legacy.sub(lambda match: "\n" if owned_legacy_verify(match.group("command")) else match.group(0), text)
+
+# Upgrade only a trusted Forgewright Stop command. Unrelated user commands,
+# including commands that merely contain the same filename, are preserved.
+installed_stop = (Path(os.environ["FORGEWRIGHT_DIR"]) / "scripts" / "lite" / "stop-gate.sh").resolve()
+project_stop = (Path(os.environ["FORGEWRIGHT_SOURCE_DIR"]) / "scripts" / "lite" / "stop-gate.sh").resolve()
+desired_stop = os.environ["CODEX_STOP_COMMAND"]
+command_line = re.compile(r'(?m)^(command\s*=\s*)("(?:\\.|[^"\\])*")[ \t]*$')
+
+def owned_stop(command: str) -> bool:
+    try:
+        parts = shlex.split(command)
+    except (TypeError, ValueError):
+        parts = []
+    gate = None
+    if len(parts) == 4 and parts[0] == "bash" and parts[2:] == ["--platform", "CODEX"]:
+        gate = Path(parts[1].replace("\\", "/")).resolve()
+    else:
+        wrapper = re.fullmatch(
+            r'cmd(?:\.exe)?\s+/d\s+/s\s+/c\s+""[^"]+"\s+"([^"]+)"\s+--platform\s+CODEX"',
+            command,
+            flags=re.IGNORECASE,
+        )
+        if wrapper:
+            gate = Path(wrapper.group(1).replace("\\", "/")).resolve()
+    return gate in {installed_stop, project_stop}
+
+def replace_owned_stop(match: re.Match[str]) -> str:
+    try:
+        command = json.loads(match.group(2))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return match.group(0)
+    if not owned_stop(command):
+        return match.group(0)
+    return f"{match.group(1)}{json.dumps(desired_stop)}"
+
+updated = command_line.sub(replace_owned_stop, updated)
+stop_hook = re.compile(
+    r'\r?\n?\[\[hooks\.Stop\]\]\r?\n'
+    r'(?:matcher\s*=\s*"[^"]*"\r?\n)?'
+    r'\[\[hooks\.Stop\.hooks\]\]\r?\n'
+    r'type\s*=\s*"[^"]*"\r?\n'
+    r'command\s*=\s*(?P<command>"(?:\\.|[^"\\])*")\r?\n?'
+    r'(?:command_windows\s*=\s*"(?:\\.|[^"\\])*"\r?\n?)?'
+    r'(?:timeout\s*=\s*\d+\s*\r?\n?)?'
+)
+owned_seen = False
+
+def remove_owned_stop(match: re.Match[str]) -> str:
+    global owned_seen
+    try:
+        command = json.loads(match.group("command"))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return match.group(0)
+    if not owned_stop(command):
+        return match.group(0)
+    block = match.group(0)
+    windows_match = re.search(
+        r'(?m)^command_windows\s*=\s*("(?:\\.|[^"\\])*")[ \t]*\r?$',
+        block,
+    )
+    windows_valid = windows_match is None
+    if windows_match is not None:
+        try:
+            windows_valid = json.loads(windows_match.group(1)) == desired_stop
+        except (TypeError, ValueError, json.JSONDecodeError):
+            windows_valid = False
+    canonical = (
+        re.search(r'(?m)^matcher\s*=\s*"\*"[ \t]*\r?$', block) is not None
+        and re.search(r'(?m)^type\s*=\s*"command"[ \t]*\r?$', block) is not None
+        and command == desired_stop
+        and windows_valid
+    )
+    if canonical and not owned_seen:
+        owned_seen = True
+        return block
+    return "\n"
+
+updated = stop_hook.sub(remove_owned_stop, updated)
 # Older installers left the hook timeout in the parent [hooks] table after
 # removing the legacy hook array.  It is only valid on the nested hook object.
 lines = updated.splitlines(keepends=True)
@@ -992,6 +1248,48 @@ for line in lines:
         continue
     cleaned.append(line)
 updated = "".join(cleaned)
+
+def enable_hooks_feature(value: str) -> str:
+    lines = value.splitlines(keepends=True)
+    feature_index = next(
+        (
+            index
+            for index, line in enumerate(lines)
+            if re.fullmatch(r"\[features\][ \t]*(?:#.*)?", line.strip())
+        ),
+        None,
+    )
+    if feature_index is None:
+        return "[features]\nhooks = true\n\n" + value
+    section_end = next(
+        (
+            index
+            for index in range(feature_index + 1, len(lines))
+            if lines[index].lstrip().startswith("[")
+        ),
+        len(lines),
+    )
+    for index in range(feature_index + 1, section_end):
+        match = re.match(
+            r"^(\s*hooks\s*=\s*)(?:true|false)([ \t]*(?:#.*)?)(\r?\n)?$",
+            lines[index],
+        )
+        if match:
+            lines[index] = (
+                f"{match.group(1)}true{match.group(2)}{match.group(3) or ''}"
+            )
+            return "".join(lines)
+        if re.match(r"^\s*hooks\s*=", lines[index]):
+            newline = "\r\n" if lines[index].endswith("\r\n") else "\n"
+            lines[index] = f"hooks = true{newline}"
+            return "".join(lines)
+    newline = "\r\n" if lines[feature_index].endswith("\r\n") else "\n"
+    if not lines[feature_index].endswith(("\n", "\r")):
+        lines[feature_index] += newline
+    lines.insert(feature_index + 1, f"hooks = true{newline}")
+    return "".join(lines)
+
+updated = enable_hooks_feature(updated)
 if updated == text:
     raise SystemExit(0)
 mode = path.stat().st_mode & 0o777 if path.exists() else 0o600
@@ -1022,9 +1320,9 @@ hooks = true
 matcher = "*"
 [[hooks.Stop.hooks]]
 type = "command"
-command = "bash ${gate_script} --platform CODEX"
+command = ${codex_stop_toml}
 EOF
-    elif ! grep -qF "stop-gate.sh" "$codex_file" 2>/dev/null; then
+    elif ! codex_stop_command_present "$codex_file" "$codex_stop_cmd"; then
         # File exists but our hook is not present yet.
         # Only append the [[hooks.Stop]] stanza; skip [features]/[hooks] headers
         # if they already exist to avoid TOML duplicate-key errors.
@@ -1042,13 +1340,15 @@ matcher = "*"
 [[hooks.Stop.hooks]]
 type = "command"
 HOOKBLOCK
-            echo "command = \"bash ${gate_script} --platform CODEX\""
+            echo "command = ${codex_stop_toml}"
         } | atomic_write_text "$codex_file"
     fi
-    CONTEXT_SESSION_CMD="$codex_session_cmd" CONTEXT_SUBAGENT_CMD="$codex_subagent_cmd" FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR" python3 - "$codex_file" <<'PYEOF'
+    CONTEXT_SESSION_CMD="$codex_session_cmd" CONTEXT_SUBAGENT_CMD="$codex_subagent_cmd" CONTEXT_SESSION_WINDOWS_CMD="$codex_session_windows_cmd" CONTEXT_SUBAGENT_WINDOWS_CMD="$codex_subagent_windows_cmd" FORGEWRIGHT_DIR="$FORGEWRIGHT_DIR" "${PYTHON_CMD[@]}" - "$codex_file_host" <<'PYEOF'
 import json
 import os
+import posixpath
 import re
+import shlex
 import sys
 import tempfile
 from pathlib import Path
@@ -1064,14 +1364,40 @@ def owned_context_command(candidate, expected):
     marker = 'hook_path="$1"; fallback_workspace="$2"; platform="$3"; event="$4";'
     if not candidate.startswith("FORGEWRIGHT_RULE_HOOK_MODE=") or marker not in candidate:
         return False
-    match = re.search(r"\s--\s+'([^']+)'\s+'[^']+'\s+(?:CLAUDE|GEMINI|ANTIGRAVITY|CURSOR|CODEX)\s+[^\s]+\s+\|\|\s*true\s*$", candidate)
-    if not match:
+    try:
+        parts = shlex.split(candidate, posix=True)
+        expected_parts = shlex.split(expected, posix=True)
+        separator = parts.index("--")
+        expected_separator = expected_parts.index("--")
+        arguments = parts[separator + 1 :]
+        expected_arguments = expected_parts[expected_separator + 1 :]
+    except (ValueError, IndexError):
         return False
-    normalized = Path(match.group(1).replace("\\", "/")).resolve()
-    framework = Path(os.environ["FORGEWRIGHT_DIR"]).resolve()
-    return normalized in (framework / "rule-context-hook.py", framework / "scripts" / "rule-context-hook.py")
+    if separator != 4 or parts[1:3] != ["sh", "-c"]:
+        return False
+    if len(arguments) not in (6, 8) or arguments[-2:] != ["||", "true"]:
+        return False
+    hook_path, _workspace, platform, event = arguments[:4]
+    if len(expected_arguments) < 4 or [platform, event] != expected_arguments[2:4]:
+        return False
+    def normalized_hook_path(value):
+        value = value.replace("\\", "/")
+        if os.name != "nt":
+            return Path(value).resolve().as_posix()
+        drive = re.match(r"^/([A-Za-z])(?=/|$)", value)
+        if drive:
+            value = f"{drive.group(1)}:{value[2:]}"
+        return posixpath.normpath(value).casefold()
 
-def replace_context_blocks(value, event, matcher, command):
+    normalized = normalized_hook_path(hook_path)
+    framework = os.environ["FORGEWRIGHT_DIR"].rstrip("/\\")
+    return normalized in {
+        normalized_hook_path(f"{framework}/rule-context-hook.py"),
+        normalized_hook_path(f"{framework}/scripts/rule-context-hook.py"),
+        normalized_hook_path(f"{framework}/scripts/lite/rule-context-hook.py"),
+    }
+
+def replace_context_blocks(value, event, matcher, command, windows_command):
     lines = value.splitlines(keepends=True)
     outer = f"[[hooks.{event}]]"
     nested = f"[[hooks.{event}.hooks]]"
@@ -1117,15 +1443,27 @@ def replace_context_blocks(value, event, matcher, command):
         f"[[hooks.{event}.hooks]]\n"
         "type = \"command\"\n"
         f"command = {json.dumps(command)}\n"
-        "timeout = 2\n"
     )
+    if windows_command:
+        value += f"command_windows = {json.dumps(windows_command)}\n"
+    value += "timeout = 2\n"
     return value
 
-for event, matcher, command in (
-    ("SessionStart", "startup|resume|clear|compact", os.environ["CONTEXT_SESSION_CMD"]),
-    ("SubagentStart", "*", os.environ["CONTEXT_SUBAGENT_CMD"]),
+for event, matcher, command, windows_command in (
+    (
+        "SessionStart",
+        "startup|resume|clear|compact",
+        os.environ["CONTEXT_SESSION_CMD"],
+        os.environ["CONTEXT_SESSION_WINDOWS_CMD"],
+    ),
+    (
+        "SubagentStart",
+        "*",
+        os.environ["CONTEXT_SUBAGENT_CMD"],
+        os.environ["CONTEXT_SUBAGENT_WINDOWS_CMD"],
+    ),
 ):
-    text = replace_context_blocks(text, event, matcher, command)
+    text = replace_context_blocks(text, event, matcher, command, windows_command)
 def atomic_write(target: Path, value: str) -> None:
     mode = target.stat().st_mode & 0o777 if target.exists() else 0o600
     fd, temporary = tempfile.mkstemp(prefix=f".{target.name}.", dir=target.parent)
@@ -1301,6 +1639,10 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# All installation modes execute Python-backed publication and hook logic.
+# Fail before creating or modifying installation state when the runtime is old.
+require_python311
 
 # Validate profile
 if [[ -z "$PROFILE" ]]; then

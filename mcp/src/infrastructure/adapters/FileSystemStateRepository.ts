@@ -340,6 +340,7 @@ export class FileSystemStateRepository<T> implements IStateRepository<T> {
   }
 
   private fsyncDirectory(): void {
+    if (process.platform === 'win32') return;
     const fd = fs.openSync(this.dirPath, fs.constants.O_RDONLY);
     try {
       fs.fsyncSync(fd);

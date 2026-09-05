@@ -17,7 +17,21 @@ describe('ExecutionContainment', () => {
       loadRuntimeTrustContext({ FORGEWRIGHT_WORKSPACE: root }),
     );
     expect(containment.admit('fw_get_current_phase', {}).allowed).toBe(true);
+    for (const toolName of [
+      'fw_get_product_intent',
+      'fw_initialize_product_intent',
+      'fw_apply_product_delta',
+      'fw_get_product_goal_projection',
+      'fw_evaluate_product_clarification',
+    ]) {
+      expect(containment.admit(toolName, {}).allowed).toBe(true);
+    }
+    expect(containment.admit('fw_get_product_intent_typo', {}).code).toBe(
+      'CONTAINMENT_UNKNOWN_TOOL',
+    );
     expect(containment.admit('unknown', {}).code).toBe('CONTAINMENT_UNKNOWN_TOOL');
+    expect(containment.admit('Bash', {}).code).toBe('CONTAINMENT_UNKNOWN_TOOL');
+    expect(containment.admit('WebFetch', {}).code).toBe('CONTAINMENT_UNKNOWN_TOOL');
     expect(containment.admit('fw_load_skill_overlay', { name: 'software-engineer' }).allowed).toBe(
       true,
     );

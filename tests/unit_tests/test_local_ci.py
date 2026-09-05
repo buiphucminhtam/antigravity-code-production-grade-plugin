@@ -43,6 +43,32 @@ def test_local_ci_exposes_provider_neutral_modes() -> None:
     assert module.PRECOMMIT_PYTHON_UNIT_TIMEOUT_SECONDS == 1800
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Git Bash discovery is Windows-specific")
+def test_local_ci_discovers_git_bash_outside_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module = _module()
+    program_files = tmp_path / "Program Files"
+    git_bash = program_files / "Git" / "bin" / "bash.exe"
+    git_bash.parent.mkdir(parents=True)
+    git_bash.write_bytes(b"fixture")
+
+    monkeypatch.setenv("ProgramFiles", str(program_files))
+    monkeypatch.delenv("ProgramW6432", raising=False)
+    monkeypatch.delenv("ProgramFiles(x86)", raising=False)
+    monkeypatch.delenv("LOCALAPPDATA", raising=False)
+    monkeypatch.delenv("FORGEWRIGHT_BASH", raising=False)
+    original_which = module._which
+    monkeypatch.setattr(
+        module,
+        "_which",
+        lambda name: None if name in {"bash", "git"} else original_which(name),
+    )
+
+    runner = module.LocalCI(dry_run=True, keep_going=False, timeout=1, base_ref=None)
+    assert runner.bash == str(git_bash)
+
+
 def test_hosted_ci_is_not_a_canonical_runtime_dependency() -> None:
     assert not (ROOT / ".github" / "workflows").exists()
     assert not (ROOT / ".github" / "actions").exists()

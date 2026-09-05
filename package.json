@@ -22,6 +22,8 @@
     "test:golden": "node tests/golden/forge-init-onboard.test.mjs",
     "verify:product-truth": "python3 scripts/ci/verify-product-truth.py",
     "verify:roadmap": "python3 scripts/ci/verify-roadmap-completion.py",
+    "verify:product-factory": "python3 scripts/ci/verify-product-factory.py",
+    "verify:web-reference": "npm --prefix mcp run build && npm --prefix product-factory/web-reference test",
     "ci:bootstrap": "node scripts/ci/local-ci.mjs bootstrap",
     "ci:local": "node scripts/ci/local-ci.mjs all",
     "ci:quick": "node scripts/ci/local-ci.mjs quick",

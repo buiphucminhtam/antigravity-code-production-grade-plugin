@@ -5,6 +5,8 @@ import subprocess
 import tomllib
 from pathlib import Path
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[2]
 GIT_LOCAL_ENV_KEYS = (
@@ -16,6 +18,38 @@ GIT_LOCAL_ENV_KEYS = (
     "GIT_WORK_TREE",
 )
 RULE_CONTEXT_HOOK = ROOT / "scripts" / "lite" / "rule-context-hook.py"
+
+
+def find_bash() -> str:
+    discovered = shutil.which("bash")
+    if discovered:
+        return discovered
+    if os.name == "nt":
+        for base in dict.fromkeys(
+            filter(
+                None,
+                (
+                    os.environ.get("ProgramFiles"),
+                    os.environ.get("ProgramW6432"),
+                    os.environ.get("ProgramFiles(x86)"),
+                ),
+            )
+        ):
+            candidate = Path(base) / "Git" / "bin" / "bash.exe"
+            if candidate.is_file():
+                return str(candidate)
+    return "/bin/bash" if os.name != "nt" else "bash"
+
+
+BASH = find_bash()
+
+
+def run_bash_command(
+    command: str, **kwargs: object
+) -> subprocess.CompletedProcess[str]:
+    if os.name == "nt":
+        return subprocess.run([BASH, "-c", command], **kwargs)
+    return subprocess.run(command, shell=True, executable=BASH, **kwargs)
 
 
 def load_json(relative_path: str) -> dict:
@@ -194,8 +228,21 @@ def test_checked_in_codex_stop_hook_uses_native_schema() -> None:
     config = tomllib.loads((ROOT / ".codex/config.toml").read_text(encoding="utf-8"))
 
     assert isinstance(config["hooks"]["Stop"], list)
-    commands = hook_commands(config["hooks"]["Stop"])
-    assert any("stop-gate.sh --platform CODEX" in command for command in commands)
+    stop_hooks = [
+        hook
+        for group in config["hooks"]["Stop"]
+        for hook in group.get("hooks", [])
+        if hook.get("type") == "command"
+    ]
+    assert any(
+        "stop-gate.sh --platform CODEX" in hook.get("command", "")
+        for hook in stop_hooks
+    )
+    assert len(stop_hooks) == 1
+    windows_command = stop_hooks[0]["command_windows"]
+    assert "codex-hook-windows.ps1" in windows_command
+    assert "-EventName Stop" in windows_command
+    assert "bash" not in windows_command.lower()
 
 
 def test_checked_in_codex_lifecycle_context_hooks_are_bounded_and_observe_only() -> (
@@ -219,6 +266,52 @@ def test_checked_in_codex_lifecycle_context_hooks_are_bounded_and_observe_only()
 
     stop_commands = hook_commands(config["hooks"]["Stop"])
     assert any("stop-gate.sh --platform CODEX" in command for command in stop_commands)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="native Windows hook commands")
+def test_checked_in_codex_windows_hooks_run_from_subdirectory(tmp_path: Path) -> None:
+    config = tomllib.loads((ROOT / ".codex/config.toml").read_text(encoding="utf-8"))
+    environment = clean_git_environment()
+    environment.update(
+        {
+            "FORGEWRIGHT_WORKSPACE": str(tmp_path),
+            "FORGEWRIGHT_STOP_STATE_DIR": str(tmp_path / "stop-state"),
+            "FORGEWRIGHT_DOCS_CONTINUITY_STATE_DIR": str(tmp_path / "continuity-state"),
+        }
+    )
+    cases = (
+        ("SessionStart", {"source": "startup"}),
+        ("SubagentStart", {"agent_type": "default"}),
+        ("Stop", {"last_assistant_message": "No verification claim."}),
+    )
+
+    for event, event_payload in cases:
+        hooks = [
+            hook
+            for group in config["hooks"][event]
+            for hook in group.get("hooks", [])
+            if hook.get("type") == "command"
+        ]
+        assert len(hooks) == 1
+        command = hooks[0]["command_windows"]
+        assert "bash" not in command.lower()
+        result = subprocess.run(
+            command,
+            cwd=ROOT / "kernel",
+            env=environment,
+            input=json.dumps({"hook_event_name": event, **event_payload}),
+            text=True,
+            capture_output=True,
+            shell=True,
+            timeout=20,
+            check=False,
+        )
+
+        assert result.returncode == 0, (event, result.stderr)
+        payload = json.loads(result.stdout)
+        assert payload["continue"] is True
+        if event != "Stop":
+            assert payload["hookSpecificOutput"]["hookEventName"] == event
 
 
 def test_checked_in_claude_lifecycle_context_hooks_are_bounded_and_observe_only() -> (
@@ -394,7 +487,7 @@ def test_lifecycle_context_hooks_resolve_git_root_from_subdirectory() -> None:
     environment["FORGEWRIGHT_RULE_HOOK_MODE"] = "observe"
     nested_workspace = ROOT / "kernel"
     for platform, event, command in lifecycle_context_hook_specs():
-        result = subprocess.run(
+        result = run_bash_command(
             command,
             cwd=nested_workspace,
             env=environment,
@@ -402,8 +495,6 @@ def test_lifecycle_context_hooks_resolve_git_root_from_subdirectory() -> None:
             text=True,
             capture_output=True,
             check=False,
-            shell=True,
-            executable="/bin/bash",
         )
         assert result.returncode == 0, (platform, event, result.stderr)
         payload = json.loads(result.stdout)
@@ -420,7 +511,7 @@ def test_lifecycle_context_hooks_fail_open_when_script_is_missing(
     environment = clean_git_environment()
     environment["FORGEWRIGHT_RULE_HOOK_MODE"] = "observe"
     for platform, event, command in lifecycle_context_hook_specs():
-        result = subprocess.run(
+        result = run_bash_command(
             command,
             cwd=tmp_path,
             env=environment,
@@ -428,8 +519,6 @@ def test_lifecycle_context_hooks_fail_open_when_script_is_missing(
             text=True,
             capture_output=True,
             check=False,
-            shell=True,
-            executable="/bin/bash",
         )
         assert result.returncode == 0, (platform, event, result.stderr)
         assert result.stdout == "", (platform, event, result.stdout)
@@ -439,7 +528,7 @@ def test_lifecycle_context_hooks_fail_open_without_a_git_root(tmp_path: Path) ->
     environment = clean_git_environment()
     environment["FORGEWRIGHT_RULE_HOOK_MODE"] = "observe"
     for platform, event, command in lifecycle_context_hook_specs():
-        result = subprocess.run(
+        result = run_bash_command(
             command,
             cwd=tmp_path,
             env=environment,
@@ -447,8 +536,6 @@ def test_lifecycle_context_hooks_fail_open_without_a_git_root(tmp_path: Path) ->
             text=True,
             capture_output=True,
             check=False,
-            shell=True,
-            executable="/bin/bash",
         )
         assert result.returncode == 0, (platform, event, result.stderr)
         assert result.stdout == "", (platform, event, result.stdout)
@@ -459,14 +546,17 @@ def test_lifecycle_context_hooks_fail_open_when_interpreter_is_missing(
 ) -> None:
     command_path = tmp_path / "bin"
     command_path.mkdir()
-    for command in ("bash", "git"):
-        os.symlink(shutil.which(command), command_path / command)
 
     environment = clean_git_environment()
     environment["FORGEWRIGHT_RULE_HOOK_MODE"] = "observe"
-    environment["PATH"] = str(command_path)
+    if os.name == "nt":
+        environment["PATH"] = str(Path(BASH).parent)
+    else:
+        for command in ("bash", "git"):
+            os.symlink(shutil.which(command), command_path / command)
+        environment["PATH"] = str(command_path)
     for platform, event, command in lifecycle_context_hook_specs():
-        result = subprocess.run(
+        result = run_bash_command(
             command,
             cwd=ROOT / "kernel",
             env=environment,
@@ -474,8 +564,6 @@ def test_lifecycle_context_hooks_fail_open_when_interpreter_is_missing(
             text=True,
             capture_output=True,
             check=False,
-            shell=True,
-            executable="/bin/bash",
         )
         assert result.returncode == 0, (platform, event, result.stderr)
         assert result.stdout == "", (platform, event, result.stdout)
@@ -516,7 +604,7 @@ command = "bash scripts/lite/stop-gate.sh --platform CODEX"
         }
     )
     result = subprocess.run(
-        ["bash", str(global_gate), "--platform", "CODEX"],
+        [BASH, str(global_gate), "--platform", "CODEX"],
         cwd=tmp_path,
         env=env,
         input=payload,
@@ -563,7 +651,7 @@ def run_stop_gate(
     env = clean_git_environment()
     env["FORGEWRIGHT_RULE_LEDGER"] = str(tmp_path / "rule-ledger.jsonl")
     return subprocess.run(
-        ["bash", str(ROOT / "scripts/lite/stop-gate.sh"), "--platform", platform],
+        [BASH, str(ROOT / "scripts/lite/stop-gate.sh"), "--platform", platform],
         cwd=tmp_path,
         env=env,
         input=payload,
@@ -711,7 +799,7 @@ PYEOF
     env = clean_git_environment()
     env["FORGEWRIGHT_RULE_LEDGER"] = str(workspace / "rule-ledger.jsonl")
     result = subprocess.run(
-        ["bash", str(scripts_dir / "stop-gate.sh"), "--platform", "CODEX"],
+        [BASH, str(scripts_dir / "stop-gate.sh"), "--platform", "CODEX"],
         cwd=workspace,
         env=env,
         input=payload,
@@ -759,13 +847,34 @@ def run_gemini_before_tool(
 ) -> subprocess.CompletedProcess[str]:
     write_policy(tmp_path, malformed=malformed_policy)
     return subprocess.run(
-        ["bash", str(ROOT / "scripts/lite/gemini-before-tool-gate.sh")],
+        [BASH, str(ROOT / "scripts/lite/gemini-before-tool-gate.sh")],
         cwd=tmp_path,
         input=json.dumps(payload),
         text=True,
         capture_output=True,
         check=False,
     )
+
+
+def test_gemini_before_tool_accepts_crlf_policy(tmp_path: Path) -> None:
+    write_policy(tmp_path)
+    policy = tmp_path / ".forgewright" / "execution-policy.yaml"
+    normalized = policy.read_bytes().replace(b"\r\n", b"\n")
+    policy.write_bytes(normalized.replace(b"\n", b"\r\n"))
+
+    result = subprocess.run(
+        [BASH, str(ROOT / "scripts/lite/gemini-before-tool-gate.sh")],
+        cwd=tmp_path,
+        input=json.dumps(
+            {"tool_name": "run_shell_command", "tool_input": {"command": "echo safe"}}
+        ),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert json.loads(result.stdout) == {}
 
 
 def test_gemini_before_tool_allows_safe_command_with_json(tmp_path: Path) -> None:
@@ -817,7 +926,7 @@ def run_antigravity_pre_tool(
     write_policy(tmp_path, malformed=malformed_policy)
     stdin = payload if isinstance(payload, str) else json.dumps(payload)
     return subprocess.run(
-        ["bash", str(ROOT / "scripts/lite/antigravity-pre-tool-gate.sh")],
+        [BASH, str(ROOT / "scripts/lite/antigravity-pre-tool-gate.sh")],
         cwd=tmp_path,
         input=stdin,
         text=True,
@@ -867,7 +976,7 @@ def test_antigravity_pre_tool_uses_cwd_when_runtime_omits_workspace_paths(
     }
 
     result = subprocess.run(
-        ["bash", str(ROOT / "scripts/lite/antigravity-pre-tool-gate.sh")],
+        [BASH, str(ROOT / "scripts/lite/antigravity-pre-tool-gate.sh")],
         cwd=hook_cwd,
         input=json.dumps(payload),
         text=True,
@@ -891,7 +1000,7 @@ def test_antigravity_pre_tool_uses_delegated_workspace_context(
     }
 
     result = subprocess.run(
-        ["bash", str(ROOT / "scripts/lite/antigravity-pre-tool-gate.sh")],
+        [BASH, str(ROOT / "scripts/lite/antigravity-pre-tool-gate.sh")],
         cwd=hook_cwd,
         env={**os.environ, "FORGEWRIGHT_WORKSPACE": str(tmp_path)},
         input=json.dumps(payload),
@@ -940,7 +1049,7 @@ def test_antigravity_pre_tool_maps_policy_warning_to_force_ask(tmp_path: Path) -
     )
     payload = antigravity_payload(tmp_path, {"cmd": "rm -rf /tmp/example"})
     result = subprocess.run(
-        ["bash", str(ROOT / "scripts/lite/antigravity-pre-tool-gate.sh")],
+        [BASH, str(ROOT / "scripts/lite/antigravity-pre-tool-gate.sh")],
         cwd=tmp_path,
         input=json.dumps(payload),
         text=True,

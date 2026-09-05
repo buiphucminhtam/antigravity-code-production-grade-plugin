@@ -1,6 +1,8 @@
 import asyncio
 import importlib.util
 import json
+import os
+import subprocess
 from contextlib import asynccontextmanager
 from dataclasses import replace
 from pathlib import Path
@@ -109,13 +111,28 @@ def test_filesystem_containment_rejects_escapes_symlinks_and_unknown_tools(
     workspace.mkdir()
     outside = tmp_path / "outside"
     outside.mkdir()
-    (workspace / "linked").symlink_to(outside, target_is_directory=True)
+    linked = workspace / "linked"
+    if os.name == "nt":
+        subprocess.run(
+            ["cmd", "/d", "/c", "mklink", "/J", str(linked), str(outside)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    else:
+        linked.symlink_to(outside, target_is_directory=True)
 
     assert "escapes" in orchestrator.validate_filesystem_tool_call(
         "read_file", {"path": "../outside/secret"}, str(workspace)
     )
-    assert "symlink" in orchestrator.validate_filesystem_tool_call(
+    linked_rejection = orchestrator.validate_filesystem_tool_call(
         "read_file", {"path": "linked/secret"}, str(workspace)
+    )
+    assert linked_rejection is not None
+    assert (
+        "symlink" in linked_rejection
+        if os.name != "nt"
+        else "invalid" in linked_rejection
     )
     assert "allowlisted" in orchestrator.validate_filesystem_tool_call(
         "delete_file", {"path": "safe"}, str(workspace)
