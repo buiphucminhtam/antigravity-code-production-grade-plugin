@@ -59,6 +59,11 @@ _FINGERPRINT_RUNTIME_DIRS = frozenset(
         ".ruff_cache",
     }
 )
+# Reproducible dependency caches may contain tens of thousands of ignored files.
+# They are excluded only from the ignored-file scan; explicitly tracked files
+# under these directories remain part of the exact worktree fingerprint.
+_FINGERPRINT_IGNORED_DEPENDENCY_DIR_NAMES = frozenset({"node_modules"})
+
 _FINGERPRINT_RUNTIME_FILES = frozenset(
     {
         ".forgewright/asip-metrics.json",
@@ -751,6 +756,19 @@ def _ignored_verify_path(path: str) -> bool:
     )
 
 
+def _ignored_dependency_cache_path(path: str) -> bool:
+    """Return whether an ignored path lives in a reproducible dependency cache."""
+
+    normalized = path.replace("\\", "/")
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+    return any(
+        part in _FINGERPRINT_IGNORED_DEPENDENCY_DIR_NAMES
+        for part in normalized.split("/")
+        if part
+    )
+
+
 def _actual_record(workspace: Path, relative: str) -> str:
     path = workspace / relative
     try:
@@ -900,6 +918,11 @@ def worktree_fingerprint(
             workspace,
             ["ls-files", "--others", "--ignored", "--exclude-standard", "-z"],
         )
+        ignored = [
+            relative
+            for relative in ignored
+            if not _ignored_dependency_cache_path(relative)
+        ]
         records = [f"HEAD|{head}", *sorted(index_records)]
         for relative in sorted(set(tracked)):
             if path_ignored(relative):
@@ -1004,6 +1027,123 @@ def link_values(ev: dict[str, Any]) -> dict[str, str]:
     return dict(links) if isinstance(links, dict) else {}
 
 
+def _windows_has_reparse_component(root: Path, path: Path) -> bool:
+    """Reject Windows symlinks, junctions, and other reparse-point components."""
+
+    try:
+        root_lexical = Path(os.path.abspath(root))
+        root_real = root.resolve()
+        candidate = path if path.is_absolute() else root_lexical / path
+        candidate_lexical = Path(os.path.abspath(candidate))
+        try:
+            relative = candidate_lexical.relative_to(root_lexical)
+            component_root = root_lexical
+        except ValueError:
+            candidate_lexical = candidate_lexical.resolve(strict=False)
+            relative = candidate_lexical.relative_to(root_real)
+            component_root = root_real
+    except (OSError, RuntimeError, ValueError):
+        return True
+    current = component_root
+    for component in relative.parts:
+        current /= component
+        try:
+            info = current.lstat()
+        except FileNotFoundError:
+            continue
+        except OSError:
+            return True
+        if stat.S_ISLNK(info.st_mode) or bool(
+            getattr(info, "st_file_attributes", 0)
+            & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+        ):
+            return True
+    try:
+        candidate_lexical.resolve(strict=False).relative_to(root_real)
+    except (OSError, RuntimeError, ValueError):
+        return True
+    return False
+
+
+def _read_evidence_bytes_windows(
+    root: Path, candidate: Path, *, max_bytes: int
+) -> bytes:
+    """Windows bounded read with reparse and identity checks around the handle."""
+
+    if max_bytes < 0 or _windows_has_reparse_component(root, candidate):
+        raise ValueError("evidence must be a readable regular non-symlink file")
+    try:
+        initial = candidate.lstat()
+        if (
+            not stat.S_ISREG(initial.st_mode)
+            or initial.st_size > max_bytes
+            or bool(
+                getattr(initial, "st_file_attributes", 0)
+                & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+            )
+        ):
+            raise ValueError("evidence must be a bounded regular non-symlink file")
+        descriptor = os.open(
+            candidate,
+            os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_CLOEXEC", 0),
+        )
+    except OSError as error:
+        raise ValueError(
+            "evidence must be a readable regular non-symlink file"
+        ) from error
+    try:
+        opened = os.fstat(descriptor)
+        identity = (opened.st_dev, opened.st_ino)
+        if (
+            not stat.S_ISREG(opened.st_mode)
+            or opened.st_size > max_bytes
+            or identity != (initial.st_dev, initial.st_ino)
+            or bool(
+                getattr(opened, "st_file_attributes", 0)
+                & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+            )
+        ):
+            raise ValueError("evidence changed or became unsafe while opening")
+        chunks: list[bytes] = []
+        remaining = max_bytes + 1
+        while remaining > 0:
+            chunk = os.read(descriptor, min(64 * 1024, remaining))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        payload = b"".join(chunks)
+        if len(payload) > max_bytes:
+            raise ValueError("evidence exceeds the bounded size limit")
+        final = os.fstat(descriptor)
+        current = candidate.lstat()
+        if (
+            (final.st_dev, final.st_ino) != identity
+            or final.st_size != opened.st_size
+            or final.st_mtime_ns != opened.st_mtime_ns
+            or not stat.S_ISREG(current.st_mode)
+            or (current.st_dev, current.st_ino) != identity
+            or current.st_size != final.st_size
+            or current.st_mtime_ns != final.st_mtime_ns
+            or bool(
+                getattr(current, "st_file_attributes", 0)
+                & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+            )
+            or _windows_has_reparse_component(root, candidate)
+        ):
+            raise ValueError("evidence changed or became unsafe while reading")
+        return payload
+    except OSError as error:
+        raise ValueError(
+            "evidence must be a readable regular non-symlink file"
+        ) from error
+    finally:
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+
+
 def read_evidence_bytes(
     project_root: Path,
     path: Path | str,
@@ -1028,8 +1168,14 @@ def read_evidence_bytes(
         or relative.is_absolute()
         or "\0" in str(relative)
         or any(part in {"", ".", ".."} for part in relative.parts)
+        or (os.name == "nt" and any(":" in part for part in relative.parts))
     ):
         raise ValueError("evidence path must be a safe relative path")
+
+    if os.name == "nt":
+        return _read_evidence_bytes_windows(
+            root, verify_dir / relative, max_bytes=max_bytes
+        )
 
     directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
     nofollow = getattr(os, "O_NOFOLLOW", 0)

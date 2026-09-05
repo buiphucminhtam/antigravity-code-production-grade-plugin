@@ -14,19 +14,19 @@ SELF_CHECK_PATH = "skills/_shared/protocols/self-check.md"
 
 @pytest.fixture
 def solve_content():
-    with open(SOLVE_PATH, "r") as f:
+    with open(SOLVE_PATH, "r", encoding="utf-8") as f:
         return f.read()
 
 
 @pytest.fixture
 def verify_content():
-    with open(VERIFY_PATH, "r") as f:
+    with open(VERIFY_PATH, "r", encoding="utf-8") as f:
         return f.read()
 
 
 @pytest.fixture
 def selfcheck_content():
-    with open(SELF_CHECK_PATH, "r") as f:
+    with open(SELF_CHECK_PATH, "r", encoding="utf-8") as f:
         return f.read()
 
 

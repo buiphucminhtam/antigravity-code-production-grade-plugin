@@ -50,7 +50,8 @@ function policySnapshot(workspace: string) {
     throw new Error('EXECUTION_POLICY_INVALID');
   if (typeof process.getuid === 'function' && info.uid !== process.getuid())
     throw new Error('EXECUTION_POLICY_INVALID');
-  if ((info.mode & 0o022) !== 0) throw new Error('EXECUTION_POLICY_INVALID');
+  if (process.platform !== 'win32' && (info.mode & 0o022) !== 0)
+    throw new Error('EXECUTION_POLICY_INVALID');
   return { path, identity: `${info.dev}:${info.ino}`, digest: digest(readFileSync(path)) };
 }
 

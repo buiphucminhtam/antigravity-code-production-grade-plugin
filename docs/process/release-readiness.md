@@ -14,6 +14,8 @@ Before any stable release is published, the following criteria must be met and c
 ## 2. Installation and Portability
 - [ ] Clean-install tests succeed from a new, relocated path (no machine-specific absolute dependency paths).
 - [ ] MCP package starts successfully in a clean, relocated environment.
+- [ ] The installed Stop bundle contains adjacent `stop-gate.sh`, `stop_gate.py`, `verify_gate.py`, `evidence_common.py`, `continuity_check.py`, and `windows_secure_io.py`; doctor repair restores missing or drifted members.
+- [ ] An actual installed Stop entrypoint smoke succeeds on every claimed OS/interpreter; configuration-schema checks alone are insufficient. Claimed Windows support requires observed Git Bash plus native Windows Python 3.11+ evidence from the release tree.
 
 ## 3. Documentation and Experience
 - [ ] README quick-start smoke test runs successfully from a clean clone.

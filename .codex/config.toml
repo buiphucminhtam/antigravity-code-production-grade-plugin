@@ -10,6 +10,7 @@ matcher = "startup|resume|clear|compact"
 [[hooks.SessionStart.hooks]]
 type = "command"
 command = "bash -c 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; [ -n \"$root\" ] || exit 0; command -v python3 >/dev/null 2>&1 || exit 0; script=\"$root/scripts/lite/rule-context-hook.py\"; [ -f \"$script\" ] || exit 0; python3 \"$script\" --workspace \"$root\" --platform CODEX --event SessionStart || true'"
+command_windows = '''powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$root = (& git rev-parse --show-toplevel 2>$null | Select-Object -First 1); if (-not $root) { exit 0 }; & (Join-Path $root 'scripts/lite/codex-hook-windows.ps1') -EventName SessionStart; exit $LASTEXITCODE"'''
 timeout = 2
 
 [[hooks.SubagentStart]]
@@ -17,6 +18,7 @@ matcher = "*"
 [[hooks.SubagentStart.hooks]]
 type = "command"
 command = "bash -c 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; [ -n \"$root\" ] || exit 0; command -v python3 >/dev/null 2>&1 || exit 0; script=\"$root/scripts/lite/rule-context-hook.py\"; [ -f \"$script\" ] || exit 0; python3 \"$script\" --workspace \"$root\" --platform CODEX --event SubagentStart || true'"
+command_windows = '''powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$root = (& git rev-parse --show-toplevel 2>$null | Select-Object -First 1); if (-not $root) { exit 0 }; & (Join-Path $root 'scripts/lite/codex-hook-windows.ps1') -EventName SubagentStart; exit $LASTEXITCODE"'''
 timeout = 2
 
 [[hooks.Stop]]
@@ -24,3 +26,4 @@ matcher = "*"
 [[hooks.Stop.hooks]]
 type = "command"
 command = "bash scripts/lite/stop-gate.sh --platform CODEX"
+command_windows = '''powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$root = (& git rev-parse --show-toplevel 2>$null | Select-Object -First 1); if (-not $root) { Write-Error 'Forgewright project root is unavailable.'; exit 1 }; & (Join-Path $root 'scripts/lite/codex-hook-windows.ps1') -EventName Stop; exit $LASTEXITCODE"'''

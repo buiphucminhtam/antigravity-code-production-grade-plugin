@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -165,13 +166,14 @@ def test_rejects_missing_extra_reordered_tampered_secret_oversize_and_symlink(
     with pytest.raises(JournalError, match="corrupt"):
         journal.read()
 
-    outside = tmp_path / "outside.jsonl"
-    outside.write_text("{}\n", encoding="utf-8")
-    symlink_dir = tmp_path / "symlink"
-    symlink_dir.mkdir()
-    (symlink_dir / "loop-b.jsonl").symlink_to(outside)
-    with pytest.raises(JournalError, match="symlink"):
-        Journal(symlink_dir, "loop-b")
+    if os.name != "nt":
+        outside = tmp_path / "outside.jsonl"
+        outside.write_text("{}\n", encoding="utf-8")
+        symlink_dir = tmp_path / "symlink"
+        symlink_dir.mkdir()
+        (symlink_dir / "loop-b.jsonl").symlink_to(outside)
+        with pytest.raises(JournalError, match="symlink"):
+            Journal(symlink_dir, "loop-b")
 
 
 def test_exact_schema_state_machine_line_limit_and_whole_loop_lease(tmp_path: Path):

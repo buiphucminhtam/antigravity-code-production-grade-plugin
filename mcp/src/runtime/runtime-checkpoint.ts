@@ -718,11 +718,13 @@ export class RuntimeCheckpointStore {
     try {
       renameSync(temporary, path);
       chmodSync(path, 0o600);
-      const directory = openSync(this.root, constants.O_RDONLY);
-      try {
-        fsyncSync(directory);
-      } finally {
-        closeSync(directory);
+      if (process.platform !== 'win32') {
+        const directory = openSync(this.root, constants.O_RDONLY);
+        try {
+          fsyncSync(directory);
+        } finally {
+          closeSync(directory);
+        }
       }
     } finally {
       if (existsSync(temporary) && !lstatSync(temporary).isSymbolicLink()) unlinkSync(temporary);

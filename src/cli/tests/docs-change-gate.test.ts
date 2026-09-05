@@ -281,6 +281,33 @@ describe("Docs Hub continuity gate", () => {
     ]);
   });
 
+  it("copies staged Git snapshots without local hardlinks", () => {
+    const root = createProject("staged snapshot O'Connor");
+    const sourcePath = "src/with space and ' quote.ts";
+    writeFileSync(join(root, sourcePath), "export const quoted = true;\n");
+    updateState(root, "Staged snapshot copy semantics.");
+    git(root, "add", sourcePath, "docs/project-state.json");
+
+    const traceRoot = mkdtempSync(join(tmpdir(), "forgewright-git-trace-"));
+    roots.push(traceRoot);
+    const tracePath = join(traceRoot, "git-trace.log");
+    const previousTrace = process.env.GIT_TRACE;
+    process.env.GIT_TRACE = tracePath;
+    try {
+      expect(runDocsGate(root, { staged: true }).status).toBe("pass");
+    } finally {
+      if (previousTrace === undefined) {
+        delete process.env.GIT_TRACE;
+      } else {
+        process.env.GIT_TRACE = previousTrace;
+      }
+    }
+
+    const trace = readFileSync(tracePath, "utf8");
+    expect(trace).toContain("clone");
+    expect(trace).toContain("--no-hardlinks");
+  });
+
   it("validates staged and base-ref content from their selected Git snapshots", () => {
     const stagedRoot = createProject("staged-snapshot");
     writeFileSync(

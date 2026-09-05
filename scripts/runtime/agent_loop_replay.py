@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import fcntl
 import hashlib
 import json
 import os
@@ -12,6 +11,11 @@ import stat
 import tempfile
 from pathlib import Path
 from typing import Any, TextIO
+
+if os.name == "nt":
+    import msvcrt
+else:
+    import fcntl
 
 SCHEMA = "forgewright-agent-loop/v1"
 FIXTURE_VERSION = "1"
@@ -499,6 +503,30 @@ def _user_symlink_component(path: Path) -> bool:
     return False
 
 
+def _lock_stream(stream: TextIO, *, blocking: bool) -> None:
+    if os.name == "nt":
+        stream.seek(0, os.SEEK_END)
+        if stream.tell() == 0:
+            stream.write("\0")
+            stream.flush()
+        stream.seek(0)
+        try:
+            msvcrt.locking(
+                stream.fileno(),
+                msvcrt.LK_LOCK if blocking else msvcrt.LK_NBLCK,
+                1,
+            )
+        except OSError as error:
+            if not blocking:
+                raise BlockingIOError(str(error)) from error
+            raise
+        return
+    fcntl.flock(
+        stream.fileno(),
+        fcntl.LOCK_EX if blocking else fcntl.LOCK_EX | fcntl.LOCK_NB,
+    )
+
+
 class Journal:
     def __init__(self, directory: Path, loop_id: str):
         if not SAFE_ID.fullmatch(loop_id):
@@ -530,7 +558,7 @@ class Journal:
             0o600,
         )
         with os.fdopen(descriptor, "a+", encoding="utf-8") as lock:
-            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            _lock_stream(lock, blocking=True)
             return self._append_locked(kind, payload)
 
     def begin_record(self) -> None:
@@ -543,7 +571,7 @@ class Journal:
         )
         lock = os.fdopen(descriptor, "a+", encoding="utf-8")
         try:
-            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            _lock_stream(lock, blocking=False)
             if self.read():
                 raise JournalError("journal_not_fresh")
             self._record_lock = lock
@@ -584,19 +612,27 @@ class Journal:
             raise JournalError("event_size_limit")
         fd, temporary = tempfile.mkstemp(prefix=".journal-", dir=self.directory)
         try:
-            os.fchmod(fd, 0o600)
-            with os.fdopen(fd, "wb") as out:
+            if hasattr(os, "fchmod"):
+                os.fchmod(fd, 0o600)
+            else:
+                os.chmod(temporary, 0o600)
+            out = os.fdopen(fd, "wb")
+            fd = -1
+            with out:
                 out.write(existing + encoded)
                 out.flush()
                 os.fsync(out.fileno())
             os.replace(temporary, self.path)
-            directory_fd = os.open(self.directory, os.O_RDONLY)
-            try:
-                os.fsync(directory_fd)
-            finally:
-                os.close(directory_fd)
+            if os.name != "nt":
+                directory_fd = os.open(self.directory, os.O_RDONLY)
+                try:
+                    os.fsync(directory_fd)
+                finally:
+                    os.close(directory_fd)
             return event
         finally:
+            if fd >= 0:
+                os.close(fd)
             Path(temporary).unlink(missing_ok=True)
 
     def read(self) -> list[dict[str, Any]]:

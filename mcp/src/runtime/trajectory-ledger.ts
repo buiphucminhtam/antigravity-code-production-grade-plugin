@@ -1356,6 +1356,7 @@ export class TrajectoryLedger {
   }
 
   private async syncDirectory(): Promise<void> {
+    if (process.platform === 'win32') return;
     const handle = await open(this.directory, constants.O_RDONLY);
     try {
       await handle.sync();

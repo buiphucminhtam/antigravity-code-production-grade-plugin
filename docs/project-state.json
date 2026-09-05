@@ -746,8 +746,8 @@
           "id": "bounded-stop-decision",
           "name": "Continue without retry storm",
           "actor": "Canonical Stop gate",
-          "inputs": ["Continuity mode and status", "Existing verification result"],
-          "outputs": ["Normal Stop validation", "At most one stale-receipt refresh request", "Allow plus UNVERIFIED on second pass or infrastructure error"],
+          "inputs": ["Continuity mode and status", "Existing verification result", "Installed Stop runtime dependency closure and platform lock backend"],
+          "outputs": ["Equivalent bounded decision on POSIX and native Windows", "Normal Stop validation", "At most one stale-receipt refresh request", "Allow plus UNVERIFIED on second pass or infrastructure error"],
           "references": [
             {
               "path": "docs/guides/docs-hub.md",
@@ -1075,7 +1075,7 @@
     "health": "on_track",
     "phase": "DEFINE",
     "summary": "The Product Factory upgrade is now the primary active program. PF0 is in progress: reset the north star from verified engineering task to verified product outcome, audit conflicting/unsupported instructions, then build Product Intent Graph, cross-domain Environment ACI, Product Outcome Verification, ForgeBench, evidence-gated learning, secure disposable execution, and end-to-end web/app/game reference lanes. Existing engineering evidence-v2, requirement-locked tests, visual grounding, GitNexus, runtime lifecycle, and provider-neutral routing remain mandatory substrate and must not be weakened.",
-    "updated_at": "2026-09-04T07:43:16+07:00",
+    "updated_at": "2026-09-04T16:57:51+07:00",
     "blockers": [
       {
         "id": "live-provider-client-migration",
@@ -1094,6 +1094,12 @@
         "title": "Cursor CLI is unavailable locally and Antigravity lacks a live first-party hook validator; these adapters currently rely on native-schema review plus deterministic shell and payload canaries.",
         "owner": "Runtime maintainers",
         "mitigation": "Keep both adapters fail-open and in observe mode, preserve their static contract tests, and run a live host canary before enabling any stronger behavior."
+      },
+      {
+        "id": "windows-stop-host-coverage",
+        "title": "There is no always-on Windows CI runner, so native Windows Stop coverage depends on explicit local Git Bash and native CPython evidence.",
+        "owner": "Runtime maintainers",
+        "mitigation": "Keep dependency-closure, platform-lock, reparse-point, and bounded-retry tests in required local checks; require an installed-runtime smoke under Git Bash with native Windows Python 3.11 or newer before each claimed Windows release."
       },
       {
         "id": "trajectory-restart-recovery",

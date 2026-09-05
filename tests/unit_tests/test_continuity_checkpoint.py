@@ -5,10 +5,34 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[2]
 CONTINUITY = ROOT / "scripts" / "memory" / "continuity.py"
 MEMORY_MIDDLEWARE = ROOT / "scripts" / "memory" / "memory-middleware.py"
+
+
+def _symlink_or_skip(
+    link: Path, target: Path, *, target_is_directory: bool = False
+) -> None:
+    try:
+        link.symlink_to(target, target_is_directory=target_is_directory)
+    except OSError as error:
+        if os.name == "nt" and getattr(error, "winerror", None) == 1314:
+            pytest.skip("Windows symlink privilege is unavailable")
+        raise
+
+
+def _windows_junction(link: Path, target: Path) -> None:
+    created = subprocess.run(
+        ["cmd.exe", "/d", "/c", "mklink", "/J", str(link), str(target)],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    assert created.returncode == 0, created.stderr or created.stdout
 
 
 def _git_workspace(path: Path) -> None:
@@ -58,6 +82,66 @@ def _payload() -> dict:
         "next_action": "Run the exact GREEN verifier",
         "owned_process_leases": [],
     }
+
+
+@pytest.mark.skipif(os.name != "nt", reason="native Windows lock backend")
+def test_concurrent_checkpoint_writers_preserve_one_chain(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _git_workspace(workspace)
+    state_root = tmp_path / "continuity-state"
+    environment = {
+        **os.environ,
+        "FORGEWRIGHT_WORKSPACE": str(workspace),
+        "FORGEWRIGHT_CONTINUITY_ROOT": str(state_root),
+    }
+    processes = [
+        subprocess.Popen(
+            [
+                sys.executable,
+                str(CONTINUITY),
+                "checkpoint",
+                "--session",
+                "concurrent-session",
+                "--turn",
+                f"turn-{index}",
+                "--reason",
+                "handoff",
+            ],
+            cwd=workspace,
+            env=environment,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        for index in range(6)
+    ]
+    results = [
+        process.communicate(json.dumps(_payload()), timeout=30) for process in processes
+    ]
+
+    assert all(process.returncode == 0 for process in processes), results
+    checkpoints = [json.loads(stdout) for stdout, _stderr in results]
+    assert sorted(checkpoint["sequence"] for checkpoint in checkpoints) == list(
+        range(1, 7)
+    )
+    resumed = subprocess.run(
+        [
+            sys.executable,
+            str(CONTINUITY),
+            "resume",
+            "--session",
+            "concurrent-session",
+        ],
+        cwd=workspace,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert resumed.returncode == 0, resumed.stderr
+    assert json.loads(resumed.stdout)["checkpoint"]["sequence"] == 6
 
 
 def test_checkpoint_round_trip_is_project_and_session_scoped(tmp_path: Path) -> None:
@@ -636,7 +720,7 @@ def test_continuation_expiry_fails_fresh(tmp_path: Path) -> None:
     assert "checkpoint_expired" in parsed["reasons"]
 
 
-def test_continuity_rejects_symlinked_roots_sessions_and_oversized_reads(
+def test_continuity_rejects_symlinked_roots_and_sessions(
     tmp_path: Path,
 ) -> None:
     workspace = tmp_path / "workspace"
@@ -645,7 +729,7 @@ def test_continuity_rejects_symlinked_roots_sessions_and_oversized_reads(
     external = tmp_path / "external"
     external.mkdir()
     linked_root = tmp_path / "linked-root"
-    linked_root.symlink_to(external, target_is_directory=True)
+    _symlink_or_skip(linked_root, external, target_is_directory=True)
     rejected_root = subprocess.run(
         [
             sys.executable,
@@ -688,7 +772,7 @@ def test_continuity_rejects_symlinked_roots_sessions_and_oversized_reads(
     session_dir = Path(checkpoint["storage_path"]).parent
     moved = tmp_path / "moved-session"
     session_dir.rename(moved)
-    session_dir.symlink_to(moved, target_is_directory=True)
+    _symlink_or_skip(session_dir, moved, target_is_directory=True)
     rejected_session = _run(
         workspace,
         "checkpoint",
@@ -703,6 +787,84 @@ def test_continuity_rejects_symlinked_roots_sessions_and_oversized_reads(
     assert rejected_session.returncode == 2
     assert "continuity_session_symlink" in rejected_session.stderr
 
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows junction semantics")
+def test_continuity_rejects_junctioned_roots_and_sessions(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _git_workspace(workspace)
+    external = tmp_path / "external"
+    external.mkdir()
+    linked_root = tmp_path / "linked-root"
+    _windows_junction(linked_root, external)
+    try:
+        rejected_root = subprocess.run(
+            [
+                sys.executable,
+                str(CONTINUITY),
+                "checkpoint",
+                "--session",
+                "linked-session",
+                "--turn",
+                "turn-1",
+                "--reason",
+                "handoff",
+            ],
+            cwd=workspace,
+            env={
+                **os.environ,
+                "FORGEWRIGHT_WORKSPACE": str(workspace),
+                "FORGEWRIGHT_CONTINUITY_ROOT": str(linked_root / "nested"),
+            },
+            input=json.dumps(_payload()),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        assert rejected_root.returncode == 2
+        assert "continuity_root_symlink" in rejected_root.stderr
+        assert list(external.iterdir()) == []
+    finally:
+        linked_root.rmdir()
+
+    written = _run(
+        workspace,
+        "checkpoint",
+        "--session",
+        "session-link",
+        "--turn",
+        "turn-1",
+        "--reason",
+        "handoff",
+        payload=_payload(),
+    )
+    checkpoint = json.loads(written.stdout)
+    session_dir = Path(checkpoint["storage_path"]).parent
+    moved = tmp_path / "moved-session"
+    session_dir.rename(moved)
+    _windows_junction(session_dir, moved)
+    try:
+        rejected_session = _run(
+            workspace,
+            "checkpoint",
+            "--session",
+            "session-link",
+            "--turn",
+            "turn-2",
+            "--reason",
+            "handoff",
+            payload=_payload(),
+        )
+        assert rejected_session.returncode == 2
+        assert "continuity_session_symlink" in rejected_session.stderr
+    finally:
+        session_dir.rmdir()
+
+
+def test_continuity_rejects_oversized_reads(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _git_workspace(workspace)
     safe = _run(
         workspace,
         "checkpoint",
