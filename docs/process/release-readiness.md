@@ -18,7 +18,11 @@ Before any stable release is published, the following criteria must be met and c
 - [ ] An actual installed Stop entrypoint smoke succeeds on every claimed OS/interpreter; configuration-schema checks alone are insufficient. Claimed Windows support requires observed Git Bash plus native Windows Python 3.11+ evidence from the release tree.
 - [ ] Native hooks run from both the repository root and a nested working directory; Unicode transport and immutable baseline digests survive the checkout unchanged.
 - [ ] CI uses each component's lint/format configuration and exposes resolved Git Bash to Windows child verifiers without changing the host's global PATH.
+- [ ] Node-based npm invocations use the native Node executable plus npm's JavaScript entrypoint on Windows, preserving literal argv without batch-shell reinterpretation. Test builds must use this same path.
+- [ ] MCP formatting accepts consistent host LF/CRLF line endings, but still rejects other formatting drift. POSIX executable hooks retain explicit LF through Git attributes; immutable digest-bound inputs remain byte-preserved.
 - [ ] Git maintenance hooks retain LF and an explicit interpreter. Pulling or switching a branch only writes project-local maintenance markers; it never implicitly updates shared MCP runtimes, submodules, or another project.
+- [ ] Pre-commit test fixtures do not inherit the parent repository's Git context or temporary partial-commit index. The actual staging/Docs gates still validate the selected commit index.
+- [ ] File-symlink security cases report an explicit capability skip only after native Windows rejects creation with EPERM; normal bounded-input, atomic-output and CLI-validation cases still execute. A normal-user run cannot certify privileged file-symlink behavior.
 
 Run `npm run verify:platform -- --browser --report .forgewright/reports/native-platform.json` on each claimed host after installing the declared project-local dependencies. It executes native hook/evidence tests, Product Factory conformance, MCP tests/lint/format, CLI tests, and the actual-browser reference. Keep each host report separate. A passing native-platform report has `production_eligible: false`: source synchronization for testing does not replace independent release review, trusted production evidence, or owner activation authority.
 

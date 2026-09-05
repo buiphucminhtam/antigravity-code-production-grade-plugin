@@ -1074,8 +1074,8 @@
     "lifecycle": "active",
     "health": "at_risk",
     "phase": "BUILD",
-    "summary": "An opt-in maintained offline Web reference now runs in actual Chromium through Product Intent, Web ACI, the outcome runner and Product Judge. Desktop baseline and restored desktop/mobile viewport journeys pass; a controlled product defect is rejected with the same locked intent and assertions. Additive semantic-action compatibility and action-scoped artifact association repair two observed integration defects while preserving legacy payloads, global alias counts and production gates. PF6 remains in progress without a verified production backend. PF7 is blocked: maintained web/mobile/game production evidence, frozen thresholds and trusted learning/isolation authority remain missing. Independent exact-tree review of PF7 and the new Web integration is pending; the test-only browser exercise does not demonstrate deployed production or autonomous model repair.",
-    "updated_at": "2026-09-05T10:55:48+07:00",
+    "summary": "PF6 remains in progress overall: local implementation/conformance exists, but production OS-isolation authority remains unavailable. PF7 is blocked: maintained web/mobile/game production evidence, frozen thresholds, trusted learning/isolation authority and independent exact-tree review remain missing. The maintained offline Chromium reference exercises locked-intent desktop/mobile journeys without granting production authority. Mac native verification and all 33 roadmap verifiers pass. Windows hooks, MCP runtime tests and the real-browser reference pass; native npm invocation and CRLF formatting repairs await Windows re-verification. These source changes do not activate shared runtimes or change other projects.",
+    "updated_at": "2026-09-05T13:54:50+07:00",
     "blockers": [
       {
         "id": "pf7-independent-final-tree-review",

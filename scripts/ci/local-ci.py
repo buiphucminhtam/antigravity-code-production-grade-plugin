@@ -31,6 +31,19 @@ NODE_MATRIX = (22, 24)
 # budgets can legitimately exceed 15 minutes in aggregate on local machines.
 # This is a runner budget only; it does not weaken, skip, or alter any test oracle.
 PRECOMMIT_PYTHON_UNIT_TIMEOUT_SECONDS = 1800
+# Test fixtures own their repositories. In particular, a partial commit's
+# absolute temporary index must never leak into a fixture's git commands.
+TEST_GIT_ENV: dict[str, str | None] = dict.fromkeys(
+    (
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_INDEX_FILE",
+        "GIT_COMMON_DIR",
+        "GIT_PREFIX",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    )
+)
 
 
 class GateFailure(RuntimeError):
@@ -125,7 +138,7 @@ class LocalCI:
         cwd: Path = ROOT,
         check: bool = True,
         timeout: int | None = None,
-        env: dict[str, str] | None = None,
+        env: dict[str, str | None] | None = None,
     ) -> int:
         args = [str(item) for item in argv]
         print(f"\n==> local-ci: {name}")
@@ -185,7 +198,9 @@ class LocalCI:
                 raise GateFailure(message)
         return code
 
-    def _effective_env(self, overrides: dict[str, str] | None = None) -> dict[str, str]:
+    def _effective_env(
+        self, overrides: dict[str, str | None] | None = None
+    ) -> dict[str, str]:
         env = os.environ.copy()
         path_parts: list[str] = []
 
@@ -214,7 +229,11 @@ class LocalCI:
             add_path(str(Path(self.bash).parent))
         env["PATH"] = os.pathsep.join(path_parts + [env.get("PATH", "")])
         if overrides:
-            env.update(overrides)
+            for key, value in overrides.items():
+                if value is None:
+                    env.pop(key, None)
+                else:
+                    env[key] = value
         return env
 
     def capture(
@@ -945,8 +964,14 @@ class LocalCI:
             "mcp-tests",
             [self.node, mcp_vitest, "run", "--reporter=basic"],
             cwd=ROOT / "mcp",
+            env=TEST_GIT_ENV,
         )
-        self.run("cli-tests", [self.node, cli_vitest, "run"], cwd=ROOT / "src" / "cli")
+        self.run(
+            "cli-tests",
+            [self.node, cli_vitest, "run"],
+            cwd=ROOT / "src" / "cli",
+            env=TEST_GIT_ENV,
+        )
         self.run(
             "python-unit-tests",
             [
@@ -958,6 +983,7 @@ class LocalCI:
                 "tests/unit_tests/",
             ],
             timeout=PRECOMMIT_PYTHON_UNIT_TIMEOUT_SECONDS,
+            env=TEST_GIT_ENV,
         )
 
     def commit_message(self, message_file: str) -> None:

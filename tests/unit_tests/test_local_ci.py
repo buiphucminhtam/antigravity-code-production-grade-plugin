@@ -87,6 +87,23 @@ def test_windows_child_environment_exposes_resolved_git_bash_without_global_chan
     assert os.environ.get("PATH", "") == original_path
 
 
+def test_fixture_git_environment_isolated_without_changing_hook_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _module()
+    runner = module.LocalCI(dry_run=True, keep_going=False, timeout=1, base_ref=None)
+    for key in module.TEST_GIT_ENV:
+        monkeypatch.setenv(key, "parent-commit-context")
+    # The actual docs/staging gate must still see the selected commit index.
+    assert runner._effective_env()["GIT_INDEX_FILE"] == "parent-commit-context"
+    isolated = runner._effective_env(module.TEST_GIT_ENV)
+    assert not (set(module.TEST_GIT_ENV) & isolated.keys())
+    assert os.environ["GIT_INDEX_FILE"] == "parent-commit-context"
+    assert (
+        runner._effective_env({"FORGEWRIGHT_TEST": "yes"})["FORGEWRIGHT_TEST"] == "yes"
+    )
+
+
 def test_hosted_ci_is_not_a_canonical_runtime_dependency() -> None:
     assert not (ROOT / ".github" / "workflows").exists()
     assert not (ROOT / ".github" / "actions").exists()

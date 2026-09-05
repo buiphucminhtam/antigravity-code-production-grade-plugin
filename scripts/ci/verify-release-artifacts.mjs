@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
+import { execNpmSync } from './native-node-commands.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
@@ -13,7 +14,6 @@ const expected = new Map([
   ['forgewright-mcp-global', 'build/index.js'],
   ['@forgewright/cli', 'dist/index.js'],
 ]);
-const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const scratch = mkdtempSync(join(tmpdir(), 'forgewright-release-smoke-'));
 try {
   const observed = new Set();
@@ -28,7 +28,7 @@ try {
     observed.add(metadata.name);
     execFileSync(process.execPath, ['--check', join(packageRoot, entrypoint)], { stdio: 'pipe' });
     if (metadata.name === '@forgewright/cli') {
-      execFileSync(npm, ['install', '--omit=dev', '--ignore-scripts', '--package-lock=false', '--no-audit', '--no-fund'], { cwd: packageRoot, stdio: 'pipe' });
+      execNpmSync(['install', '--omit=dev', '--ignore-scripts', '--package-lock=false', '--no-audit', '--no-fund'], { cwd: packageRoot, stdio: 'pipe' });
       execFileSync(process.execPath, [join(packageRoot, entrypoint), '--help'], { stdio: 'pipe' });
     }
   }

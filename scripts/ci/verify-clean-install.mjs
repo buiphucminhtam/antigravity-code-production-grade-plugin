@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
+import { execNpmSync } from "./native-node-commands.mjs";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
@@ -16,7 +17,6 @@ const excluded = new Set([
   ".forgewright",
   ".DS_Store",
 ]);
-const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 
 function copy(relativePath) {
   const source = join(root, relativePath);
@@ -52,10 +52,26 @@ try {
   // Root `prepare` configures Husky through `git config`, so establish the same
   // minimal Git context a real clone has before exercising an unmodified npm ci.
   run("git", ["init", "-q"]);
-  run(npm, ["ci", "--no-audit", "--no-fund"]);
-  run(npm, ["--prefix", "mcp", "run", "build"]);
-  run(npm, ["--prefix", "src/cli", "run", "typecheck"]);
-  run(npm, ["--prefix", "src/cli", "run", "build"]);
+  execNpmSync(["ci", "--no-audit", "--no-fund"], {
+    cwd: snapshot,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  execNpmSync(["--prefix", "mcp", "run", "build"], {
+    cwd: snapshot,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  execNpmSync(["--prefix", "src/cli", "run", "typecheck"], {
+    cwd: snapshot,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  execNpmSync(["--prefix", "src/cli", "run", "build"], {
+    cwd: snapshot,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
   run("node", ["tests/golden/forge-init-onboard.test.mjs"]);
 
   const required = [

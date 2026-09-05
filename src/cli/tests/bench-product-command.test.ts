@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import {
   existsSync,
   mkdtempSync,
@@ -11,6 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
+import { execNpmSync } from "../../../scripts/ci/native-node-commands.mjs";
 import {
   PRODUCT_FACTORY_BENCHMARK_LANES,
   createProductFactoryBenchmarkSuite,
@@ -23,6 +24,30 @@ import {
   validateProductFactoryCommandOptions,
   writeProductFactoryReportAtomic,
 } from "../src/bench/product-factory-cli.js";
+
+function supportsFileSymlinks(): boolean {
+  const root = mkdtempSync(
+    join(tmpdir(), "forgewright-product-symlink-probe-"),
+  );
+  try {
+    const target = join(root, "target.txt");
+    writeFileSync(target, "probe\n", "utf8");
+    symlinkSync(target, join(root, "link.txt"), "file");
+    return true;
+  } catch (error) {
+    if (
+      process.platform === "win32" &&
+      (error as NodeJS.ErrnoException).code === "EPERM"
+    ) {
+      return false;
+    }
+    throw error;
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+const fileSymlinksSupported = supportsFileSymlinks();
 
 const digest = (value: string): string =>
   createHash("sha256").update(value).digest("hex");
@@ -121,16 +146,38 @@ function fixture() {
   return { directory, suite, suitePath, receiptsPath };
 }
 
+function runCommand(
+  value: ReturnType<typeof fixture>,
+  receiptsPath = value.receiptsPath,
+  outputPath = join(value.directory, "report.json"),
+  extraArgs: string[] = [],
+) {
+  return spawnSync(
+    process.execPath,
+    [
+      join(process.cwd(), "dist", "index.js"),
+      "bench",
+      value.suitePath,
+      "--product-receipts",
+      receiptsPath,
+      "--experiment-id",
+      "experiment-one",
+      "--variant",
+      "baseline",
+      "--output",
+      outputPath,
+      ...extraArgs,
+    ],
+    { encoding: "utf8" },
+  );
+}
+
 describe("product receipt benchmark CLI ingestion", () => {
   beforeAll(() => {
-    execFileSync(
-      process.platform === "win32" ? "npm.cmd" : "npm",
-      ["run", "build"],
-      {
-        cwd: process.cwd(),
-        stdio: "pipe",
-      },
-    );
+    execNpmSync(["run", "build"], {
+      cwd: process.cwd(),
+      stdio: "pipe",
+    });
   });
 
   it("writes a four-lane structural report that is always unverified", async () => {
@@ -200,7 +247,6 @@ describe("product receipt benchmark CLI ingestion", () => {
     const unsafePath = join(value.directory, "unsafe.json");
     const extraPath = join(value.directory, "extra.json");
     const oversizedPath = join(value.directory, "oversized.json");
-    const symlinkPath = join(value.directory, "receipts-link.json");
     try {
       await expect(
         runProductFactoryStructuralIngestion({
@@ -220,16 +266,6 @@ describe("product receipt benchmark CLI ingestion", () => {
           variant: "baseline",
         }),
       ).rejects.toThrow("PRODUCT_FACTORY_CLI_SIZE_LIMIT");
-
-      symlinkSync(value.receiptsPath, symlinkPath);
-      await expect(
-        runProductFactoryStructuralIngestion({
-          suitePath: value.suitePath,
-          receiptsPath: symlinkPath,
-          experimentId: "experiment-one",
-          variant: "baseline",
-        }),
-      ).rejects.toThrow("PRODUCT_FACTORY_CLI_PATH_INVALID");
 
       writeFileSync(
         unsafePath,
@@ -265,6 +301,27 @@ describe("product receipt benchmark CLI ingestion", () => {
     }
   });
 
+  it.skipIf(!fileSymlinksSupported)(
+    "rejects symlinked receipt files",
+    async () => {
+      const value = fixture();
+      const symlinkPath = join(value.directory, "receipts-link.json");
+      try {
+        symlinkSync(value.receiptsPath, symlinkPath);
+        await expect(
+          runProductFactoryStructuralIngestion({
+            suitePath: value.suitePath,
+            receiptsPath: symlinkPath,
+            experimentId: "experiment-one",
+            variant: "baseline",
+          }),
+        ).rejects.toThrow("PRODUCT_FACTORY_CLI_PATH_INVALID");
+      } finally {
+        rmSync(value.directory, { recursive: true, force: true });
+      }
+    },
+  );
+
   it("rejects live execution and invalid product-only option combinations", () => {
     expect(() =>
       validateProductFactoryCommandOptions({
@@ -293,38 +350,71 @@ describe("product receipt benchmark CLI ingestion", () => {
     ).toThrow("PRODUCT_FACTORY_CLI_RECEIPTS_REQUIRED");
   });
 
-  it("uses a random safe temp writer and rejects symlinked output targets", async () => {
-    const value = fixture();
-    const outputPath = join(value.directory, "report.json");
-    const legacyTempPath = `${outputPath}.tmp`;
-    const victimPath = join(value.directory, "victim.txt");
-    try {
-      const { report } = await runProductFactoryStructuralIngestion({
-        suitePath: value.suitePath,
-        receiptsPath: value.receiptsPath,
-        experimentId: "experiment-one",
-        variant: "baseline",
-      });
-      writeFileSync(victimPath, "unchanged", "utf8");
-      symlinkSync(victimPath, legacyTempPath);
+  it.skipIf(!fileSymlinksSupported)(
+    "uses a random safe temp writer and rejects symlinked output targets",
+    async () => {
+      const value = fixture();
+      const outputPath = join(value.directory, "report.json");
+      const legacyTempPath = `${outputPath}.tmp`;
+      const victimPath = join(value.directory, "victim.txt");
+      try {
+        const { report } = await runProductFactoryStructuralIngestion({
+          suitePath: value.suitePath,
+          receiptsPath: value.receiptsPath,
+          experimentId: "experiment-one",
+          variant: "baseline",
+        });
+        writeFileSync(victimPath, "unchanged", "utf8");
+        symlinkSync(victimPath, legacyTempPath);
 
-      writeProductFactoryReportAtomic(outputPath, report);
+        writeProductFactoryReportAtomic(outputPath, report);
 
-      expect(readFileSync(victimPath, "utf8")).toBe("unchanged");
-      expect(JSON.parse(readFileSync(outputPath, "utf8")).status).toBe(
-        "UNVERIFIED",
-      );
+        expect(readFileSync(victimPath, "utf8")).toBe("unchanged");
+        expect(JSON.parse(readFileSync(outputPath, "utf8")).status).toBe(
+          "UNVERIFIED",
+        );
 
-      const linkedOutput = join(value.directory, "linked-report.json");
-      symlinkSync(victimPath, linkedOutput);
-      expect(() =>
-        writeProductFactoryReportAtomic(linkedOutput, report),
-      ).toThrow("PRODUCT_FACTORY_CLI_OUTPUT_INVALID");
-      expect(readFileSync(victimPath, "utf8")).toBe("unchanged");
-    } finally {
-      rmSync(value.directory, { recursive: true, force: true });
-    }
-  });
+        const linkedOutput = join(value.directory, "linked-report.json");
+        symlinkSync(victimPath, linkedOutput);
+        expect(() =>
+          writeProductFactoryReportAtomic(linkedOutput, report),
+        ).toThrow("PRODUCT_FACTORY_CLI_OUTPUT_INVALID");
+        expect(readFileSync(victimPath, "utf8")).toBe("unchanged");
+      } finally {
+        rmSync(value.directory, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it.skipIf(!fileSymlinksSupported)(
+    "protects CLI output against file symlinks",
+    () => {
+      const value = fixture();
+      const outputPath = join(value.directory, "report.json");
+      const victimPath = join(value.directory, "legacy-temp-victim.txt");
+      try {
+        writeFileSync(victimPath, "unchanged", "utf8");
+        symlinkSync(victimPath, `${outputPath}.tmp`);
+        const valid = runCommand(value);
+        expect(valid.status).toBe(1);
+        expect(readFileSync(outputPath, "utf8")).toContain(
+          '\"status\": \"UNVERIFIED\"',
+        );
+        expect(readFileSync(victimPath, "utf8")).toBe("unchanged");
+        const linkedOutput = join(
+          value.directory,
+          "linked-command-report.json",
+        );
+        symlinkSync(victimPath, linkedOutput);
+        const linked = runCommand(value, value.receiptsPath, linkedOutput);
+        expect(linked.status).toBe(1);
+        expect(linked.stderr).toContain("PRODUCT_FACTORY_CLI_OUTPUT_INVALID");
+        expect(readFileSync(victimPath, "utf8")).toBe("unchanged");
+      } finally {
+        rmSync(value.directory, { recursive: true, force: true });
+      }
+    },
+  );
 
   it("runs the built command as structural-only with stable, secret-free errors", () => {
     const value = fixture();
@@ -333,43 +423,14 @@ describe("product receipt benchmark CLI ingestion", () => {
       receiptsPath: string,
       selectedOutputPath = outputPath,
       extraArgs: string[] = [],
-    ) =>
-      spawnSync(
-        process.execPath,
-        [
-          join(process.cwd(), "dist", "index.js"),
-          "bench",
-          value.suitePath,
-          "--product-receipts",
-          receiptsPath,
-          "--experiment-id",
-          "experiment-one",
-          "--variant",
-          "baseline",
-          "--output",
-          selectedOutputPath,
-          ...extraArgs,
-        ],
-        { encoding: "utf8" },
-      );
+    ) => runCommand(value, receiptsPath, selectedOutputPath, extraArgs);
     try {
-      const victimPath = join(value.directory, "legacy-temp-victim.txt");
-      writeFileSync(victimPath, "unchanged", "utf8");
-      symlinkSync(victimPath, `${outputPath}.tmp`);
       const valid = run(value.receiptsPath);
       expect(valid.status).toBe(1);
       expect(readFileSync(outputPath, "utf8")).toContain(
         '"status": "UNVERIFIED"',
       );
       expect(valid.stdout).toContain("Structural ingestion only");
-      expect(readFileSync(victimPath, "utf8")).toBe("unchanged");
-
-      const linkedOutput = join(value.directory, "linked-command-report.json");
-      symlinkSync(victimPath, linkedOutput);
-      const linked = run(value.receiptsPath, linkedOutput);
-      expect(linked.status).toBe(1);
-      expect(linked.stderr).toContain("PRODUCT_FACTORY_CLI_OUTPUT_INVALID");
-      expect(readFileSync(victimPath, "utf8")).toBe("unchanged");
 
       const canary = "raw-canary-do-not-echo";
       const unsafePath = join(value.directory, "unsafe-receipts.json");

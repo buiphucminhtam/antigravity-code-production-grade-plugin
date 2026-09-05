@@ -28,6 +28,7 @@ def main() -> int:
         "tests/unit_tests/test_git_hook_portability.py",
         "tests/unit_tests/test_hook_unicode_transport.py",
         "tests/unit_tests/test_native_ci_commands.py",
+        "tests/unit_tests/test_native_node_commands.py",
         "tests/unit_tests/test_local_ci.py",
         "tests/unit_tests/test_ci_workflow.py",
         "tests/unit_tests/test_hook_schema.py",
