@@ -124,7 +124,9 @@
       "priority": "critical",
       "owner": "Runtime maintainers",
       "target_date": null,
-      "depends_on": ["docs-continuity"],
+      "depends_on": [
+        "docs-continuity"
+      ],
       "references": [
         {
           "path": "docs/guides/docs-hub.md",
@@ -139,7 +141,9 @@
       "priority": "critical",
       "owner": "Documentation maintainers",
       "target_date": null,
-      "depends_on": ["docs-continuity"],
+      "depends_on": [
+        "docs-continuity"
+      ],
       "references": [
         {
           "path": "skills/_shared/protocols/documentation-governance.md"
@@ -174,7 +178,9 @@
       "priority": "high",
       "owner": "Orchestration maintainers",
       "target_date": null,
-      "depends_on": ["bounded-peer-collaboration"],
+      "depends_on": [
+        "bounded-peer-collaboration"
+      ],
       "references": [
         {
           "path": "docs/pipeline-reference.md",
@@ -193,7 +199,9 @@
       "priority": "critical",
       "owner": "Forgewright maintainers",
       "target_date": null,
-      "depends_on": ["docs-continuity"],
+      "depends_on": [
+        "docs-continuity"
+      ],
       "references": [
         {
           "path": "docs/active-roadmap.md"
@@ -207,7 +215,9 @@
       "priority": "critical",
       "owner": "Runtime maintainers",
       "target_date": null,
-      "depends_on": ["roadmap-truth-reset"],
+      "depends_on": [
+        "roadmap-truth-reset"
+      ],
       "references": [
         {
           "path": "docs/active-roadmap.md"
@@ -221,7 +231,9 @@
       "priority": "critical",
       "owner": "Runtime maintainers",
       "target_date": null,
-      "depends_on": ["harness-host-contract"],
+      "depends_on": [
+        "harness-host-contract"
+      ],
       "references": [
         {
           "path": "docs/active-roadmap.md"
@@ -235,7 +247,10 @@
       "priority": "critical",
       "owner": "Runtime maintainers",
       "target_date": null,
-      "depends_on": ["harness-host-contract", "trajectory-lifecycle"],
+      "depends_on": [
+        "harness-host-contract",
+        "trajectory-lifecycle"
+      ],
       "references": [
         {
           "path": "docs/active-roadmap.md"
@@ -249,7 +264,10 @@
       "priority": "high",
       "owner": "Runtime maintainers",
       "target_date": null,
-      "depends_on": ["trajectory-lifecycle", "execution-containment"],
+      "depends_on": [
+        "trajectory-lifecycle",
+        "execution-containment"
+      ],
       "references": [
         {
           "path": "docs/active-roadmap.md"
@@ -263,7 +281,9 @@
       "priority": "high",
       "owner": "Runtime maintainers",
       "target_date": null,
-      "depends_on": ["record-replay"],
+      "depends_on": [
+        "record-replay"
+      ],
       "references": [
         {
           "path": "docs/active-roadmap.md"
@@ -277,7 +297,9 @@
       "priority": "medium",
       "owner": "Runtime maintainers",
       "target_date": null,
-      "depends_on": ["production-evidence"],
+      "depends_on": [
+        "production-evidence"
+      ],
       "references": [
         {
           "path": "docs/active-roadmap.md"
@@ -291,7 +313,9 @@
       "priority": "critical",
       "owner": "Forgewright maintainers",
       "target_date": null,
-      "depends_on": ["docs-continuity"],
+      "depends_on": [
+        "docs-continuity"
+      ],
       "references": [
         {
           "path": "docs/pipeline-reference.md",
@@ -307,7 +331,12 @@
       "owner": "Forgewright maintainers",
       "target_date": null,
       "depends_on": [],
-      "references": [{"path": "docs/active-roadmap.md", "anchor": "product-factory-upgrade-program"}]
+      "references": [
+        {
+          "path": "docs/active-roadmap.md",
+          "anchor": "product-factory-upgrade-program"
+        }
+      ]
     },
     {
       "id": "product-factory-pf1",
@@ -316,8 +345,15 @@
       "priority": "critical",
       "owner": "Forgewright maintainers",
       "target_date": null,
-      "depends_on": ["product-factory-pf0"],
-      "references": [{"path": "docs/active-roadmap.md", "anchor": "product-factory-upgrade-program"}]
+      "depends_on": [
+        "product-factory-pf0"
+      ],
+      "references": [
+        {
+          "path": "docs/active-roadmap.md",
+          "anchor": "product-factory-upgrade-program"
+        }
+      ]
     },
     {
       "id": "product-factory-pf2",
@@ -326,8 +362,15 @@
       "priority": "critical",
       "owner": "Forgewright maintainers",
       "target_date": null,
-      "depends_on": ["product-factory-pf1"],
-      "references": [{"path": "docs/active-roadmap.md", "anchor": "product-factory-upgrade-program"}]
+      "depends_on": [
+        "product-factory-pf1"
+      ],
+      "references": [
+        {
+          "path": "docs/active-roadmap.md",
+          "anchor": "product-factory-upgrade-program"
+        }
+      ]
     },
     {
       "id": "product-factory-pf3",
@@ -336,8 +379,15 @@
       "priority": "critical",
       "owner": "Forgewright maintainers",
       "target_date": null,
-      "depends_on": ["product-factory-pf2"],
-      "references": [{"path": "docs/active-roadmap.md", "anchor": "product-factory-upgrade-program"}]
+      "depends_on": [
+        "product-factory-pf2"
+      ],
+      "references": [
+        {
+          "path": "docs/active-roadmap.md",
+          "anchor": "product-factory-upgrade-program"
+        }
+      ]
     },
     {
       "id": "product-factory-pf4",
@@ -346,8 +396,15 @@
       "priority": "critical",
       "owner": "Forgewright maintainers",
       "target_date": null,
-      "depends_on": ["product-factory-pf3"],
-      "references": [{"path": "docs/active-roadmap.md", "anchor": "product-factory-upgrade-program"}]
+      "depends_on": [
+        "product-factory-pf3"
+      ],
+      "references": [
+        {
+          "path": "docs/active-roadmap.md",
+          "anchor": "product-factory-upgrade-program"
+        }
+      ]
     },
     {
       "id": "product-factory-pf5",
@@ -356,8 +413,15 @@
       "priority": "high",
       "owner": "Forgewright maintainers",
       "target_date": null,
-      "depends_on": ["product-factory-pf4"],
-      "references": [{"path": "docs/active-roadmap.md", "anchor": "product-factory-upgrade-program"}]
+      "depends_on": [
+        "product-factory-pf4"
+      ],
+      "references": [
+        {
+          "path": "docs/active-roadmap.md",
+          "anchor": "product-factory-upgrade-program"
+        }
+      ]
     },
     {
       "id": "product-factory-pf6",
@@ -366,8 +430,15 @@
       "priority": "critical",
       "owner": "Forgewright maintainers",
       "target_date": null,
-      "depends_on": ["product-factory-pf4"],
-      "references": [{"path": "docs/active-roadmap.md", "anchor": "product-factory-upgrade-program"}]
+      "depends_on": [
+        "product-factory-pf4"
+      ],
+      "references": [
+        {
+          "path": "docs/active-roadmap.md",
+          "anchor": "product-factory-upgrade-program"
+        }
+      ]
     },
     {
       "id": "product-factory-pf7",
@@ -376,8 +447,16 @@
       "priority": "critical",
       "owner": "Forgewright maintainers",
       "target_date": null,
-      "depends_on": ["product-factory-pf5", "product-factory-pf6"],
-      "references": [{"path": "docs/active-roadmap.md", "anchor": "product-factory-upgrade-program"}]
+      "depends_on": [
+        "product-factory-pf5",
+        "product-factory-pf6"
+      ],
+      "references": [
+        {
+          "path": "docs/active-roadmap.md",
+          "anchor": "product-factory-upgrade-program"
+        }
+      ]
     }
   ],
   "flows": [
@@ -391,8 +470,15 @@
           "id": "interpret",
           "name": "INTERPRET",
           "actor": "Parent orchestrator",
-          "inputs": ["User objective", "Current workspace evidence"],
-          "outputs": ["Outcome", "Constraints", "Material ambiguity"],
+          "inputs": [
+            "User objective",
+            "Current workspace evidence"
+          ],
+          "outputs": [
+            "Outcome",
+            "Constraints",
+            "Material ambiguity"
+          ],
           "references": [
             {
               "path": "docs/pipeline-reference.md",
@@ -404,7 +490,10 @@
           "id": "define",
           "name": "DEFINE",
           "actor": "Parent orchestrator",
-          "inputs": ["Interpreted outcome", "Impact and risk evidence"],
+          "inputs": [
+            "Interpreted outcome",
+            "Impact and risk evidence"
+          ],
           "outputs": [
             "Acceptance criteria",
             "Minimum safe plan",
@@ -421,8 +510,13 @@
           "id": "build",
           "name": "BUILD",
           "actor": "Routed senior specialist or parent",
-          "inputs": ["Accepted plan", "Bounded project context"],
-          "outputs": ["Smallest compatible implementation"],
+          "inputs": [
+            "Accepted plan",
+            "Bounded project context"
+          ],
+          "outputs": [
+            "Smallest compatible implementation"
+          ],
           "references": [
             {
               "path": "docs/pipeline-reference.md"
@@ -433,8 +527,14 @@
           "id": "harden",
           "name": "HARDEN",
           "actor": "QA, reviewer, and parent orchestrator",
-          "inputs": ["Implementation", "Acceptance criteria"],
-          "outputs": ["Observed verification evidence", "Risk findings"],
+          "inputs": [
+            "Implementation",
+            "Acceptance criteria"
+          ],
+          "outputs": [
+            "Observed verification evidence",
+            "Risk findings"
+          ],
           "references": [
             {
               "path": "docs/pipeline-reference.md",
@@ -446,8 +546,14 @@
           "id": "ship",
           "name": "SHIP",
           "actor": "DevOps or release owner",
-          "inputs": ["Verified deliverable", "Release authority"],
-          "outputs": ["Packaged or released artifact", "Release evidence"],
+          "inputs": [
+            "Verified deliverable",
+            "Release authority"
+          ],
+          "outputs": [
+            "Packaged or released artifact",
+            "Release evidence"
+          ],
           "references": [
             {
               "path": "docs/process/release-readiness.md"
@@ -458,7 +564,10 @@
           "id": "sustain",
           "name": "SUSTAIN",
           "actor": "Product and operations owners",
-          "inputs": ["Shipped outcome", "Operational feedback"],
+          "inputs": [
+            "Shipped outcome",
+            "Operational feedback"
+          ],
           "outputs": [
             "Status updates",
             "Follow-up backlog",
@@ -482,7 +591,10 @@
           "id": "detect-runtime",
           "name": "DETECT RUNTIME",
           "actor": "Orchestrator",
-          "inputs": ["Current system context", "Active tool capability schema"],
+          "inputs": [
+            "Current system context",
+            "Active tool capability schema"
+          ],
           "outputs": [
             "Execution surface and provider",
             "Advertised models, controls, and concurrency"
@@ -498,7 +610,11 @@
           "id": "shape-work",
           "name": "SHAPE WORK",
           "actor": "Orchestrator",
-          "inputs": ["Objective", "Acceptance", "Dependency graph"],
+          "inputs": [
+            "Objective",
+            "Acceptance",
+            "Dependency graph"
+          ],
           "outputs": [
             "Independent bounded scopes or parent-serial plan",
             "Candidate role tiers"
@@ -617,8 +733,14 @@
           "id": "update-state",
           "name": "Require current canonical state",
           "actor": "Docs gate",
-          "inputs": ["Material paths", "Manifest project_docs contract"],
-          "outputs": ["Validated project state", "Fresh status timestamp"],
+          "inputs": [
+            "Material paths",
+            "Manifest project_docs contract"
+          ],
+          "outputs": [
+            "Validated project state",
+            "Fresh status timestamp"
+          ],
           "references": [
             {
               "path": "docs/project-state.json"
@@ -629,7 +751,9 @@
           "id": "doctor",
           "name": "Run strict doctor",
           "actor": "Docs Hub",
-          "inputs": ["Current in-memory catalog"],
+          "inputs": [
+            "Current in-memory catalog"
+          ],
           "outputs": [
             "Link, diagram, privacy, state, and staleness diagnostics"
           ],
@@ -644,8 +768,13 @@
           "id": "build-portal",
           "name": "Build and verify temporary portal",
           "actor": "Docs Hub",
-          "inputs": ["Strict catalog", "Temporary output directory"],
-          "outputs": ["Verified static HTML/CSS, search, and project pages"],
+          "inputs": [
+            "Strict catalog",
+            "Temporary output directory"
+          ],
+          "outputs": [
+            "Verified static HTML/CSS, search, and project pages"
+          ],
           "references": [
             {
               "path": "docs/adr/ADR-011-central-docs-hub.md"
@@ -661,7 +790,9 @@
             "Doctor result",
             "Portal verification"
           ],
-          "outputs": ["Machine-readable PASS or FAIL"],
+          "outputs": [
+            "Machine-readable PASS or FAIL"
+          ],
           "references": [
             {
               "path": "docs/guides/docs-hub.md",
@@ -681,8 +812,13 @@
           "id": "receive-lifecycle-event",
           "name": "Receive native lifecycle event",
           "actor": "Codex, Claude, Gemini, Antigravity, or Cursor",
-          "inputs": ["Native hook payload", "Current project or installed framework root"],
-          "outputs": ["Platform and event identity"],
+          "inputs": [
+            "Native hook payload",
+            "Current project or installed framework root"
+          ],
+          "outputs": [
+            "Platform and event identity"
+          ],
           "references": [
             {
               "path": "docs/guides/docs-hub.md",
@@ -694,8 +830,14 @@
           "id": "resolve-rule-inventory",
           "name": "Resolve and validate canonical inventory",
           "actor": "Rule-context hook",
-          "inputs": ["kernel/rule-manifest.json", "Bounded local rule sources"],
-          "outputs": ["Active canonical rules", "Source hashes or fail-open allow"],
+          "inputs": [
+            "kernel/rule-manifest.json",
+            "Bounded local rule sources"
+          ],
+          "outputs": [
+            "Active canonical rules",
+            "Source hashes or fail-open allow"
+          ],
           "references": [
             {
               "path": "docs/guides/docs-hub.md",
@@ -707,8 +849,14 @@
           "id": "inject-bounded-context",
           "name": "Inject bounded rule context",
           "actor": "Rule-context hook",
-          "inputs": ["Complete rule inventory", "Per-host context budget"],
-          "outputs": ["Every rule ID, path, and hash", "Fair excerpts or compact inventory"],
+          "inputs": [
+            "Complete rule inventory",
+            "Per-host context budget"
+          ],
+          "outputs": [
+            "Every rule ID, path, and hash",
+            "Fair excerpts or compact inventory"
+          ],
           "references": [
             {
               "path": "docs/guides/docs-hub.md",
@@ -720,8 +868,14 @@
           "id": "execute-and-refresh",
           "name": "Execute work and refresh project control",
           "actor": "Parent or bounded specialist",
-          "inputs": ["Current workspace evidence", "Injected canonical context"],
-          "outputs": ["Scoped project change", "Canonical state and HTML checkpoint"],
+          "inputs": [
+            "Current workspace evidence",
+            "Injected canonical context"
+          ],
+          "outputs": [
+            "Scoped project change",
+            "Canonical state and HTML checkpoint"
+          ],
           "references": [
             {
               "path": "docs/guides/docs-hub.md",
@@ -733,8 +887,13 @@
           "id": "inspect-stop-continuity",
           "name": "Inspect Docs continuity at Stop",
           "actor": "Read-only continuity check",
-          "inputs": ["Material changed paths", "Manifest, state, and build receipt metadata"],
-          "outputs": ["Current, stale, irrelevant, or UNVERIFIED continuity status"],
+          "inputs": [
+            "Material changed paths",
+            "Manifest, state, and build receipt metadata"
+          ],
+          "outputs": [
+            "Current, stale, irrelevant, or UNVERIFIED continuity status"
+          ],
           "references": [
             {
               "path": "docs/guides/docs-hub.md",
@@ -746,8 +905,15 @@
           "id": "bounded-stop-decision",
           "name": "Continue without retry storm",
           "actor": "Canonical Stop gate",
-          "inputs": ["Continuity mode and status", "Existing verification result"],
-          "outputs": ["Normal Stop validation", "At most one stale-receipt refresh request", "Allow plus UNVERIFIED on second pass or infrastructure error"],
+          "inputs": [
+            "Continuity mode and status",
+            "Existing verification result"
+          ],
+          "outputs": [
+            "Normal Stop validation",
+            "At most one stale-receipt refresh request",
+            "Allow plus UNVERIFIED on second pass or infrastructure error"
+          ],
           "references": [
             {
               "path": "docs/guides/docs-hub.md",
@@ -771,7 +937,9 @@
             "Exact acceptance IDs and claims",
             "Project-owned test/check references"
           ],
-          "outputs": ["Schema-v2 acceptance mapping"],
+          "outputs": [
+            "Schema-v2 acceptance mapping"
+          ],
           "references": [
             {
               "path": "docs/pipeline-reference.md",
@@ -788,7 +956,10 @@
             "Index",
             "Tracked and untracked nonignored content"
           ],
-          "outputs": ["Exact TREE fingerprint", "Command output digest"],
+          "outputs": [
+            "Exact TREE fingerprint",
+            "Command output digest"
+          ],
           "references": [
             {
               "path": "docs/pipeline-reference.md",
@@ -805,7 +976,9 @@
             "Unchanged verifier",
             "Fixed-tree GREEN"
           ],
-          "outputs": ["Correlated regression evidence"],
+          "outputs": [
+            "Correlated regression evidence"
+          ],
           "references": [
             {
               "path": "docs/pipeline-reference.md",
@@ -822,7 +995,9 @@
             "Mutation backcheck",
             "Contract/runtime/E2E records"
           ],
-          "outputs": ["Independent approval or blocking findings"],
+          "outputs": [
+            "Independent approval or blocking findings"
+          ],
           "references": [
             {
               "path": "docs/pipeline-reference.md",
@@ -838,7 +1013,10 @@
             "Exact stored verifier argv",
             "Final full-worktree fingerprint"
           ],
-          "outputs": ["Observed zero exit code", "Unchanged final worktree"],
+          "outputs": [
+            "Observed zero exit code",
+            "Unchanged final worktree"
+          ],
           "references": [
             {
               "path": "docs/pipeline-reference.md",
@@ -850,8 +1028,13 @@
           "id": "correlate-response",
           "name": "Correlate response",
           "actor": "Rule validator",
-          "inputs": ["Exact-turn record", "Strict response fields"],
-          "outputs": ["Allow or block completion claim"],
+          "inputs": [
+            "Exact-turn record",
+            "Strict response fields"
+          ],
+          "outputs": [
+            "Allow or block completion claim"
+          ],
           "references": [
             {
               "path": "docs/pipeline-reference.md",
@@ -1074,8 +1257,8 @@
     "lifecycle": "active",
     "health": "at_risk",
     "phase": "BUILD",
-    "summary": "PF6 remains in progress overall: local implementation/conformance exists, but production OS-isolation authority remains unavailable. PF7 is blocked: maintained web/mobile/game production evidence, frozen thresholds, trusted learning/isolation authority and independent exact-tree review remain missing. The maintained offline Chromium reference exercises locked-intent desktop/mobile journeys without granting production authority. Mac native verification and all 33 roadmap verifiers pass. Windows hooks, MCP runtime tests and the real-browser reference pass; native npm invocation and CRLF formatting repairs await Windows re-verification. These source changes do not activate shared runtimes or change other projects.",
-    "updated_at": "2026-09-05T13:54:50+07:00",
+    "summary": "PF6 remains in progress overall: local implementation/conformance exists, but production OS-isolation authority remains unavailable. PF7 is blocked: maintained web/mobile/game production evidence, frozen thresholds, trusted learning/isolation authority and independent exact-tree review remain missing. Mac native verification, including actual Chromium, and all 33 roadmap verifiers pass. Windows hook entrypoints, MCP runtime and real-browser tests pass; focused re-verification confirms native Node/npm execution, bounded structural CLI ingestion and MCP lint/format portability. Native permissions stay unchanged and file-symlink tests remain capability-scoped. Per-host run evidence is retained under .forgewright/reports/cross-platform-20260905. Source synchronization does not activate shared runtimes, submodules, another project or production.",
+    "updated_at": "2026-09-05T14:08:47+07:00",
     "blockers": [
       {
         "id": "pf7-independent-final-tree-review",
